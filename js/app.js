@@ -383,7 +383,9 @@
     // stats
     run.stat.gamesWon += 1;
     if (g.score > (run.stat.bestScore || 0)) run.stat.bestScore = g.score;
-    if (g.score > (META.bestScore || 0)) { META.bestScore = g.score; }
+    if (g.score > (META.bestScore || 0)) META.bestScore = g.score;
+    META.bestGame = Math.max(META.bestGame || 0, g.gameIndex);
+    saveMeta();
 
     // advance bracket
     run.gameIndex += 1;
@@ -417,6 +419,9 @@
     else if (STATE.screen === "map") root.innerHTML = renderMap();
     wireScreen();
     if (STATE.screen === "game") { renderGame(); }
+    // the ☰ menu button only makes sense once a run is underway (title is the main menu)
+    const mb = document.getElementById("menu-btn");
+    if (mb) mb.style.display = STATE.screen === "title" ? "none" : "";
   }
 
   /* ---------- title ---------- */
@@ -436,8 +441,11 @@
       <h2 class="pick-h">Choose your franchise</h2>
       <div class="franchise-grid">${fr}</div>
       <div class="title-foot">
-        <button class="btn btn-ghost" data-act="toggle-sound">Sound: ${META.sound ? "On" : "Off"}</button>
-        <span class="foot-stats">Runs played: ${META.wins} wins / ${META.runs} runs · Best score: ${META.bestScore || 0}</span>
+        <div class="foot-btns">
+          <button class="btn btn-ghost" data-act="open-stats">📊 Stats</button>
+          <button class="btn btn-ghost" data-act="toggle-sound">${META.sound ? "🔊" : "🔇"} Sound: ${META.sound ? "On" : "Off"}</button>
+        </div>
+        <span class="foot-stats">${META.wins} ${META.wins === 1 ? "championship" : "championships"} · ${META.runs} runs · best ${META.bestScore || 0}</span>
         <span class="foot-version">v1.0</span>
       </div>
     </div>`;
@@ -794,6 +802,101 @@
           <button class="btn btn-ghost" data-act="to-title">Main Menu</button>
         </div>
       </div>`, true);
+  }
+
+  /* ---------- pause / main menu ---------- */
+  function showMenu() {
+    if (SFX && SFX.click) SFX.click();
+    const inRun = !!STATE.run;
+    overlay(`
+      <div class="ov-card menu-card">
+        <h2>Menu</h2>
+        <div class="menu-list">
+          ${inRun ? `<button class="btn btn-gold menu-item" data-act="menu-resume">▸ Resume</button>` : ""}
+          <button class="btn menu-item" data-act="open-stats">📊 View Stats</button>
+          <button class="btn menu-item" data-act="howto">❔ How to Play</button>
+          <button class="btn menu-item" data-act="toggle-sound-menu">${META.sound ? "🔊" : "🔇"} Sound: ${META.sound ? "On" : "Off"}</button>
+          ${inRun ? `<button class="btn menu-item" data-act="to-menu">↩ Return to Main Menu<span class="menu-note">keeps your run — resume later</span></button>` : ""}
+          ${inRun ? `<button class="btn btn-danger menu-item" data-act="abandon-run">✕ Abandon Run<span class="menu-note">quit and discard this run</span></button>` : ""}
+        </div>
+        <button class="btn btn-ghost" data-act="close-ov">Close</button>
+      </div>`);
+  }
+
+  function confirmAbandon() {
+    overlay(`
+      <div class="ov-card confirm-card">
+        <h2>Abandon this run?</h2>
+        <div class="ov-sub">Your current run will end and its progress is lost for good. (Your career stats are kept.)</div>
+        <div class="ov-actions">
+          <button class="btn btn-danger" data-act="abandon-confirm">Abandon Run</button>
+          <button class="btn btn-ghost" data-act="back-to-menu">Cancel</button>
+        </div>
+      </div>`);
+  }
+
+  function showStats() {
+    const m = META;
+    const furthest = (m.bestGame != null && m.bestGame >= 0)
+      ? `${ROUNDS[Math.floor(m.bestGame / GAMES_PER_ROUND)].name} · ${gameLabel(m.bestGame)}`
+      : "—";
+    let runHTML = "";
+    if (STATE.run) {
+      const r = STATE.run;
+      const fr = FRANCHISES.find((f) => f.id === r.franchiseId);
+      runHTML = `
+        <h3>Current run</h3>
+        <div class="stat-grid">
+          ${statCell("Franchise", fr ? fr.name : "—")}
+          ${statCell("Now playing", `${roundName(r.gameIndex)} · ${gameLabel(r.gameIndex)}`)}
+          ${statCell("Games won", r.stat.gamesWon)}
+          ${statCell("Payroll", "$" + r.payroll)}
+          ${statCell("Deck size", r.deck.length + " cards")}
+          ${statCell("Dugout", r.dugout.length + " / " + r.dugoutSlots)}
+          ${statCell("Best game (run)", r.stat.bestScore || 0)}
+          ${statCell("Seed", r.seed)}
+        </div>`;
+    }
+    overlay(`
+      <div class="ov-card stats-card">
+        <h2>📊 Stats</h2>
+        <h3>Career</h3>
+        <div class="stat-grid">
+          ${statCell("Championships", m.wins)}
+          ${statCell("Runs played", m.runs)}
+          ${statCell("Best game score", m.bestScore || 0)}
+          ${statCell("Furthest reached", furthest)}
+        </div>
+        ${runHTML}
+        <button class="btn ${STATE.run ? "" : "btn-gold"}" data-act="${STATE.run ? "back-to-menu" : "close-ov"}">${STATE.run ? "◂ Back" : "Close"}</button>
+      </div>`);
+  }
+  function statCell(label, val) {
+    return `<div class="stat-cell"><div class="stat-val">${val}</div><div class="stat-label">${label}</div></div>`;
+  }
+
+  /* ---------- new run (with overwrite guard) ---------- */
+  function doStartRun(id) {
+    SFX.resume();
+    STATE.run = newRun(id);
+    STATE.game = null;
+    saveRun();
+    closeOverlay();
+    STATE.screen = "map";
+    render();
+  }
+  function confirmNewRun(id) {
+    STATE._pendingFranchise = id;
+    const fr = FRANCHISES.find((f) => f.id === id);
+    overlay(`
+      <div class="ov-card confirm-card">
+        <h2>Start a new run?</h2>
+        <div class="ov-sub">You have a run in progress. Starting <b>${fr ? fr.name : "a new run"}</b> replaces it — the current run will be lost.</div>
+        <div class="ov-actions">
+          <button class="btn btn-gold" data-act="confirm-newrun">Start New Run</button>
+          <button class="btn btn-ghost" data-act="close-ov">Cancel</button>
+        </div>
+      </div>`);
   }
 
   function showHowTo() {
@@ -1326,8 +1429,9 @@
   function handleAct(a) {
     switch (a) {
       case "continue": resumeRun(); break;
-      case "abandon": clearSave(); render(); break;
+      case "abandon": clearSave(); STATE.run = null; STATE.game = null; render(); break;
       case "toggle-sound": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); render(); break;
+      case "toggle-sound-menu": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); showMenu(); break;
       case "play-game": startGame(); break;
       case "open-deck": openDeckView(); break;
       case "open-dugout": openDugoutView(); break;
@@ -1335,7 +1439,17 @@
       case "leave-shop": STATE.screen = "map"; saveRun(); render(); break;
       case "to-shop": closeOverlay(); enterShop(); break;
       case "btn-pinch": break;
-      case "retry-run": closeOverlay(); STATE.screen = "title"; render(); break;
+      // menu system
+      case "open-menu": showMenu(); break;
+      case "menu-resume": closeOverlay(); break;
+      case "back-to-menu": showMenu(); break;
+      case "open-stats": showStats(); break;
+      case "howto": showHowTo(); break;
+      case "to-menu": closeOverlay(); if (STATE.run) saveRun(); STATE.screen = "title"; render(); break;
+      case "abandon-run": confirmAbandon(); break;
+      case "abandon-confirm": clearSave(); STATE.run = null; STATE.game = null; closeOverlay(); STATE.screen = "title"; render(); break;
+      case "confirm-newrun": { const id = STATE._pendingFranchise; STATE._pendingFranchise = null; if (id) doStartRun(id); break; }
+      case "retry-run": closeOverlay(); STATE.run = null; STATE.game = null; STATE.screen = "title"; render(); break;
       case "to-title": closeOverlay(); STATE.screen = "title"; render(); break;
       case "close-ov": closeOverlay(); break;
     }
@@ -1361,11 +1475,9 @@
   }
 
   function startFromFranchise(id) {
-    SFX.resume();
-    STATE.run = newRun(id);
-    saveRun();
-    STATE.screen = "map";
-    render();
+    // guard against wiping an in-progress run by mis-clicking a franchise
+    if (localStorage.getItem(SAVE_KEY)) { confirmNewRun(id); return; }
+    doStartRun(id);
   }
   function resumeRun() {
     const r = loadRun();
@@ -1410,6 +1522,8 @@
     render();
     const hb = document.getElementById("howto-btn");
     if (hb) hb.onclick = showHowTo;
+    const mb = document.getElementById("menu-btn");
+    if (mb) mb.onclick = showMenu;
     // expose a small debug API for testing
     global.DD = {
       STATE, CONFIG,

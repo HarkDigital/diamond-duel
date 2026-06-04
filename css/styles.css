@@ -336,15 +336,36 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(30px); background:#1b2c46; border:1px solid var(--line); color:var(--ink); padding:11px 18px; border-radius:12px; opacity:0; pointer-events:none; transition:all .3s; z-index:80; box-shadow:var(--shadow); font-weight:600}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
-/* How to Play — persistent corner link + rules overlay */
-#howto-btn{
-  position:fixed; left:14px; bottom:14px; z-index:40;
+/* Persistent corner buttons — How to Play (bottom-left) + Menu (bottom-right) */
+#howto-btn,#menu-btn{
+  position:fixed; bottom:14px; z-index:40;
   background:rgba(19,35,58,.92); border:1px solid var(--line); color:var(--ink-dim);
   font:inherit; font-weight:700; font-size:.8rem; padding:8px 13px; border-radius:11px;
   cursor:pointer; backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.4);
   transition:transform .1s, color .15s, border-color .15s, background .15s;
 }
-#howto-btn:hover{ color:var(--gold); border-color:var(--gold-2); background:rgba(26,44,70,.96); transform:translateY(-2px); }
+#howto-btn{ left:14px; }
+#menu-btn{ right:14px; }
+#howto-btn:hover,#menu-btn:hover{ color:var(--gold); border-color:var(--gold-2); background:rgba(26,44,70,.96); transform:translateY(-2px); }
+
+/* Pause / main menu + stats + confirm */
+.btn-danger{ background:linear-gradient(180deg,#7a2f2f,#5f1d1d); border-color:#4a0f0f; color:#ffe3e3; }
+.btn-danger:hover{ background:linear-gradient(180deg,#933a3a,#6e2424); border-color:#8a2a2a; }
+.menu-card{ max-width:420px; }
+.menu-list{ display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+.menu-item{ width:100%; text-align:left; font-size:.98rem; padding:13px 16px; display:flex; flex-direction:column; align-items:flex-start; gap:1px; }
+.menu-note{ color:var(--ink-faint); font-weight:500; font-size:.74rem; }
+.btn-gold.menu-item .menu-note{ color:#6b5212; }
+.btn-danger.menu-item .menu-note{ color:#e6a3a3; }
+.stats-card{ max-width:560px; }
+.stats-card h3{ color:var(--gold); text-align:left; margin:14px 0 8px; font-size:.82rem; text-transform:uppercase; letter-spacing:2px; }
+.stats-card h3:first-of-type{ margin-top:6px; }
+.stat-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
+.stat-cell{ background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px; padding:10px 13px; text-align:left; }
+.stat-val{ font-size:1.25rem; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1; }
+.stat-label{ font-size:.68rem; color:var(--ink-faint); text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
+.confirm-card{ max-width:440px; }
+.foot-btns{ display:flex; gap:8px; }
 .ov-card.howto{ max-width:680px; text-align:left; }
 .howto h2{ text-align:center; }
 .howto-sub{ color:var(--gold); font-weight:800; }
