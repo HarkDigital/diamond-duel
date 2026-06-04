@@ -1,0 +1,10 @@
+# OS / editor junk
+.DS_Store
+*.log
+
+# Local Claude Code / dev-server config (not needed on the public site)
+.claude/
+
+# Internal design spec — kept out of the public repo by default.
+# Delete this line if you'd like to publish it too.
+diamond-deckbuilder-design.md
