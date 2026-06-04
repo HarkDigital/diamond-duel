@@ -796,6 +796,66 @@
       </div>`, true);
   }
 
+  function showHowTo() {
+    if (SFX && SFX.click) SFX.click();
+    overlay(`
+      <div class="ov-card howto">
+        <h2>How to Play <span class="howto-sub">Diamond Duel</span></h2>
+        <div class="howto-body">
+          <section>
+            <h3>① The goal</h3>
+            <p>You're running a postseason gauntlet. Each game, pile up <b>Score</b> to beat the opposing pitcher's <b>Target</b> before you run out of <b>Outs</b>. Win all 12 games — Wild Card through the World Series — to take the crown. Lose a single game and the run is over.</p>
+          </section>
+          <section>
+            <h3>② Each at-bat</h3>
+            <p>Your hand is your lineup. <b>Click a card</b> (or press <b>1–8</b>) to send that batter to the plate. The at-bat instantly resolves to one outcome — strikeout, walk, single, homer… — from the batter's stats versus the pitcher. Then you draw back up and pick the next batter. <em>The order you bat them is the puzzle.</em></p>
+          </section>
+          <section class="howto-rally">
+            <h3>③ The Rally — this is the whole game</h3>
+            <p>Every scoring play is worth <b>Bag value × Rally</b>.</p>
+            <ul>
+              <li><b>Bag value</b> is the event's raw worth: Walk <b>1</b>, Single <b>2</b>, Double <b>3</b>, Triple <b>4</b>, Home Run <b>5</b> — plus <b>+1</b> for every runner who scores on the play.</li>
+              <li><b>Rally</b> is your multiplier. It starts at <b>×1.0</b> and climbs <b>+0.5</b> every time you reach base safely… but an <b>OUT resets it straight back to ×1.0</b>.</li>
+            </ul>
+            <p>A three-run homer (bag 8) at <b>×3.0</b> scores <b>24</b> — the same swing leading off at ×1.0 scores just 8. <b>String hits together and time your big bats to land while the rally is high.</b></p>
+          </section>
+          <section>
+            <h3>④ Your resources</h3>
+            <ul>
+              <li><b>Outs</b> — your budget, 27 per game (some bosses give fewer). Reach zero below the Target and you're eliminated.</li>
+              <li><b>Pinch Hit</b> — swap an unwanted card for a fresh draw. Click <b>Pinch Hit</b> (or press <b>P</b>), then click the card to replace it. Limited per game.</li>
+              <li><b>Innings</b> — every 3 outs starts a new inning and clears the bases.</li>
+            </ul>
+          </section>
+          <section>
+            <h3>⑤ Reading a card</h3>
+            <p>Four stats (0–100): <b class="s-c">Contact</b> (singles, fewer strikeouts), <b class="s-p">Power</b> (extra-base hits &amp; homers), <b class="s-e">Eye</b> (walks), <b class="s-s">Speed</b> (steals, extra bases, beating the double play). The <b>L / R / S</b> badge is handedness — a lefty batter facing a righty pitcher (or vice-versa) gets a <b>platoon</b> boost; switch-hitters (S) are never at a disadvantage.</p>
+          </section>
+          <section>
+            <h3>⑥ Runners</h3>
+            <p>Hits advance runners around the diamond. A runner on 2nd or 3rd is <b>in scoring position</b> — drive them home for +1 bag value each, and several coaches pay out heavily when runners are aboard.</p>
+          </section>
+          <section>
+            <h3>⑦ Coaches &amp; the dugout</h3>
+            <p>Coaches are your <b>build</b> (think Balatro's Jokers). They sit in dugout slots and trigger passively or in the right situation — flat bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run long. Buy them in the shop and lean into a synergy.</p>
+          </section>
+          <section>
+            <h3>⑧ The gauntlet &amp; the shop</h3>
+            <p>Four rounds (Wild Card → Division → Championship → World Series), each with two ordinary games and a <b>Boss</b>. Boss pitchers carry a nasty rule (Power halved, strikeouts cost two outs…) — it's telegraphed on the map, so shop for it. Between games you spend <b>Payroll ($)</b> on players, coaches, analytics, scouting reports, front-office upgrades, and booster packs. <em>You can't win the late rounds with your starting deck — building is the whole point.</em></p>
+          </section>
+          <section class="howto-tips">
+            <h3>★ Quick tips</h3>
+            <ul>
+              <li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li>
+              <li>Thin your deck: fewer, better cards means you draw your bombs more often.</li>
+              <li>Two or three coaches pointing the same direction beats a pile of random ones.</li>
+            </ul>
+          </section>
+        </div>
+        <button class="btn btn-gold" data-act="close-ov">Got it — play ball ▸</button>
+      </div>`);
+  }
+
   function overlay(html, lock) {
     let ov = $("#overlay");
     if (!ov) { ov = document.createElement("div"); ov.id = "overlay"; document.body.appendChild(ov); }
@@ -1329,6 +1389,10 @@
 
   // keyboard
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !STATE._pick && !STATE._pack) {
+      const ov = document.getElementById("overlay");
+      if (ov && ov.classList.contains("show") && !ov.classList.contains("lock")) { closeOverlay(); return; }
+    }
     if (STATE.screen !== "game" || STATE.busy) return;
     if (e.key >= "1" && e.key <= "8") {
       const idx = parseInt(e.key, 10) - 1;
@@ -1344,6 +1408,8 @@
   function boot() {
     SFX.setEnabled(META.sound);
     render();
+    const hb = document.getElementById("howto-btn");
+    if (hb) hb.onclick = showHowTo;
     // expose a small debug API for testing
     global.DD = {
       STATE, CONFIG,

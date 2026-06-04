@@ -336,6 +336,33 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(30px); background:#1b2c46; border:1px solid var(--line); color:var(--ink); padding:11px 18px; border-radius:12px; opacity:0; pointer-events:none; transition:all .3s; z-index:80; box-shadow:var(--shadow); font-weight:600}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
+/* How to Play — persistent corner link + rules overlay */
+#howto-btn{
+  position:fixed; left:14px; bottom:14px; z-index:40;
+  background:rgba(19,35,58,.92); border:1px solid var(--line); color:var(--ink-dim);
+  font:inherit; font-weight:700; font-size:.8rem; padding:8px 13px; border-radius:11px;
+  cursor:pointer; backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.4);
+  transition:transform .1s, color .15s, border-color .15s, background .15s;
+}
+#howto-btn:hover{ color:var(--gold); border-color:var(--gold-2); background:rgba(26,44,70,.96); transform:translateY(-2px); }
+.ov-card.howto{ max-width:680px; text-align:left; }
+.howto h2{ text-align:center; }
+.howto-sub{ color:var(--gold); font-weight:800; }
+.howto-body{ max-height:62vh; overflow:auto; padding:6px 8px 2px 2px; margin:10px 0 16px; }
+.howto section{ margin-bottom:14px; }
+.howto h3{ color:var(--gold); font-size:1rem; margin-bottom:5px; }
+.howto p{ color:var(--ink-dim); line-height:1.5; font-size:.9rem; margin:0 0 6px; }
+.howto p:last-child{ margin-bottom:0; }
+.howto b{ color:var(--ink); font-weight:700; }
+.howto em{ color:var(--ink-dim); }
+.howto ul{ margin:4px 0 6px; padding-left:18px; }
+.howto li{ color:var(--ink-dim); line-height:1.45; font-size:.9rem; margin-bottom:4px; }
+.howto li b{ color:var(--ink); }
+.howto-rally{ background:rgba(255,203,71,.06); border:1px solid rgba(255,203,71,.2); border-radius:12px; padding:12px 14px; }
+.howto-tips{ background:rgba(86,180,255,.05); border:1px solid rgba(86,180,255,.18); border-radius:12px; padding:12px 14px; }
+.howto-tips h3{ color:var(--great); }
+.howto .s-c{ color:var(--contact); } .howto .s-p{ color:var(--power); } .howto .s-e{ color:var(--eye); } .howto .s-s{ color:var(--speed); }
+
 .shake{animation:shake .4s}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 
