@@ -439,6 +439,13 @@
       </div>
       ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
       <h2 class="pick-h">Choose your franchise</h2>
+      <div class="seed-row">
+        <input id="seed-input" class="seed-input" type="text" maxlength="32" autocomplete="off" spellcheck="false"
+               placeholder="optional seed — leave blank for a random run" value="${STATE._replaySeed ? escAttr(STATE._replaySeed) : ""}" />
+        ${STATE._replaySeed
+        ? `<div class="seed-hint replay">↻ Replaying <code>${escAttr(STATE._replaySeed)}</code>${STATE._replayFranchise ? ` — pick <b>${(FRANCHISES.find(f => f.id === STATE._replayFranchise) || {}).name || ""}</b> below to reproduce it exactly` : ""}</div>`
+        : `<div class="seed-hint">Paste a seed to replay a specific run, or leave it blank for a fresh one.</div>`}
+      </div>
       <div class="franchise-grid">${fr}</div>
       <div class="title-foot">
         <div class="foot-btns">
@@ -459,8 +466,10 @@
     }, { c: 0, p: 0, e: 0, s: 0 });
     const n = ids.length;
     const mini = (v) => Math.round(v / n);
+    const isReplayTarget = STATE._replaySeed && STATE._replayFranchise === f.id;
     return `
-      <button class="franchise-card" data-franchise="${f.id}">
+      <button class="franchise-card${isReplayTarget ? " fr-replay-target" : ""}" data-franchise="${f.id}">
+        ${isReplayTarget ? `<div class="fr-replay-badge">↻ original</div>` : ""}
         <div class="fr-head"><h3>${f.name}</h3></div>
         <p class="fr-tag">${f.tagline}</p>
         <div class="fr-stats">
@@ -781,7 +790,8 @@
         <div class="ov-sub">You came up short against ${g.pitcher.name}.<br>Final: ${g.score} / ${g.target} · reached ${roundName(g.gameIndex)} (${gameLabel(g.gameIndex)}).</div>
         <div class="ov-stat">Best game score this run: ${STATE.run.stat.bestScore || g.score}</div>
         <div class="ov-actions">
-          <button class="btn btn-big btn-gold" data-act="retry-run">New Run</button>
+          <button class="btn btn-big btn-gold" data-act="replay-seed">↻ Replay Seed</button>
+          <button class="btn btn-secondary" data-act="retry-run">New Run</button>
           <button class="btn btn-ghost" data-act="to-title">Main Menu</button>
         </div>
       </div>`, true);
@@ -795,9 +805,10 @@
       <div class="ov-card victory-ov">
         <div class="ov-burst big">🏆</div>
         <h2>WORLD SERIES CHAMPIONS</h2>
-        <div class="ov-sub">You ran the entire gauntlet with ${FRANCHISES.find(f => f.id === STATE.run.franchiseId).name}.<br>Seed: <code>${STATE.run.seed}</code></div>
+        <div class="ov-sub">You ran the entire gauntlet with ${FRANCHISES.find(f => f.id === STATE.run.franchiseId).name}.<br>Seed: ${seedChip(STATE.run.seed)}</div>
         <div class="ov-stat">Games won: ${STATE.run.stat.gamesWon} · Best game score: ${STATE.run.stat.bestScore}</div>
         <div class="ov-actions">
+          <button class="btn btn-secondary" data-act="replay-seed">↻ Replay Seed</button>
           <button class="btn btn-big btn-gold" data-act="retry-run">New Run</button>
           <button class="btn btn-ghost" data-act="to-title">Main Menu</button>
         </div>
@@ -854,7 +865,7 @@
           ${statCell("Deck size", r.deck.length + " cards")}
           ${statCell("Dugout", r.dugout.length + " / " + r.dugoutSlots)}
           ${statCell("Best game (run)", r.stat.bestScore || 0)}
-          ${statCell("Seed", r.seed)}
+          ${statCell("Seed", seedChip(r.seed))}
         </div>`;
     }
     overlay(`
@@ -868,18 +879,53 @@
           ${statCell("Furthest reached", furthest)}
         </div>
         ${runHTML}
-        <button class="btn ${STATE.run ? "" : "btn-gold"}" data-act="${STATE.run ? "back-to-menu" : "close-ov"}">${STATE.run ? "◂ Back" : "Close"}</button>
+        <div class="stats-actions">
+          ${STATE.run ? `<button class="btn btn-secondary" data-act="replay-seed">↻ Replay this seed</button>` : ""}
+          <button class="btn ${STATE.run ? "" : "btn-gold"}" data-act="${STATE.run ? "back-to-menu" : "close-ov"}">${STATE.run ? "◂ Back" : "Close"}</button>
+        </div>
       </div>`);
   }
   function statCell(label, val) {
     return `<div class="stat-cell"><div class="stat-val">${val}</div><div class="stat-label">${label}</div></div>`;
   }
 
+  /* ---------- seeds: copy + replay ---------- */
+  function escAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function seedChip(seed) { return `<code class="seed-copy" data-seed="${escAttr(seed)}" title="Click to copy this seed">${seed} ⧉</code>`; }
+  function copySeed(seed) {
+    const done = () => { toast("Seed copied — " + seed); if (SFX && SFX.coin) SFX.coin(); };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(seed).then(done, () => fallbackCopy(seed, done));
+      else fallbackCopy(seed, done);
+    } catch (e) { fallbackCopy(seed, done); }
+  }
+  function fallbackCopy(text, cb) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
+      if (cb) cb();
+    } catch (e) { toast("Couldn't copy — seed is " + text); }
+  }
+  function replaySeed(seed, franchiseId) {
+    STATE._replaySeed = seed || null;
+    STATE._replayFranchise = franchiseId || null;
+    closeOverlay();
+    STATE.screen = "title";
+    render();
+    setTimeout(() => { const el = document.getElementById("seed-input"); if (el) { el.focus(); el.scrollIntoView({ block: "center", behavior: "smooth" }); } }, 40);
+  }
+
   /* ---------- new run (with overwrite guard) ---------- */
   function doStartRun(id) {
     SFX.resume();
-    STATE.run = newRun(id);
+    let seed = null;
+    const el = document.getElementById("seed-input");
+    if (el && el.value.trim()) seed = el.value.trim().toUpperCase();
+    STATE.run = newRun(id, seed);
     STATE.game = null;
+    STATE._replaySeed = null; STATE._replayFranchise = null;
     saveRun();
     closeOverlay();
     STATE.screen = "map";
@@ -1005,7 +1051,7 @@
     <div class="screen map-screen">
       <div class="map-head">
         <h2>The Gauntlet</h2>
-        <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b> · Seed <code>${run.seed}</code></div>
+        <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b> · Seed ${seedChip(run.seed)}</div>
       </div>
       <div class="bracket">${rounds}</div>
       <div class="map-next">
@@ -1409,6 +1455,8 @@
     if (!root) return;
 
     root.onclick = (e) => {
+      const seedEl = e.target.closest("[data-seed]");
+      if (seedEl) { copySeed(seedEl.getAttribute("data-seed")); return; }
       const act = e.target.closest("[data-act]");
       const fr = e.target.closest("[data-franchise]");
       const buyEl = e.target.closest("[data-buy]");
@@ -1447,6 +1495,7 @@
       case "howto": showHowTo(); break;
       case "to-menu": closeOverlay(); if (STATE.run) saveRun(); STATE.screen = "title"; render(); break;
       case "abandon-run": confirmAbandon(); break;
+      case "replay-seed": if (STATE.run) replaySeed(STATE.run.seed, STATE.run.franchiseId); break;
       case "abandon-confirm": clearSave(); STATE.run = null; STATE.game = null; closeOverlay(); STATE.screen = "title"; render(); break;
       case "confirm-newrun": { const id = STATE._pendingFranchise; STATE._pendingFranchise = null; if (id) doStartRun(id); break; }
       case "retry-run": closeOverlay(); STATE.run = null; STATE.game = null; STATE.screen = "title"; render(); break;
@@ -1459,6 +1508,8 @@
     const ov = $("#overlay");
     if (!ov) return;
     ov.onclick = (e) => {
+      const seedEl = e.target.closest("[data-seed]");
+      if (seedEl) { copySeed(seedEl.getAttribute("data-seed")); return; }
       const act = e.target.closest("[data-act]");
       const pick = e.target.closest("[data-pick]");
       const packpick = e.target.closest("[data-packpick]");
@@ -1483,6 +1534,7 @@
     const r = loadRun();
     if (!r) { render(); return; }
     STATE.run = r;
+    STATE._replaySeed = null; STATE._replayFranchise = null;
     // guard against version drift
     if (!r.analytics) r.analytics = { power: 0, contact: 0, patience: 0, speed: 0, rally: 0 };
     STATE.screen = "map";

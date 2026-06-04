@@ -366,6 +366,24 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .stat-label{ font-size:.68rem; color:var(--ink-faint); text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
 .confirm-card{ max-width:440px; }
 .foot-btns{ display:flex; gap:8px; }
+.stats-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+/* Seed entry + click-to-copy */
+.seed-row{ max-width:520px; margin:0 auto 16px; text-align:center; }
+.seed-input{
+  width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--ink);
+  font:inherit; font-size:.95rem; padding:11px 14px; border-radius:11px; text-align:center;
+  letter-spacing:1px; transition:border-color .15s, box-shadow .15s;
+}
+.seed-input::placeholder{ color:var(--ink-faint); letter-spacing:0; }
+.seed-input:focus{ outline:none; border-color:var(--gold-2); box-shadow:0 0 0 3px rgba(245,166,35,.15); }
+.seed-hint{ color:var(--ink-faint); font-size:.78rem; margin-top:6px; }
+.seed-hint.replay{ color:var(--gold); }
+.seed-hint.replay code{ color:var(--gold); }
+.fr-replay-target{ border-color:var(--gold-2)!important; box-shadow:0 0 0 2px rgba(245,166,35,.45), 0 14px 34px rgba(0,0,0,.5)!important; }
+.fr-replay-badge{ position:absolute; top:10px; right:10px; background:var(--gold); color:#2a1c00; font-weight:800; font-size:.62rem; padding:2px 7px; border-radius:6px; letter-spacing:.5px; z-index:2; }
+.seed-copy{ cursor:pointer; transition:color .12s, background .12s; user-select:none; white-space:nowrap; }
+.seed-copy:hover{ color:var(--gold); background:rgba(255,203,71,.16); }
 .ov-card.howto{ max-width:680px; text-align:left; }
 .howto h2{ text-align:center; }
 .howto-sub{ color:var(--gold); font-weight:800; }
