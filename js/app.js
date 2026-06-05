@@ -1571,17 +1571,27 @@
      ============================================================ */
   // Scale the fixed 1600x900 stage to fit the viewport (landscape, no scroll).
   const STAGE_W = 1600, STAGE_H = 900;
-  let _lastW = 0, _lastH = 0;
+  let _lastFit = "";
   function fitStage() {
     const stage = document.getElementById("stage");
     if (!stage) return;
-    const w = window.innerWidth, h = window.innerHeight;
-    if (w === _lastW && h === _lastH) return; // cheap no-op when nothing changed
-    _lastW = w; _lastH = h;
+    // Use the *visual* viewport (true visible area, excluding the mobile URL bar)
+    const vp = window.visualViewport;
+    const w = vp ? vp.width : window.innerWidth;
+    const h = vp ? vp.height : window.innerHeight;
+    const ox = vp ? vp.offsetLeft : 0;
+    const oy = vp ? vp.offsetTop : 0;
+    const key = Math.round(w) + "x" + Math.round(h) + "+" + Math.round(ox) + "+" + Math.round(oy);
+    if (key === _lastFit) return; // cheap no-op when nothing changed
+    _lastFit = key;
     const s = Math.min(w / STAGE_W, h / STAGE_H);
-    stage.style.setProperty("--scale", s);
-    // nudge users in portrait to rotate (only when clearly portrait-ish on a small screen)
-    const portrait = h > w && w < 760;
+    // center the stage in the visible area and scale to fit
+    stage.style.left = (ox + w / 2) + "px";
+    stage.style.top = (oy + h / 2) + "px";
+    stage.style.transform = "translate(-50%,-50%) scale(" + s + ")";
+    // portrait gate: only for touch / small screens (never on desktop)
+    const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    const portrait = h > w && (coarse || Math.min(w, h) < 620);
     document.body.classList.toggle("portrait", portrait);
   }
 
@@ -1591,11 +1601,25 @@
     window.addEventListener("resize", fitStage);
     window.addEventListener("orientationchange", fitStage);
     window.addEventListener("load", fitStage);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", fitStage);
+      window.visualViewport.addEventListener("scroll", fitStage);
+    }
     setTimeout(fitStage, 60);
     setTimeout(fitStage, 300);
     // catch viewport changes that don't fire a window resize (some mobile browsers, embedded views)
     if (window.ResizeObserver) { try { new ResizeObserver(fitStage).observe(document.documentElement); } catch (e) {} }
-    setInterval(fitStage, 300); // safety net; near-free thanks to change-detection
+    setInterval(fitStage, 250); // safety net; near-free thanks to change-detection
+
+    // Kill ALL page scrolling / iOS rubber-band bounce. Touch scrolling is only
+    // allowed inside overlays (which manage their own contained scroll).
+    document.addEventListener("touchmove", function (e) {
+      if (!(e.target.closest && e.target.closest("#overlay"))) e.preventDefault();
+    }, { passive: false });
+    // belt-and-suspenders: if anything ever scrolls the document, snap it back
+    const snapBack = function () { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); };
+    window.addEventListener("scroll", snapBack, { passive: true });
+    document.addEventListener("scroll", snapBack, { passive: true });
     render();
     const hb = document.getElementById("howto-btn");
     if (hb) hb.onclick = showHowTo;

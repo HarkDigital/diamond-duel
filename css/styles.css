@@ -413,19 +413,28 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
    FIXED-VIEWPORT LAYOUT — landscape, no page scroll (Balatro-style).
    The whole UI lives in a 1600x900 stage scaled to fit the screen.
    =================================================================== */
-html,body{ height:100%; width:100%; overflow:hidden; }
+html,body{ height:100%; width:100%; margin:0; padding:0; overflow:hidden;
+  overscroll-behavior:none; touch-action:none; -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none; user-select:none; }
 body{ position:fixed; inset:0; margin:0; }
 #stage{
-  position:absolute; left:50%; top:50%;
+  position:fixed; left:50%; top:50%;
   width:1600px; height:900px;
-  transform:translate(-50%,-50%) scale(var(--scale,1));
+  transform:translate(-50%,-50%) scale(1);
   transform-origin:center center;
 }
+/* Only overlays may scroll, and they keep it contained (never bubbles to the page) */
+.overlay-inner,.howto-body,.picker-grid,.pack-grid,.deck-grid,.dug-list{
+  touch-action:pan-y; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+/* allow text selection inside the seed input */
+.seed-input{ -webkit-user-select:text; user-select:text; }
 #app{ width:1600px; height:900px; min-height:0; overflow:hidden; position:relative; }
 .screen{ width:1600px; height:900px; max-width:none; margin:0; padding:24px 34px; overflow:hidden; display:flex; flex-direction:column; }
 
-/* corner buttons stay viewport-fixed (always a usable size) */
-#howto-btn,#menu-btn{ z-index:45; }
+/* corner buttons stay viewport-fixed (always a usable size), clear of notches/home bar */
+#howto-btn,#menu-btn{ z-index:45; bottom:calc(14px + env(safe-area-inset-bottom,0px)); }
+#howto-btn{ left:calc(14px + env(safe-area-inset-left,0px)); }
+#menu-btn{ right:calc(14px + env(safe-area-inset-right,0px)); }
 
 /* ---------------- TITLE ---------------- */
 .title-screen{ padding:30px 48px 56px; justify-content:center; gap:4px; }
@@ -456,8 +465,8 @@ body{ position:fixed; inset:0; margin:0; }
 .diamond-wrap{ flex:0 0 auto; }
 .diamond{ width:230px; height:198px; }
 .readout{ flex:1 1 auto; min-height:96px; }
-.play-log{ height:100%; max-height:none; }
-.dugout{ overflow-y:auto; min-height:0; flex:1 1 auto; }
+.play-log{ height:100%; max-height:none; overflow:hidden; }
+.dugout{ overflow:hidden; min-height:0; flex:1 1 auto; }
 .hand-row{ flex:0 0 auto; margin-top:4px; gap:8px; }
 .hand{ min-height:0; align-items:flex-start; gap:11px; }
 .hand-actions{ gap:16px; }
@@ -477,11 +486,21 @@ body{ position:fixed; inset:0; margin:0; }
 .shop-coach,.shop-misc{ min-height:104px; }
 .buy-btn{ padding:7px; }
 
-/* ---------------- portrait nudge ---------------- */
+/* ---------------- portrait gate ---------------- */
 #rotate-hint{
-  display:none; position:fixed; inset:0; z-index:200; background:var(--bg0);
-  color:var(--ink); font-weight:700; font-size:5vw; text-align:center;
-  align-items:center; justify-content:center; padding:8vw; line-height:1.6;
+  display:none; position:fixed; inset:0; z-index:300;
+  background:radial-gradient(circle at 50% 38%, #16314a 0%, transparent 62%), linear-gradient(180deg,var(--bg1),var(--bg0));
+  color:var(--ink); flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:8vw; gap:18px;
 }
 body.portrait #rotate-hint{ display:flex; }
-body.portrait #stage,body.portrait #howto-btn,body.portrait #menu-btn{ display:none; }
+body.portrait #stage,
+body.portrait #howto-btn,
+body.portrait #menu-btn,
+body.portrait #overlay,
+body.portrait #toast{ display:none !important; }
+.rh-icon{ font-size:22vw; line-height:1; filter:drop-shadow(0 6px 24px rgba(0,0,0,.5));
+  animation:rotatePhone 2.4s ease-in-out infinite; }
+@keyframes rotatePhone{ 0%,35%{ transform:rotate(0deg) } 55%,100%{ transform:rotate(-90deg) } }
+.rh-title{ font-size:7vw; font-weight:900; color:var(--gold); letter-spacing:.5px; }
+.rh-sub{ font-size:3.8vw; color:var(--ink-dim); max-width:84vw; line-height:1.55; }
