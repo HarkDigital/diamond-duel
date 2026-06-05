@@ -21,22 +21,21 @@
     };
   }
 
-  function mulberry32(a) {
-    return function () {
-      a |= 0;
+  // makeRNG(seed) starts fresh; makeRNG(seed, savedState) resumes mid-stream so a
+  // refreshed game continues with the same sequence of outcomes.
+  function makeRNG(seedStr, savedState) {
+    const seedFn = xmur3(String(seedStr));
+    let a = (savedState != null) ? (savedState | 0) : seedFn();
+    function rand() {
       a = (a + 0x6d2b79f5) | 0;
       let t = Math.imul(a ^ (a >>> 15), 1 | a);
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  function makeRNG(seedStr) {
-    const seed = xmur3(String(seedStr));
-    let rand = mulberry32(seed());
+    }
 
     const api = {
       seed: String(seedStr),
+      state: () => a,         // snapshot for save/resume
       float: () => rand(),
       // inclusive integer in [min, max]
       int: (min, max) => Math.floor(rand() * (max - min + 1)) + min,

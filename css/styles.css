@@ -1085,3 +1085,131 @@ body.portrait #toast{ display:none !important; }
 .shop-charm .charm-ico .ico{ color:#cdb6ff; }
 .charm-picker .picker-grid{ max-height:60vh; }
 .charm-picker .pick-coach{ width:200px; }
+
+/* ============================================================
+   BATCH: card footer, scoreboard $, dugout grid, popups, profile, splash
+   ============================================================ */
+
+/* ---- player card: name spans the top; trait/pos/? in a lower-right footer ---- */
+.card-top{ display:flex; align-items:center; gap:8px; }
+.card .card-name{ flex:1 1 auto; min-width:0; }
+.card-bottom{ display:flex; align-items:flex-end; justify-content:space-between; gap:6px; margin-top:auto; }
+.card-bottom .card-tags{ flex:1 1 auto; min-width:0; margin:0; }
+.card-foot{ flex:0 0 auto; display:flex; align-items:center; gap:6px; }
+.card-foot .card-pos{ font-size:.72rem; color:var(--ink-faint); font-weight:700; }
+.card-foot .card-trait{ width:auto; }
+/* shop cards: bring trait + ? back in the footer */
+.shop-item .card .card-trait{ display:flex; } .shop-item .card .card-foot .card-info{ display:flex; }
+.shop-item .card .card-top{ gap:7px; }
+.shop-item .card .card-name{ font-size:.96rem; }
+
+/* ---- scoreboard: payroll chip next to Rally ---- */
+.scoreboard{ grid-template-columns:1.3fr 1.6fr auto; }
+.sb-right{ display:flex; align-items:center; justify-content:flex-end; gap:16px; }
+.sb-pay{ margin:0; align-self:center; font-size:1.15rem; padding:8px 15px; }
+
+/* ---- dugout: exactly 2 rows of 4, centred with breathing room, hover not clipped ---- */
+.col-dugout{ overflow:visible; align-items:center; }
+.col-dugout .dugout-title{ align-self:center; }
+.col-dugout .dugout{ display:grid; grid-template-columns:repeat(4,auto); gap:9px; justify-content:center; align-content:flex-start; overflow:visible; padding:4px; }
+.col-powerups{ overflow:visible; }
+.col-powerups .powerups{ overflow:visible; padding:3px; }
+
+/* ---- idle drop box aligns with the Seeds + Dugout columns above it ---- */
+.atbat-bar .ab-idle{ justify-content:flex-end; }
+.atbat-bar .bat-zone{ width:352px; }
+
+/* ---- shop / pack coaches: equal height + hover not clipped ---- */
+.shop-row{ align-items:stretch; }
+.shop-coach,.shop-misc{ height:100%; }
+.pack-grid{ overflow:visible; align-items:stretch; }
+.pack-opt{ display:flex; }
+.pack-opt .shop-coach{ display:flex; flex-direction:column; min-height:200px; width:150px; }
+.pack-opt:hover{ transform:translateY(-4px) scale(1.03); }
+.deck-view .deck-grid,.picker-grid{ overflow:visible; }
+
+/* ---- title footer: real buttons + icon-only sound toggle ---- */
+.btn-foot{ background:rgba(13,28,18,.55); border:1px solid rgba(255,255,255,.14); color:#f4f9ff; font-weight:700;
+  padding:9px 15px; border-radius:11px; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+.btn-foot:hover{ border-color:var(--gold-2); color:#fff; background:rgba(20,40,26,.7); }
+.btn-foot.btn-icon{ padding:9px 12px; }
+.btn-foot.btn-icon .ico{ margin:0; width:1.2em; height:1.2em; }
+.foot-btns{ gap:10px; }
+
+/* ---- franchise select popup ---- */
+.franchise-pop{ width:min(520px,94vw); max-width:520px; }
+.franchise-pop .fp-stats{ margin:14px 0; gap:7px; }
+.franchise-pop .fp-bonus{ color:var(--gold); font-weight:800; font-size:1.02rem; margin-bottom:3px; }
+.franchise-pop .fp-bonus .fr-star{ color:var(--gold); } .franchise-pop .fp-bonus .fr-star .ico{ width:16px; height:16px; vertical-align:-0.22em; }
+.franchise-pop .fp-sub{ color:var(--ink-dim); font-size:.88rem; margin-bottom:14px; }
+.fp-seed{ text-align:left; margin:0 auto 14px; max-width:380px; }
+.fp-seed label{ display:block; font-size:.74rem; letter-spacing:1px; text-transform:uppercase; color:var(--ink-faint); font-weight:800; margin-bottom:5px; }
+.fp-seed label span{ text-transform:none; letter-spacing:0; font-weight:500; }
+.fp-warn{ color:#ffc0c0; background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.3); border-radius:9px; padding:7px 12px; font-size:.84rem; margin-bottom:14px; }
+
+/* ---- profile screen ---- */
+.profile-card{ width:min(940px,96vw); max-width:940px; }
+.prof-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0 16px; }
+.ach-board{ max-height:60vh; overflow-y:auto; overflow-x:hidden; padding:2px 4px; text-align:left; }
+.ach-cat{ margin-bottom:14px; }
+.ach-cat-h{ font-size:.74rem; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:800; margin-bottom:8px; }
+.ach-row{ display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:9px; }
+.ach-cell{ background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:12px; padding:11px 9px; text-align:center; cursor:help;
+  display:flex; flex-direction:column; align-items:center; gap:6px; transition:transform .1s, border-color .15s; }
+.ach-cell:hover{ transform:translateY(-2px); }
+.ach-cell .ach-ic{ display:flex; } .ach-cell .ach-ic .ico{ width:24px; height:24px; }
+.ach-cell .ach-nm{ font-size:.78rem; font-weight:700; line-height:1.2; }
+.ach-cell.got{ border-color:var(--gold-deep); background:rgba(255,203,71,.08); } .ach-cell.got .ach-ic{ color:var(--gold); } .ach-cell.got .ach-nm{ color:var(--gold); }
+.ach-cell.locked{ opacity:.55; } .ach-cell.locked .ach-ic{ color:var(--ink-faint); } .ach-cell.locked .ach-nm{ color:var(--ink-faint); }
+
+/* ---- achievement unlock banner (slides in top-right) ---- */
+#ach-banner{ position:fixed; top:14px; right:14px; z-index:200; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+.ach-pop{ display:flex; align-items:center; gap:12px; min-width:240px; max-width:330px;
+  background:linear-gradient(180deg,#1a2c46,#11203a); border:1px solid var(--gold-2); border-radius:13px; padding:11px 15px;
+  box-shadow:0 14px 36px rgba(0,0,0,.6); animation:achIn .4s cubic-bezier(.2,1.4,.3,1); }
+.ach-pop.leaving{ animation:achOut .4s ease forwards; }
+@keyframes achIn{ from{ transform:translateX(120%); opacity:0 } to{ transform:translateX(0); opacity:1 } }
+@keyframes achOut{ to{ transform:translateX(120%); opacity:0 } }
+.ach-pop-ic{ flex:none; color:var(--gold); } .ach-pop-ic .ico{ width:28px; height:28px; }
+.ach-pop-eyebrow{ font-size:.62rem; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:800; }
+.ach-pop-name{ font-size:1.02rem; font-weight:800; } .ach-pop-desc{ font-size:.78rem; color:var(--ink-dim); margin-top:1px; }
+
+/* ---- deck pager ---- */
+.deck-nav{ display:flex; align-items:center; justify-content:center; gap:18px; margin:10px 0 2px; }
+.deck-nav .deck-page{ font-weight:700; color:var(--ink-dim); font-variant-numeric:tabular-nums; }
+
+/* ============================================================
+   ANIMATED SPLASH
+   ============================================================ */
+#splash{ position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center; overflow:hidden;
+  background:linear-gradient(180deg,#2f823f,#1a5026 60%,#123a1c); transition:opacity .6s ease, transform .6s ease; }
+#splash.gone{ opacity:0; transform:scale(1.04); pointer-events:none; }
+.splash-field{ position:absolute; inset:0; background:
+  repeating-linear-gradient(118deg, rgba(255,255,255,.05) 0 50px, rgba(0,0,0,.04) 50px 100px),
+  radial-gradient(1200px 800px at 50% -10%, rgba(120,220,140,.25), transparent 60%); animation:splashPan 6s linear infinite; }
+@keyframes splashPan{ from{ background-position:0 0,0 0 } to{ background-position:120px 0,0 0 } }
+.splash-inner{ position:relative; text-align:center; z-index:2; }
+.splash-badge{ width:96px; height:96px; margin:0 auto 18px; border-radius:24px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,var(--gold),var(--gold-2)); box-shadow:0 14px 40px rgba(0,0,0,.45), 0 0 0 6px rgba(255,255,255,.08);
+  animation:splashBadge .8s cubic-bezier(.2,1.5,.3,1) both; }
+.splash-diamond{ width:46px; height:46px; background:#1a1208; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); animation:splashSpin 3.5s ease-in-out infinite; }
+@keyframes splashBadge{ 0%{ transform:scale(0) rotate(-40deg); opacity:0 } 100%{ transform:scale(1) rotate(0); opacity:1 } }
+@keyframes splashSpin{ 0%,100%{ transform:rotate(0) } 50%{ transform:rotate(180deg) } }
+.splash-logo{ font-size:clamp(40px,8vw,76px); font-weight:900; letter-spacing:2px; color:#fff; line-height:.95;
+  text-shadow:0 4px 24px rgba(0,0,0,.4); animation:splashLogo .7s .15s ease both; }
+.splash-logo span{ color:var(--gold); }
+@keyframes splashLogo{ from{ transform:translateY(22px); opacity:0; letter-spacing:14px } to{ transform:translateY(0); opacity:1; letter-spacing:2px } }
+.splash-tag{ color:#eafff0; font-size:clamp(14px,2.4vw,20px); margin-top:12px; opacity:.92; animation:splashFade 1s .5s ease both; text-shadow:0 1px 6px rgba(0,0,0,.4); }
+.splash-loading{ display:flex; gap:9px; justify-content:center; margin-top:26px; animation:splashFade 1s .8s ease both; }
+.splash-loading span{ width:11px; height:11px; border-radius:50%; background:rgba(255,255,255,.85); animation:splashDot 1.1s ease-in-out infinite; }
+.splash-loading span:nth-child(2){ animation-delay:.18s } .splash-loading span:nth-child(3){ animation-delay:.36s }
+@keyframes splashFade{ from{ opacity:0 } to{ opacity:1 } }
+@keyframes splashDot{ 0%,100%{ transform:translateY(0); opacity:.5 } 50%{ transform:translateY(-9px); opacity:1 } }
+.splash-ball{ position:absolute; top:-40px; left:-40px; width:34px; height:34px; border-radius:50%; z-index:1;
+  background:radial-gradient(circle at 36% 30%, #fff, #e9e2d0 70%, #cbb88f); box-shadow:0 4px 12px rgba(0,0,0,.4);
+  animation:splashBall 2.6s ease-in-out forwards; }
+@keyframes splashBall{ 0%{ transform:translate(0,0) rotate(0) } 100%{ transform:translate(110vw,55vh) rotate(900deg) } }
+
+/* 8 franchises -> a clean 4 × 2 grid */
+.franchise-grid{ grid-template-columns:repeat(4,1fr); }
+@media (max-height:560px){ .franchise-grid{ gap:9px; } .franchise-card{ padding:11px 13px; } .fr-stats{ gap:3px; margin-bottom:8px; } .fr-tag{ min-height:0; margin:4px 0 7px; } .fr-sub{ min-height:0; } }

@@ -120,8 +120,10 @@
 
     // Dugout
     dugoutSlots: 8,
-    // Charms (consumable powerups, Balatro-Arcana style)
+    // Sunflower Seeds (consumable powerups, Balatro-Arcana style)
     charmSlots: 4,
+    // Roster: each franchise's deck is padded to this many cards
+    startingDeckSize: 30,
 
     // Edition effects
     edition: {
@@ -376,15 +378,73 @@
   function getCharm(id) { return CHARMS.find((c) => c.id === id); }
 
   /* -------------------------------------------------------- */
-  /* ACHIEVEMENTS — feats of play that gift you a Charm        */
+  /* ACHIEVEMENTS — 49 feats & milestones. `seed:true` ones    */
+  /* also gift a Sunflower Seed the moment you pull them off.   */
   /* -------------------------------------------------------- */
   const ACHIEVEMENTS = [
-    { id: "grand_slam", name: "Grand Slam", text: "Hit a home run with the bases loaded." },
-    { id: "perfect_inning", name: "Perfect Inning", text: "Clear an inning without making a single out." },
-    { id: "long_ball", name: "Going Yard", text: "Hit two home runs in one inning." },
-    { id: "patient_eye", name: "Take Your Base", text: "Draw three walks in one inning." },
-    { id: "thief", name: "Highway Robbery", text: "Steal three bases in one inning." },
+    // --- in-inning feats (also gift a Sunflower Seed) ---
+    { id: "grand_slam",     cat: "Power",    name: "Grand Slam",       text: "Hit a home run with the bases loaded.", seed: true },
+    { id: "long_ball",      cat: "Power",    name: "Going Yard",       text: "Hit two home runs in one inning.", seed: true },
+    { id: "three_hr",       cat: "Power",    name: "Murderers' Row",   text: "Hit three home runs in one inning.", seed: true },
+    { id: "the_cycle",      cat: "Contact",  name: "Hit for the Cycle", text: "Single, double, triple and homer in one inning.", seed: true },
+    { id: "five_hits",      cat: "Contact",  name: "Hit Parade",       text: "Collect five hits in one inning.", seed: true },
+    { id: "patient_eye",    cat: "Patience", name: "Take Your Base",   text: "Draw three walks in one inning.", seed: true },
+    { id: "thief",          cat: "Speed",    name: "Highway Robbery",  text: "Steal three bases in one inning.", seed: true },
+    { id: "perfect_inning", cat: "Winning",  name: "Perfect Inning",   text: "Clear an inning without making a single out.", seed: true },
+    { id: "comeback",       cat: "Winning",  name: "Down to the Wire", text: "Clear an inning on your final out.", seed: true },
+    { id: "walkoff",        cat: "Winning",  name: "Walk-Off",         text: "Clear an inning on a home run.", seed: true },
+    { id: "big_swing",      cat: "Scoring",  name: "One Big Swing",    text: "Score 15+ from a single at-bat.", seed: true },
+    { id: "boss_sweep",     cat: "Bosses",   name: "Giant Killer",     text: "Beat all three bosses in one run.", seed: true },
+    // --- power milestones ---
+    { id: "first_dinger",   cat: "Power",    name: "First Dinger",     text: "Hit your first home run." },
+    { id: "dingers_25",     cat: "Power",    name: "Slugger",          text: "Hit 25 career home runs." },
+    { id: "dingers_100",    cat: "Power",    name: "Bash Brother",     text: "Hit 100 career home runs." },
+    { id: "dingers_300",    cat: "Power",    name: "Home Run King",    text: "Hit 300 career home runs." },
+    // --- contact ---
+    { id: "first_hit",      cat: "Contact",  name: "First Knock",      text: "Get your first hit." },
+    { id: "hits_100",       cat: "Contact",  name: "Contact Hitter",   text: "Collect 100 career hits." },
+    { id: "hits_500",       cat: "Contact",  name: "Pure Hitter",      text: "Collect 500 career hits." },
+    { id: "hits_1500",      cat: "Contact",  name: "Hit Machine",      text: "Collect 1,500 career hits." },
+    // --- patience ---
+    { id: "first_walk",     cat: "Patience", name: "Good Eye",         text: "Draw your first walk." },
+    { id: "walks_100",      cat: "Patience", name: "Moneyball",        text: "Draw 100 career walks." },
+    { id: "walks_400",      cat: "Patience", name: "On-Base Machine",  text: "Draw 400 career walks." },
+    // --- speed ---
+    { id: "first_steal",    cat: "Speed",    name: "Stolen Base",      text: "Steal your first base." },
+    { id: "steal_home",     cat: "Speed",    name: "Steal of Home",    text: "Steal home plate." },
+    { id: "steals_50",      cat: "Speed",    name: "Burglar",          text: "Steal 50 career bases." },
+    { id: "steals_200",     cat: "Speed",    name: "Rabbit",           text: "Steal 200 career bases." },
+    // --- rally ---
+    { id: "rally_3",        cat: "Rally",    name: "Rally Time",       text: "Reach a ×3 Rally." },
+    { id: "rally_5",        cat: "Rally",    name: "On Fire",          text: "Reach a ×5 Rally." },
+    { id: "rally_10",       cat: "Rally",    name: "Unstoppable",      text: "Reach a ×10 Rally." },
+    { id: "rally_20",       cat: "Rally",    name: "Inferno",          text: "Reach a ×20 Rally." },
+    // --- scoring ---
+    { id: "inning_50",      cat: "Scoring",  name: "Half-Century",     text: "Score 50+ in a single inning." },
+    { id: "inning_100",     cat: "Scoring",  name: "Triple Digits",    text: "Score 100+ in a single inning." },
+    // --- winning ---
+    { id: "first_win",      cat: "Winning",  name: "Play Ball",        text: "Clear your first inning." },
+    { id: "first_champ",    cat: "Winning",  name: "Champion",         text: "Win a full nine-inning run." },
+    { id: "champ_5",        cat: "Winning",  name: "Dynasty",          text: "Win five full runs." },
+    // --- bosses ---
+    { id: "first_boss",     cat: "Bosses",   name: "Ace Beater",       text: "Beat a boss inning." },
+    { id: "boss_10",        cat: "Bosses",   name: "Boss Hunter",      text: "Beat 10 boss innings." },
+    { id: "boss_30",        cat: "Bosses",   name: "Boss Slayer",      text: "Beat 30 boss innings." },
+    // --- building ---
+    { id: "full_dugout",    cat: "Building",  name: "Brain Trust",     text: "Fill all eight dugout slots with coaches." },
+    { id: "got_legend",     cat: "Building",  name: "Sign a Legend",   text: "Add a Legend to your deck." },
+    { id: "thin_deck",      cat: "Building",  name: "Lean & Mean",     text: "Trim your deck to 12 cards or fewer." },
+    { id: "deep_pockets",   cat: "Building",  name: "Deep Pockets",    text: "Hold $40 at once." },
+    // --- sunflower seeds ---
+    { id: "first_seed",     cat: "Seeds",     name: "Crack a Seed",    text: "Use your first Sunflower Seed." },
+    { id: "seeds_20",       cat: "Seeds",     name: "Seed Habit",      text: "Use 20 Sunflower Seeds." },
+    { id: "free_runner",    cat: "Seeds",     name: "Free Pass",       text: "Use an Intentional Walk seed." },
+    // --- franchises & meta ---
+    { id: "all_franchises", cat: "Franchise", name: "Globetrotter",    text: "Play a run with every franchise." },
+    { id: "win_variety",    cat: "Franchise", name: "Versatile",       text: "Win a run with five different franchises." },
+    { id: "runs_50",        cat: "Meta",      name: "Grinder",         text: "Play 50 runs." },
   ];
+  function getAchievement(id) { return ACHIEVEMENTS.find((a) => a.id === id); }
 
   /* -------------------------------------------------------- */
   /* FRONT OFFICE UPGRADES (vouchers)                          */
@@ -464,6 +524,37 @@
         "jackrabbit_jones", "benny_alvarez", "sunny_okada", "nico_reyburn", "gil_hatcher",
         "pete_almonte", "joey_marsh"],
     },
+    {
+      id: "oldguard",
+      name: "The Old Guard",
+      tagline: "Grizzled veterans who never fold.",
+      signatureCoach: "veteran_presence",
+      bonusText: "Starts with Veteran Presence — vets get stronger all run.",
+      deck: ["marty_soto", "walt_pemberton", "bruno_vargas", "buster_kray", "hank_delgado",
+        "dusty_quintero", "punch_lavoie", "el_toro_mendez", "lionel_frye", "vic_castellano",
+        "gabe_whitfield", "rusty_blanco"],
+    },
+    {
+      id: "youngguns",
+      name: "The Young Guns",
+      tagline: "Raw rookies with sky-high ceilings.",
+      signatureCoach: "prospect_pipeline",
+      bonusText: "Starts with Prospect Pipeline and +$3 — rookies grow your Rally.",
+      startBonusPayroll: 3,
+      deck: ["sunny_okada", "tank_mercer", "crusher_voss", "chip_donnelly", "flash_tomlin",
+        "scooter_pace", "milo_fenn", "gunnar_polk", "desmond_pratt", "blast_jennings",
+        "eddie_lux", "doc_ellwood"],
+    },
+    {
+      id: "wildcards",
+      name: "The Wild Cards",
+      tagline: "Switch-hitters and do-it-all utility men.",
+      signatureCoach: "platoon_manager",
+      bonusText: "Starts with Platoon Manager — your platoon edge is doubled.",
+      deck: ["ozzie_klein", "pete_almonte", "nico_reyburn", "rudy_falk", "andre_delacroix",
+        "benny_alvarez", "comet_reyes", "kid_zamora", "jackrabbit_jones", "spray_okafor",
+        "joey_marsh", "eddie_lux"],
+    },
   ];
 
   /* -------------------------------------------------------- */
@@ -502,4 +593,5 @@
   global.getCoach = getCoach;
   global.getBoss = getBoss;
   global.getCharm = getCharm;
+  global.getAchievement = getAchievement;
 })(window);

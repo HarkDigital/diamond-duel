@@ -9,6 +9,7 @@
   let TIP = null; // tooltip controller (set up in initTooltips)
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const SAVE_KEY = "diamondduel.run.v1";
+  const GAME_KEY = "diamondduel.game.v1";
   const META_KEY = "diamondduel.meta.v1";
 
   /* ---------------- meta (persists across runs) ---------------- */
@@ -21,9 +22,24 @@
     return defaultMeta();
   }
   function defaultMeta() {
-    return { sound: true, wins: 0, runs: 0, bestGame: 0, bestScore: 0, unlocked: ["sandlot", "bashers", "smallball", "moneyball", "speed"] };
+    return {
+      sound: true, wins: 0, runs: 0, bestGame: 0, bestScore: 0,
+      unlocked: ["sandlot", "bashers", "smallball", "moneyball", "speed"],
+      // profile / achievement tracking
+      ach: {},                 // unlocked achievement ids
+      career: { homers: 0, hits: 0, walks: 0, steals: 0, bossWins: 0, seedsUsed: 0, bestRally: 1, bestInningScore: 0 },
+      franchisesPlayed: {},    // ids ever played
+      franchisesWon: {},       // ids whose full run was won
+    };
   }
   function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(META)); } catch (e) {} }
+  // back-fill new META fields on older saves
+  (function migrateMeta() {
+    if (!META.ach) META.ach = {};
+    if (!META.career) META.career = { homers: 0, hits: 0, walks: 0, steals: 0, bossWins: 0, seedsUsed: 0, bestRally: 1, bestInningScore: 0 };
+    if (!META.franchisesPlayed) META.franchisesPlayed = {};
+    if (!META.franchisesWon) META.franchisesWon = {};
+  })();
 
   /* ---------------- top-level state ---------------- */
   const STATE = {
@@ -55,6 +71,15 @@
   }
 
   /* ---------------- run setup ---------------- */
+  // a fuller roster: the franchise's signature 12, padded out to the full roster size
+  // by cloning copies (depth chart) so you draw your bombs less often — thinning matters.
+  function buildStartingDeck(fr) {
+    const ids = fr.deck.slice();
+    const target = CONFIG.startingDeckSize || ids.length;
+    const out = [];
+    for (let i = 0; out.length < target; i++) out.push(cloneCard(getPlayer(ids[i % ids.length])));
+    return out;
+  }
   function newRun(franchiseId, seed) {
     const fr = FRANCHISES.find((f) => f.id === franchiseId) || FRANCHISES[0];
     const run = {
@@ -62,7 +87,7 @@
       franchiseId: fr.id,
       gameIndex: 0,
       payroll: CONFIG.economy.startingPayroll + (fr.startBonusPayroll || 0),
-      deck: fr.deck.map((id) => cloneCard(getPlayer(id))),
+      deck: buildStartingDeck(fr),
       dugout: [],
       charms: [],            // owned consumable powerups (charm ids)
       achEarned: {},         // achievements already rewarded this run
@@ -84,7 +109,9 @@
     if (fr.signatureCoach) run.dugout.push(cloneCoach(getCoach(fr.signatureCoach)));
     // pre-roll all four boss rules so telegraphs match
     for (let r = 0; r < ROUNDS.length; r++) run.bosses.push(pickBoss(run, r));
-    META.runs += 1; saveMeta();
+    META.runs += 1;
+    META.franchisesPlayed[fr.id] = true;
+    saveMeta(); checkCareerAch();
     return run;
   }
 
@@ -190,6 +217,7 @@
     render();
     // little intro flash
     pushLog(`${icon("chevronR")} ${roundName(gi)} · ${gameLabel(gi)} — facing ${pitcher.name}. Target ${target}.`, "neutral");
+    saveGame();
   }
 
   function drawCard() {
@@ -259,10 +287,9 @@
   // the idle drop-box on the right that you drag a batter into
   function batZoneHTML() {
     return `<div class="ab-idle">
-        <div class="ab-idle-hint">Drag a batter into the box to send them to the plate</div>
         <div class="bat-zone" id="bat-zone">
           <span class="bz-icon">${icon("bat")}</span>
-          <span class="bz-text"><b>Drop batter here</b><span>step up to the plate</span></span>
+          <span class="bz-text"><b>Drop batter here</b><span>drag a card to step up</span></span>
         </div>
       </div>`;
   }
@@ -297,8 +324,10 @@
         pushLog(`${icon("arrowUpRight")} ${res.runner.name} steals ${to}!`, "steal");
         if (res.rallyBonus) animateRally({ rallyDelta: res.rallyBonus });
         (res.triggers || []).forEach(flashCoachByFx);
-        g.steals = (g.steals || 0) + 1;
+        g.steals = (g.steals || 0) + 1; META.career.steals++;
         if (g.steals >= 3) awardAchievement("thief");
+        if (res.to === 3) awardAchievement("steal_home");
+        saveMeta(); checkCareerAch();
       }
       await sleep(380);
       renderGame();
@@ -306,6 +335,7 @@
         await sleep(220);
         return g.score >= g.target ? onWin() : onLose();
       }
+      saveGame();
     }
     STATE.busy = false;
     refreshAtBat();
@@ -356,6 +386,7 @@
 
     if (g.score >= g.target) { await sleep(250); return onWin(); }
     if (g.outsRemaining <= 0) { await sleep(250); return onLose(); }
+    saveGame();
     STATE.busy = false;
   }
 
@@ -383,6 +414,7 @@
   async function animateResult(ev, card) {
     const g = STATE.game;
     const o = ev.outcome;
+    g.lastOutcome = o;
 
     // sound + screen-shake juice
     if (o === "HR") { SFX.homer(); screenShake(true); flashScreen("huge"); }
@@ -392,15 +424,27 @@
     else if (o === "K") SFX.strikeout();
     else SFX.out();
 
-    // achievements (feats that gift a Charm)
+    // ---- achievements & career stats ----
+    const isHit = (o === "1B" || o === "2B" || o === "3B" || o === "HR");
+    if (isHit) {
+      g.hits = (g.hits || 0) + 1; META.career.hits++;
+      g.inningTypes = g.inningTypes || {}; g.inningTypes[o] = true;
+      if (g.hits >= 5) awardAchievement("five_hits");
+      if (g.inningTypes["1B"] && g.inningTypes["2B"] && g.inningTypes["3B"] && g.inningTypes["HR"]) awardAchievement("the_cycle");
+    }
     if (o === "HR") {
-      g.homers = (g.homers || 0) + 1;
+      g.homers = (g.homers || 0) + 1; META.career.homers++;
       if (ev.runsOnPlay >= 4) awardAchievement("grand_slam");
       if (g.homers >= 2) awardAchievement("long_ball");
+      if (g.homers >= 3) awardAchievement("three_hr");
     } else if (o === "BB") {
-      g.walks = (g.walks || 0) + 1;
+      g.walks = (g.walks || 0) + 1; META.career.walks++;
       if (g.walks >= 3) awardAchievement("patient_eye");
     }
+    if (ev.scoreGained >= 15) awardAchievement("big_swing");
+    if (g.rally > (META.career.bestRally || 1)) META.career.bestRally = g.rally;
+    if (g.score > (META.career.bestInningScore || 0)) META.career.bestInningScore = g.score;
+    saveMeta(); checkCareerAch();
 
     // readout
     const cls = OUTCOME_CLASS[o] || "neutral";
@@ -468,7 +512,18 @@
     const g = STATE.game, run = STATE.run;
     g.ended = true; g.result = "win";
     STATE.busy = false;
-    if ((g.outsThisInning || 0) === 0) awardAchievement("perfect_inning"); // cleared with no outs
+    // ---- win achievements ----
+    awardAchievement("first_win");
+    if ((g.outsThisInning || 0) === 0) awardAchievement("perfect_inning");   // cleared with no outs
+    if (g.outsRemaining <= 1) awardAchievement("comeback");                   // won on the final out
+    if (g.lastOutcome === "HR") awardAchievement("walkoff");                  // walk-off homer
+    if (g.isBoss) {
+      META.career.bossWins++;
+      run.bossWins = (run.bossWins || 0) + 1;
+      if (run.bossWins >= 3) awardAchievement("boss_sweep");
+    }
+    if (run.deck.length <= 12) unlockAchievement("thin_deck");
+    saveMeta(); checkCareerAch();
     processEndOfGameScaling(run);
     SFX.win();
 
@@ -497,6 +552,7 @@
     // advance bracket
     run.gameIndex += 1;
     saveRun();
+    clearGameSave(); // the inning is over; the next one starts fresh on Play Ball
 
     if (run.gameIndex >= ROUNDS.length * GAMES_PER_ROUND) {
       return showVictory();
@@ -546,19 +602,14 @@
       </div>
       ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
       <h2 class="pick-h">Choose your franchise</h2>
-      <div class="seed-row">
-        <input id="seed-input" class="seed-input" type="text" maxlength="32" autocomplete="off" spellcheck="false"
-               placeholder="optional seed — leave blank for a random run" value="${STATE._replaySeed ? escAttr(STATE._replaySeed) : ""}" />
-        ${STATE._replaySeed
-        ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code>${STATE._replayFranchise ? ` — pick <b>${(FRANCHISES.find(f => f.id === STATE._replayFranchise) || {}).name || ""}</b> below to reproduce it exactly` : ""}</div>`
-        : `<div class="seed-hint">Paste a seed to replay a specific run, or leave it blank for a fresh one.</div>`}
-      </div>
+      ${STATE._replaySeed ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code> — pick a franchise to begin</div>` : `<div class="seed-hint">Pick a franchise. You can set an optional seed on the next screen.</div>`}
       <div class="franchise-grid">${fr}</div>
       <div class="title-foot">
         <div class="foot-btns">
-          <button class="btn btn-ghost" data-act="howto">${icon("help")} How to Play</button>
-          <button class="btn btn-ghost" data-act="open-stats">${icon("stats")} Stats</button>
-          <button class="btn btn-ghost" data-act="toggle-sound">${META.sound ? icon("soundOn") : icon("soundOff")} Sound: ${META.sound ? "On" : "Off"}</button>
+          <button class="btn btn-foot" data-act="open-profile">${icon("trophy")} Profile</button>
+          <button class="btn btn-foot" data-act="howto">${icon("help")} How to Play</button>
+          <button class="btn btn-foot" data-act="open-stats">${icon("stats")} Stats</button>
+          <button class="btn btn-foot btn-icon" data-act="toggle-sound" aria-label="Toggle sound" title="Sound: ${META.sound ? "On" : "Off"}">${META.sound ? icon("soundOn") : icon("soundOff")}</button>
         </div>
         <span class="foot-stats">${META.wins} ${META.wins === 1 ? "championship" : "championships"} · ${META.runs} runs · best ${META.bestScore || 0}</span>
         <span class="foot-version">v1.0</span>
@@ -588,7 +639,6 @@
         </div>
         <div class="fr-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "—"}</div>
         <div class="fr-sub">${f.bonusText}</div>
-        <span class="fr-go">Start ${icon("chevronR")}</span>
       </button>`;
   }
   function miniStat(label, v) {
@@ -612,9 +662,12 @@
           <div class="sb-progress"><div class="sb-progress-fill" id="sb-progress"></div></div>
           <div class="sb-runs">Runs this game: <b id="sb-runs">0</b></div>
         </div>
-        <div class="sb-rally" id="sb-rally-wrap">
-          <div class="sb-rally-label">RALLY</div>
-          <div class="sb-rally-num" id="sb-rally">x1.0</div>
+        <div class="sb-right">
+          <div class="payroll-chip sb-pay" id="payroll-chip">$<span id="payroll-amt">0</span></div>
+          <div class="sb-rally" id="sb-rally-wrap">
+            <div class="sb-rally-label">RALLY</div>
+            <div class="sb-rally-num" id="sb-rally">x1.0</div>
+          </div>
         </div>
       </div>
 
@@ -642,14 +695,13 @@
         </div>
 
         <div class="col-powerups">
-          <div class="pw-title">CHARMS</div>
+          <div class="pw-title">SEEDS</div>
           <div class="powerups" id="powerups"></div>
         </div>
 
         <div class="col-dugout">
           <div class="dugout-title">DUGOUT</div>
           <div class="dugout" id="dugout"></div>
-          <div class="payroll-chip" id="payroll-chip">$<span id="payroll-amt">0</span></div>
         </div>
 
         <!-- at-bat bar: drop a batter into the box to step up; swing buttons appear here -->
@@ -799,9 +851,6 @@
         <div class="card-top">
           <div class="bats bats-${c.bats}">${c.bats}</div>
           <div class="card-name">${shortName(c.name)}</div>
-          ${traitBadge}
-          <div class="card-pos">${pos}</div>
-          ${infoBtn}
         </div>
         ${ed}${streakBadge}
         <div class="card-stats">
@@ -810,7 +859,10 @@
           ${statBar("E", c.eye, "b-eye")}
           ${statBar("S", c.speed, "b-speed")}
         </div>
-        <div class="card-tags">${tagHTML}</div>
+        <div class="card-bottom">
+          <div class="card-tags">${tagHTML}</div>
+          <div class="card-foot">${traitBadge}<div class="card-pos">${pos}</div>${infoBtn}</div>
+        </div>
       </div>`;
   }
   function statBar(label, v, cls) {
@@ -894,6 +946,8 @@
   function consumeCharm(index) {
     STATE.run.charms.splice(index, 1);
     SFX.coin();
+    META.career.seedsUsed = (META.career.seedsUsed || 0) + 1;
+    saveMeta(); checkCareerAch();
     saveRun();
     if (STATE.screen === "game") renderPowerups();
   }
@@ -929,6 +983,7 @@
       return true;
     }
     if (c.op === "freewalk") {
+      awardAchievement("free_runner");
       const runner = { name: "Pinch Runner", nick: "Runner", speed: 60, card: { trait: null } };
       const nb = g.bases.slice();
       let forcedIn = 0;
@@ -988,20 +1043,87 @@
   }
 
   /* ---------- achievements: feats that gift a Charm ---------- */
+  // unlock an achievement in the career profile (once ever) + a banner
+  function unlockAchievement(id) {
+    if (!META.ach) META.ach = {};
+    if (META.ach[id]) return false;
+    META.ach[id] = Date.now ? Date.now() : 1;
+    saveMeta();
+    const ach = (typeof getAchievement === "function") ? getAchievement(id) : null;
+    if (ach) achievementBanner(ach);
+    return true;
+  }
+  // in-inning feat: unlock the achievement AND gift a Sunflower Seed (once per run)
   function awardAchievement(id) {
     const run = STATE.run;
+    unlockAchievement(id);
     if (!run) return;
     if (!run.achEarned) run.achEarned = {};
-    if (run.achEarned[id]) return;            // once per run
+    if (run.achEarned[id]) return;            // one seed per feat per run
+    const ach = (typeof getAchievement === "function") ? getAchievement(id) : null;
+    if (!ach || !ach.seed) return;            // only feats gift a seed
     run.achEarned[id] = true;
-    const ach = (typeof ACHIEVEMENTS !== "undefined" ? ACHIEVEMENTS : []).find((a) => a.id === id);
     const rng = makeRNG(run.seed + ":ach:" + id);
     const charmId = rng.pick(CHARMS.map((c) => c.id));
     const granted = grantCharm(charmId, false);
     if (SFX && SFX.coin) SFX.coin();
     const cn = getCharm(charmId);
-    toast(`${ach ? ach.name : "Achievement"} — ${granted && cn ? "earned the " + cn.name + " charm!" : "charm pouch full"}`);
+    if (granted && cn) toast(`Feat: ${ach.name} — earned the ${cn.name} seed!`);
     saveRun();
+  }
+  // career-stat milestone checks (call after bumping META.career.*)
+  function checkCareerAch() {
+    const c = META.career;
+    if (c.homers >= 1) unlockAchievement("first_dinger");
+    if (c.homers >= 25) unlockAchievement("dingers_25");
+    if (c.homers >= 100) unlockAchievement("dingers_100");
+    if (c.homers >= 300) unlockAchievement("dingers_300");
+    if (c.hits >= 1) unlockAchievement("first_hit");
+    if (c.hits >= 100) unlockAchievement("hits_100");
+    if (c.hits >= 500) unlockAchievement("hits_500");
+    if (c.hits >= 1500) unlockAchievement("hits_1500");
+    if (c.walks >= 1) unlockAchievement("first_walk");
+    if (c.walks >= 100) unlockAchievement("walks_100");
+    if (c.walks >= 400) unlockAchievement("walks_400");
+    if (c.steals >= 1) unlockAchievement("first_steal");
+    if (c.steals >= 50) unlockAchievement("steals_50");
+    if (c.steals >= 200) unlockAchievement("steals_200");
+    if (c.bossWins >= 1) unlockAchievement("first_boss");
+    if (c.bossWins >= 10) unlockAchievement("boss_10");
+    if (c.bossWins >= 30) unlockAchievement("boss_30");
+    if (c.seedsUsed >= 1) unlockAchievement("first_seed");
+    if (c.seedsUsed >= 20) unlockAchievement("seeds_20");
+    if (c.bestRally >= 3) unlockAchievement("rally_3");
+    if (c.bestRally >= 5) unlockAchievement("rally_5");
+    if (c.bestRally >= 10) unlockAchievement("rally_10");
+    if (c.bestRally >= 20) unlockAchievement("rally_20");
+    if (c.bestInningScore >= 50) unlockAchievement("inning_50");
+    if (c.bestInningScore >= 100) unlockAchievement("inning_100");
+    if (META.runs >= 50) unlockAchievement("runs_50");
+    const played = Object.keys(META.franchisesPlayed || {}).length;
+    if (played >= FRANCHISES.length) unlockAchievement("all_franchises");
+    const won = Object.keys(META.franchisesWon || {}).length;
+    if (won >= 5) unlockAchievement("win_variety");
+    if (META.wins >= 1) unlockAchievement("first_champ");
+    if (META.wins >= 5) unlockAchievement("champ_5");
+  }
+  function checkBuildAch(run) {
+    if (!run) return;
+    if (run.dugout.length >= 8) unlockAchievement("full_dugout");
+    if (run.deck.some((c) => c.rarity === "legend")) unlockAchievement("got_legend");
+    if (run.deck.length <= 12) unlockAchievement("thin_deck");
+    if (run.payroll >= 40) unlockAchievement("deep_pockets");
+  }
+  // a little Balatro-style banner that slides in when something is unlocked
+  function achievementBanner(ach) {
+    let host = document.getElementById("ach-banner");
+    if (!host) { host = document.createElement("div"); host.id = "ach-banner"; document.body.appendChild(host); }
+    const el = document.createElement("div");
+    el.className = "ach-pop";
+    el.innerHTML = `<div class="ach-pop-ic">${icon("trophy")}</div><div class="ach-pop-txt"><div class="ach-pop-eyebrow">Achievement unlocked</div><div class="ach-pop-name">${ach.name}</div><div class="ach-pop-desc">${ach.text}</div></div>`;
+    host.appendChild(el);
+    if (SFX && SFX.coin) SFX.coin();
+    setTimeout(() => { el.classList.add("leaving"); setTimeout(() => { if (el.parentNode) el.remove(); }, 400); }, 3600);
   }
 
   /* ---------- readout + animations ---------- */
@@ -1147,7 +1269,9 @@
   }
 
   function showVictory() {
-    META.wins += 1; saveMeta();
+    META.wins += 1;
+    if (STATE.run) META.franchisesWon[STATE.run.franchiseId] = true;
+    saveMeta(); checkCareerAch();
     clearSave();
     SFX.win();
     overlay(`
@@ -1240,6 +1364,44 @@
     return `<div class="stat-cell"><div class="stat-val">${val}</div><div class="stat-label">${label}</div></div>`;
   }
 
+  /* ---------- profile: career stats + 49 achievements (Balatro-style) ---------- */
+  function showProfile() {
+    if (SFX && SFX.click) SFX.click();
+    const c = META.career || {};
+    const unlocked = META.ach || {};
+    const total = ACHIEVEMENTS.length;
+    const got = ACHIEVEMENTS.filter((a) => unlocked[a.id]).length;
+    // group by category in declared order
+    const cats = [];
+    ACHIEVEMENTS.forEach((a) => { if (cats.indexOf(a.cat) < 0) cats.push(a.cat); });
+    const grid = cats.map((cat) => {
+      const items = ACHIEVEMENTS.filter((a) => a.cat === cat).map((a) => {
+        const on = !!unlocked[a.id];
+        return `<div class="ach-cell ${on ? "got" : "locked"}" data-tip="<b>${a.name}</b><br>${a.text}${on ? "" : "<br><span class='tip-use'>Locked</span>"}">
+            <div class="ach-ic">${icon(on ? "trophy" : "help")}</div>
+            <div class="ach-nm">${on ? a.name : "???"}</div>
+          </div>`;
+      }).join("");
+      return `<div class="ach-cat"><div class="ach-cat-h">${cat}</div><div class="ach-row">${items}</div></div>`;
+    }).join("");
+    overlay(`
+      <div class="ov-card profile-card">
+        <h2><span class="h2-ico">${icon("trophy")}</span> Profile</h2>
+        <div class="prof-stats">
+          ${statCell("Achievements", got + " / " + total)}
+          ${statCell("Championships", META.wins)}
+          ${statCell("Runs played", META.runs)}
+          ${statCell("Career homers", c.homers || 0)}
+          ${statCell("Career hits", c.hits || 0)}
+          ${statCell("Career steals", c.steals || 0)}
+          ${statCell("Bosses beaten", c.bossWins || 0)}
+          ${statCell("Best Rally", "×" + (c.bestRally || 1).toFixed(1))}
+        </div>
+        <div class="ach-board">${grid}</div>
+        <button class="btn btn-gold" data-act="close-ov">Close</button>
+      </div>`);
+  }
+
   /* ---------- seeds: copy + replay ---------- */
   function escAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   function seedChip(seed) { return `<code class="seed-copy" data-seed="${escAttr(seed)}" title="Click to copy this seed">${seed} ${icon("copy", "ico-sm")}</code>`; }
@@ -1262,38 +1424,60 @@
   function replaySeed(seed, franchiseId) {
     STATE._replaySeed = seed || null;
     STATE._replayFranchise = franchiseId || null;
+    STATE.run = null; STATE.game = null;
     closeOverlay();
     STATE.screen = "title";
     render();
-    setTimeout(() => { const el = document.getElementById("seed-input"); if (el) { el.focus(); el.scrollIntoView({ block: "center", behavior: "smooth" }); } }, 40);
+    if (franchiseId) setTimeout(() => openFranchisePopup(franchiseId), 60); // jump straight to confirm
   }
 
   /* ---------- new run (with overwrite guard) ---------- */
   function doStartRun(id) {
     SFX.resume();
     let seed = null;
-    const el = document.getElementById("seed-input");
+    const el = document.getElementById("fr-seed") || document.getElementById("seed-input");
     if (el && el.value.trim()) seed = el.value.trim().toUpperCase();
     STATE.run = newRun(id, seed);
     STATE.game = null;
     STATE._replaySeed = null; STATE._replayFranchise = null;
+    clearGameSave();
     saveRun();
     closeOverlay();
     STATE.screen = "map";
     render();
   }
-  function confirmNewRun(id) {
+  // selecting a franchise opens a confirm popup with an optional seed + Play Ball
+  function openFranchisePopup(id) {
+    const f = FRANCHISES.find((x) => x.id === id);
+    if (!f) return;
+    if (SFX && SFX.click) SFX.click();
     STATE._pendingFranchise = id;
-    const fr = FRANCHISES.find((f) => f.id === id);
+    const coach = f.signatureCoach ? getCoach(f.signatureCoach) : null;
+    const ids = f.deck;
+    const totals = ids.reduce((a, pid) => { const p = getPlayer(pid); a.c += p.contact; a.p += p.power; a.e += p.eye; a.s += p.speed; return a; }, { c: 0, p: 0, e: 0, s: 0 });
+    const n = ids.length, mini = (v) => Math.round(v / n);
+    const hasSave = !!localStorage.getItem(SAVE_KEY);
+    const presetSeed = STATE._replaySeed ? escAttr(STATE._replaySeed) : "";
     overlay(`
-      <div class="ov-card confirm-card">
-        <h2>Start a new run?</h2>
-        <div class="ov-sub">You have a run in progress. Starting <b>${fr ? fr.name : "a new run"}</b> replaces it — the current run will be lost.</div>
+      <div class="ov-card franchise-pop">
+        <h2>${f.name}</h2>
+        <div class="ov-sub">${f.tagline}</div>
+        <div class="fr-stats fp-stats">
+          ${miniStat("CON", mini(totals.c))}${miniStat("POW", mini(totals.p))}${miniStat("EYE", mini(totals.e))}${miniStat("SPD", mini(totals.s))}
+        </div>
+        <div class="fr-bonus fp-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "—"}</div>
+        <div class="fr-sub fp-sub">${f.bonusText}</div>
+        <div class="fp-seed">
+          <label>Seed <span>(optional)</span></label>
+          <input id="fr-seed" class="seed-input" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="leave blank for a random run" value="${presetSeed}" />
+        </div>
+        ${hasSave ? `<div class="fp-warn">Starting replaces your current run.</div>` : ""}
         <div class="ov-actions">
-          <button class="btn btn-gold" data-act="confirm-newrun">Start New Run</button>
+          <button class="btn btn-big btn-gold" data-act="confirm-start">Play Ball ${icon("chevronR")}</button>
           <button class="btn btn-ghost" data-act="close-ov">Cancel</button>
         </div>
       </div>`);
+    setTimeout(() => { const el = document.getElementById("fr-seed"); if (el && !presetSeed) el.focus(); }, 40);
   }
 
   const HOWTO_SECTIONS = [
@@ -1306,8 +1490,8 @@
     `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> — the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
     `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot — bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
     `<section><h3>Innings &amp; bosses</h3><p>Nine innings across three phases — <b>Early</b>, <b>Middle</b>, <b>Late</b> — and the third of each is a <b>Boss</b> with a nasty rule, telegraphed on the linescore so you can prepare for it. Beat the boss to move on to the next phase.</p></section>`,
-    `<section><h3>Charms</h3><p>Charms are one-shot <b>powerups</b> in your pouch (the panel beside the play log). Tap one to use it — some boost a player's stats or grant a trait, some duplicate a coach, and others fire instantly: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Buy them in the shop, or earn them by pulling off <b>feats</b> — a grand slam, a perfect inning, back-to-back homers, and more.</p></section>`,
-    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> on <b>Players</b> and <b>Coaches</b>, on <b>Charms</b> and <b>Analytics &amp; Scouting</b>, on <b>Booster Packs</b>, and on <b>Front Office</b> vouchers. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck — building is the point.</em></p></section>`,
+    `<section><h3>Sunflower Seeds</h3><p>Seeds are one-shot <b>powerups</b> in your pouch (the panel beside the play log). Tap one to use it — some boost a player's stats or grant a trait, some duplicate a coach, and others fire instantly: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Buy them in the shop, or earn them by pulling off <b>feats</b> — a grand slam, a perfect inning, back-to-back homers, and more.</p></section>`,
+    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> on <b>Players</b> and <b>Coaches</b>, on <b>Sunflower Seeds</b> and <b>Analytics &amp; Scouting</b>, on <b>Booster Packs</b>, and on <b>Front Office</b> vouchers. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck — building is the point.</em></p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
   const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11]];
@@ -1491,7 +1675,7 @@
           <div class="shop-section sec-players"><h3>Players</h3><div class="shop-row">${cards}</div></div>
         </div>
         <div class="shop-rowgrp shop-rowgrp-bottom">
-          <div class="shop-section"><h3>Charms</h3><div class="shop-row">${charms}</div></div>
+          <div class="shop-section"><h3>Sunflower Seeds</h3><div class="shop-row">${charms}</div></div>
           <div class="shop-section"><h3>Analytics &amp; Scouting</h3><div class="shop-row">${cons}</div></div>
           <div class="shop-section"><h3>Booster Packs</h3><div class="shop-row">${packs}</div></div>
           <div class="shop-section"><h3>Front Office</h3><div class="shop-row">${ups}</div></div>
@@ -1551,6 +1735,7 @@
     STATE.run.shopBuys += 1;
     SFX.buy();
     setText("shop-payroll", STATE.run.payroll);
+    checkBuildAch(STATE.run);
     saveRun();
   }
 
@@ -1713,14 +1898,25 @@
   }
 
   /* ---------- deck / dugout inspectors ---------- */
-  function openDeckView() {
+  function openDeckView(page) {
     const run = STATE.run;
     const sorted = run.deck.slice().sort((a, b) => (RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity]) || (b.power - a.power));
-    const cards = sorted.map((c) => `<div class="deck-card">${cardHTML(c, null)}</div>`).join("");
+    const PER = 18;                                  // 9 per row × 2 rows — fits with no scroll
+    const pages = Math.max(1, Math.ceil(sorted.length / PER));
+    let p = (page == null) ? 0 : page;
+    p = Math.max(0, Math.min(pages - 1, p));
+    STATE._deckPage = p;
+    const cards = sorted.slice(p * PER, p * PER + PER).map((c) => `<div class="deck-card">${cardHTML(c, null)}</div>`).join("");
+    const nav = pages > 1 ? `<div class="deck-nav">
+        <button class="btn btn-ghost" data-act="deck-prev" ${p === 0 ? "disabled" : ""}>${icon("chevronL")} Prev</button>
+        <span class="deck-page">Page ${p + 1} / ${pages}</span>
+        <button class="btn btn-ghost" data-act="deck-next" ${p >= pages - 1 ? "disabled" : ""}>Next ${icon("chevronR")}</button>
+      </div>` : "";
     overlay(`
       <div class="ov-card deck-view">
         <h2>Your Deck (${run.deck.length})</h2>
         <div class="deck-grid">${cards}</div>
+        ${nav}
         <button class="btn btn-gold" data-act="close-ov">Close</button>
       </div>`);
   }
@@ -1787,12 +1983,25 @@
   function saveRun() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(STATE.run)); } catch (e) {}
   }
-  function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+  function clearSave() { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(GAME_KEY); } catch (e) {} }
   function loadRun() {
     try {
       const r = JSON.parse(localStorage.getItem(SAVE_KEY));
       return r || null;
     } catch (e) { return null; }
+  }
+  // ---- in-inning save/resume: persist the live game so a refresh keeps your progress ----
+  function saveGame() {
+    try {
+      const g = STATE.game;
+      if (!g || g.ended) { localStorage.removeItem(GAME_KEY); return; }
+      const rngState = (STATE.rng && typeof STATE.rng.state === "function") ? STATE.rng.state() : null;
+      localStorage.setItem(GAME_KEY, JSON.stringify({ gi: g.gameIndex, rng: rngState, game: g }));
+    } catch (e) {}
+  }
+  function clearGameSave() { try { localStorage.removeItem(GAME_KEY); } catch (e) {} }
+  function loadGameSnap() {
+    try { return JSON.parse(localStorage.getItem(GAME_KEY)) || null; } catch (e) { return null; }
   }
 
   /* ============================================================
@@ -1838,9 +2047,11 @@
       case "toggle-sound-menu": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); showMenu(); break;
       case "play-game": startGame(); break;
       case "cancel-atbat": cancelAtBat(); break;
-      case "open-deck": openDeckView(); break;
+      case "open-deck": openDeckView(0); break;
+      case "deck-prev": openDeckView((STATE._deckPage || 0) - 1); break;
+      case "deck-next": openDeckView((STATE._deckPage || 0) + 1); break;
       case "open-dugout": openDugoutView(); break;
-      case "charm-confirm": { const ctx = STATE._charm; if (ctx && applyImmediateCharm(ctx.charm)) { closeOverlay(); consumeCharm(ctx.index); } STATE._charm = null; break; }
+      case "charm-confirm": { const ctx = STATE._charm; if (ctx && applyImmediateCharm(ctx.charm)) { closeOverlay(); consumeCharm(ctx.index); saveGame(); } STATE._charm = null; break; }
       case "cancel-charm": closeOverlay(); STATE._charm = null; break;
       case "reroll": doReroll(); break;
       case "leave-shop": STATE.screen = "map"; saveRun(); render(); break;
@@ -1850,6 +2061,7 @@
       case "menu-resume": closeOverlay(); break;
       case "back-to-menu": showMenu(); break;
       case "open-stats": showStats(); break;
+      case "open-profile": showProfile(); break;
       case "howto": showHowTo(0); break;
       case "howto-next": showHowTo((STATE._howtoPage || 0) + 1); break;
       case "howto-prev": showHowTo((STATE._howtoPage || 0) - 1); break;
@@ -1857,7 +2069,7 @@
       case "abandon-run": confirmAbandon("back-to-menu"); break;
       case "replay-seed": if (STATE.run) replaySeed(STATE.run.seed, STATE.run.franchiseId); break;
       case "abandon-confirm": clearSave(); STATE.run = null; STATE.game = null; closeOverlay(); STATE.screen = "title"; render(); break;
-      case "confirm-newrun": { const id = STATE._pendingFranchise; STATE._pendingFranchise = null; if (id) doStartRun(id); break; }
+      case "confirm-start": case "confirm-newrun": { const id = STATE._pendingFranchise; STATE._pendingFranchise = null; if (id) doStartRun(id); break; }
       case "retry-run": closeOverlay(); STATE.run = null; STATE.game = null; STATE.screen = "title"; render(); break;
       case "to-title": closeOverlay(); STATE.screen = "title"; render(); break;
       case "close-ov": closeOverlay(); break;
@@ -1896,9 +2108,7 @@
   }
 
   function startFromFranchise(id) {
-    // guard against wiping an in-progress run by mis-clicking a franchise
-    if (localStorage.getItem(SAVE_KEY)) { confirmNewRun(id); return; }
-    doStartRun(id);
+    openFranchisePopup(id); // seed + confirm popup (also warns if a run is in progress)
   }
   function resumeRun() {
     const r = loadRun();
@@ -1910,6 +2120,17 @@
     if (!r.charms) r.charms = [];
     if (r.charmSlots == null) r.charmSlots = CONFIG.charmSlots;
     if (!r.achEarned) r.achEarned = {};
+    // resume an in-progress inning if one was saved (refresh mid-game)
+    const snap = loadGameSnap();
+    if (snap && snap.game && !snap.game.ended && snap.gi === r.gameIndex) {
+      STATE.game = snap.game;
+      STATE.rng = makeRNG(r.seed + ":game:" + r.gameIndex, snap.rng);
+      STATE.atBat = null;
+      STATE.screen = "game";
+      render();
+      return;
+    }
+    clearGameSave();
     STATE.screen = "map";
     render();
   }
@@ -2112,6 +2333,14 @@
     if (rh) rh.innerHTML = icon("phone");
     initTooltips();
     setupDrag();
+    // animated splash — auto-dismiss after the intro, or tap to skip
+    (function () {
+      const sp = document.getElementById("splash");
+      if (!sp) return;
+      const go = () => { sp.classList.add("gone"); setTimeout(() => { if (sp.parentNode) sp.remove(); }, 700); };
+      sp.addEventListener("pointerdown", go);
+      setTimeout(go, 2600);
+    })();
     // expose a small debug API for testing
     global.DD = {
       STATE, CONFIG,
