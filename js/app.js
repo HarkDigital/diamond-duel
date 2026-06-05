@@ -625,7 +625,7 @@
       <div class="hand-row">
         <div class="hand" id="hand"></div>
         <div class="hand-actions">
-          <div class="hand-hint">Tap a batter to send them up, then choose your swing. Keys 1–8.</div>
+          <div class="hand-hint">Drag a batter onto the field to send them up. Keys 1–8.</div>
         </div>
       </div>
     </div>`;
@@ -1791,14 +1791,20 @@
       const c = contentOf(el); if (!c) { hide(); return; }
       pinned = el; tip.innerHTML = c; tip.classList.add("show"); position(x, y);
     }
+    // a touch fires emulated mouseover/mousemove afterwards — suppress hover tips briefly
+    // so tapping a card doesn't make its tooltip flash (touch shows tips only via tap-to-pin)
+    let touchUntil = 0;
+    document.addEventListener("pointerdown", (e) => {
+      if (e.pointerType && e.pointerType !== "mouse") touchUntil = Date.now() + 800;
+    }, true);
     document.addEventListener("mouseover", (e) => {
-      if (pinned) return;                              // don't let hover clobber a pinned tip
+      if (pinned || Date.now() < touchUntil) return;   // ignore hover during/after a touch
       const el = e.target.closest("[title], [data-tip]");
       if (!el || el.id === "tooltip") return;
       if (el.getAttribute("title")) { el.setAttribute("data-title", el.getAttribute("title")); el.removeAttribute("title"); }
       show(el, e.clientX, e.clientY);
     });
-    document.addEventListener("mousemove", (e) => { if (tip.classList.contains("show") && !pinned) position(e.clientX, e.clientY); });
+    document.addEventListener("mousemove", (e) => { if (tip.classList.contains("show") && !pinned && Date.now() >= touchUntil) position(e.clientX, e.clientY); });
     document.addEventListener("mouseout", (e) => {
       const el = e.target.closest("[data-title], [data-tip]");
       if (el && el.getAttribute("data-title")) { el.setAttribute("title", el.getAttribute("data-title")); el.removeAttribute("data-title"); }

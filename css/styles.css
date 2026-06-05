@@ -744,28 +744,28 @@ body.portrait #toast{ display:none !important; }
 #tooltip b{ color:var(--gold); }
 
 /* ===== At-bat popup — floats over the play area; field never shrinks ===== */
-.atbat-pop{ position:absolute; left:50%; top:45%; z-index:30; width:min(680px,82%);
+.atbat-pop{ position:absolute; left:50%; top:46%; z-index:30; width:min(860px,92%);
   opacity:0; pointer-events:none; transform:translate(-50%,-50%) scale(.92);
   transition:opacity .14s ease, transform .16s cubic-bezier(.2,1.4,.3,1); }
 .atbat-pop.show{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1); }
 .atbat-pop.pop .atbat-pop-inner{ animation:atbatPop .32s cubic-bezier(.2,1.5,.3,1); }
 @keyframes atbatPop{ 0%{transform:scale(.82)} 55%{transform:scale(1.05)} 100%{transform:scale(1)} }
 .atbat-pop-inner{ position:relative; text-align:center; background:linear-gradient(180deg,#18293f,#0e1c30);
-  border:1px solid var(--gold-2); border-radius:20px; padding:24px 26px 26px;
-  box-shadow:0 30px 72px rgba(0,0,0,.64), 0 0 0 5px rgba(255,203,71,.13); }
-.atbat-pop .atbat-up{ font-size:1.6rem; }
-.atbat-pop .atbat-q{ font-size:1.08rem; margin:6px 0 18px; }
-.atbat-pop .approach-row{ gap:15px; }
-.atbat-pop .approach-btn{ padding:20px 13px 17px; gap:9px; border-radius:15px; }
-.atbat-pop .approach-btn .ap-icon{ width:40px; height:40px; }
-.atbat-pop .approach-btn .ap-name{ font-size:1.12rem; }
-.ap-desc{ font-size:.8rem; color:var(--ink-faint); line-height:1.35; font-weight:500; white-space:normal; max-width:185px; }
-.atbat-pop .tactics-row{ margin-top:16px; gap:12px; }
-.atbat-pop .tactic-btn{ font-size:1rem; padding:12px 22px; border-radius:12px; }
-.atbat-pop .atbat-cancel{ position:absolute; top:12px; right:12px; margin:0; width:34px; height:34px; padding:0;
-  display:flex; align-items:center; justify-content:center; border-radius:10px; background:rgba(255,255,255,.06);
+  border:1px solid var(--gold-2); border-radius:24px; padding:32px 36px 34px;
+  box-shadow:0 34px 84px rgba(0,0,0,.66), 0 0 0 6px rgba(255,203,71,.14); }
+.atbat-pop .atbat-up{ font-size:2.1rem; }
+.atbat-pop .atbat-q{ font-size:1.32rem; margin:9px 0 24px; }
+.atbat-pop .approach-row{ gap:20px; }
+.atbat-pop .approach-btn{ padding:28px 18px 24px; gap:12px; border-radius:18px; }
+.atbat-pop .approach-btn .ap-icon{ width:54px; height:54px; }
+.atbat-pop .approach-btn .ap-name{ font-size:1.4rem; }
+.ap-desc{ font-size:.98rem; color:var(--ink-faint); line-height:1.4; font-weight:500; white-space:normal; max-width:230px; }
+.atbat-pop .tactics-row{ margin-top:22px; gap:16px; }
+.atbat-pop .tactic-btn{ font-size:1.22rem; padding:16px 30px; border-radius:14px; }
+.atbat-pop .atbat-cancel{ position:absolute; top:16px; right:16px; margin:0; width:42px; height:42px; padding:0;
+  display:flex; align-items:center; justify-content:center; border-radius:11px; background:rgba(255,255,255,.06);
   border:1px solid var(--line); color:var(--ink-dim); cursor:pointer; }
-.atbat-pop .atbat-cancel .ico{ width:18px; height:18px; }
+.atbat-pop .atbat-cancel .ico{ width:24px; height:24px; }
 .atbat-pop .atbat-cancel:hover{ color:var(--bad); border-color:var(--bad); }
 
 /* ===== card info button + drag-to-bat visuals (Balatro-style) ===== */
@@ -932,3 +932,28 @@ body.portrait #toast{ display:none !important; }
 .dug-cell .btn-sell{ width:100%; padding:8px; white-space:nowrap; }
 /* on very narrow / short, drop to 3 columns so cells stay readable */
 @media (max-width:1100px){ .dugout-view .dug-list{ grid-template-columns:repeat(3,1fr); } }
+
+/* ============================================================
+   READABILITY ON THE GREEN FIELD — text that sits directly on the
+   grass (not inside a dark panel) is white with a soft shadow.
+   ============================================================ */
+.tagline,
+.pick-h,
+.seed-hint,
+.map-sub,
+.shop-title,
+.shop-section h3,
+.shop-round,
+.dugout-title,
+.hand-hint,
+.title-foot,
+.foot-stats,
+.foot-version,
+.foot-btns .btn-ghost{
+  color:#f4f9ff;
+  text-shadow:0 1px 4px rgba(0,0,0,.6);
+}
+.map-sub b{ color:#fff; }
+.foot-btns .btn-ghost:hover{ color:#fff; background:rgba(255,255,255,.12); }
+/* keep the replay-seed hint gold even on the field */
+.seed-hint.replay,.seed-hint.replay code{ color:var(--gold); }
