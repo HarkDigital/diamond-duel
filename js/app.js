@@ -32,6 +32,7 @@
     rng: null,       // current game's rng
     busy: false,
     pinchMode: false,
+    atBat: null,     // { card } — the batter who has stepped up, awaiting an approach
     shop: null,
     overlay: null,
   };
@@ -142,7 +143,7 @@
     STATE.rng = rng;
 
     let outs = CONFIG.outsPerGame;
-    if (pitcher.rule === "closer") outs = 18;
+    if (pitcher.rule === "closer") outs = 2; // the Closer: only 2 outs this inning
     const baseTarget = CONFIG.targets[gi] || CONFIG.targets[CONFIG.targets.length - 1];
     const target = Math.round(baseTarget * pitcher.targetMultiplier);
 
@@ -209,63 +210,95 @@
   }
 
   /* ---------------- the at-bat loop ---------------- */
-  async function playCard(handIndex) {
-    if (STATE.busy || STATE.game.ended) return;
-    const g = STATE.game, run = STATE.run;
+  // Step 1 — tap a batter: they "step up" and you choose how to attack.
+  function selectBatter(handIndex) {
+    if (STATE.busy || !STATE.game || STATE.game.ended) return;
     if (STATE.pinchMode) return pinchHit(handIndex);
-    const card = g.hand[handIndex];
+    const card = STATE.game.hand[handIndex];
     if (!card) return;
-    STATE.busy = true;
-    SFX.resume();
+    SFX.resume(); SFX.deal();
+    STATE.atBat = { card };
+    refreshAtBat();
+  }
+  function cancelAtBat() { STATE.atBat = null; refreshAtBat(); }
 
-    // visually lift the played card
-    const cardEl = $(`.card[data-idx="${handIndex}"]`);
-    if (cardEl) { cardEl.classList.add("playing"); }
+  // The approach panel shown in the readout area while a batter is "up".
+  function atBatPanelHTML(card) {
+    const aps = CONFIG.approaches;
+    const g = STATE.game;
+    const plat = Engine.platoonState(card, g.pitcher, STATE.run);
+    const platTag = plat.state === "adv" ? `<span class="plat plat-adv">platoon +</span>` : plat.state === "dis" ? `<span class="plat plat-dis">platoon −</span>` : "";
+    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}" title="${a.desc}"><span class="ap-icon">${a.icon}</span><span class="ap-name">${a.name}</span></button>`;
+    return `<div class="atbat-panel">
+        <div class="atbat-up"><b>${card.nick || card.name}</b> steps in ${platTag}</div>
+        <div class="atbat-q">How do you swing?</div>
+        <div class="approach-row">${btn(aps.swing)}${btn(aps.power)}${btn(aps.contact)}</div>
+        <button class="atbat-cancel" data-act="cancel-atbat">◂ pick someone else</button>
+      </div>`;
+  }
+  function updateAtBatUI() {
+    const ro = $("#readout");
+    if (!ro) return;
+    if (STATE.atBat) ro.innerHTML = atBatPanelHTML(STATE.atBat.card);
+    else if (ro.querySelector(".atbat-panel")) ro.innerHTML = `<div class="readout-empty">Tap a batter to send them to the plate.</div>`;
+  }
+  function refreshAtBat() {
+    const hand = $("#hand");
+    if (hand) {
+      hand.classList.toggle("picking", !!STATE.atBat);
+      $$(".card", hand).forEach((el) => {
+        const sel = STATE.atBat && STATE.atBat.card.uid === el.getAttribute("data-uid");
+        el.classList.toggle("selected", !!sel);
+      });
+    }
+    updateAtBatUI();
+  }
+
+  // Step 2 — choose an approach: resolve the plate appearance with that swing profile.
+  async function commitAtBat(approach) {
+    if (STATE.busy || !STATE.atBat || !STATE.game || STATE.game.ended) return;
+    const g = STATE.game, run = STATE.run;
+    const card = STATE.atBat.card;
+    const idx = g.hand.indexOf(card);
+    if (idx < 0) { STATE.atBat = null; renderGame(); return; }
+    STATE.busy = true;
+    STATE.atBat = null;
 
     // remove from hand -> discard
-    g.hand.splice(handIndex, 1);
+    g.hand.splice(idx, 1);
     g.discard.push(card);
 
-    // steal phase
+    // steal phase (automatic for now)
     const stealEv = { triggers: [], steals: [] };
-    const beforeBases = g.bases.map(snapshotRunner);
     Engine.runSteals(g, run, STATE.rng, stealEv);
     if (stealEv.steals.length) {
       renderDiamond();
       stealEv.triggers.forEach(flashCoachByFx);
       pushLog(`↗ Stolen base! (${stealEv.steals.join(", ")})`, "steal");
-      await sleep(320);
+      await sleep(300);
     }
+    await sleep(90);
 
-    await sleep(120);
-
-    // resolve
-    const ev = Engine.resolveAtBat(card, g.pitcher, g, run, STATE.rng);
-
-    // animate result
+    // resolve with the chosen approach
+    const ev = Engine.resolveAtBat(card, g.pitcher, g, run, STATE.rng, approach || "swing");
     await animateResult(ev, card);
 
-    // refill hand + inning bookkeeping
     drawToHand();
-    const advanced = Engine.maybeAdvanceInning(g);
-    if (advanced) {
-      // clear runner stole flags for the new inning is implicit (new runners)
-      renderDiamond();
-      pushLog(`— End of inning ${g.inning - 1}. Bases cleared.`, "neutral");
-    }
-
+    Engine.maybeAdvanceInning(g);
     renderGame();
 
-    // end checks
-    if (g.score >= g.target) {
-      await sleep(250);
-      return onWin();
-    }
-    if (g.outsRemaining <= 0) {
-      await sleep(250);
-      return onLose();
-    }
+    if (g.score >= g.target) { await sleep(250); return onWin(); }
+    if (g.outsRemaining <= 0) { await sleep(250); return onLose(); }
     STATE.busy = false;
+  }
+
+  // convenience for debug/auto-play: select + commit in one shot.
+  async function playAB(handIndex, approach) {
+    if (STATE.busy || !STATE.game || STATE.game.ended) return;
+    const card = STATE.game.hand[handIndex];
+    if (!card) return;
+    STATE.atBat = { card };
+    return commitAtBat(approach || "swing");
   }
 
   function snapshotRunner(r) { return r ? { name: r.name, speed: r.speed } : null; }
@@ -318,9 +351,9 @@
     } else if (ev.productiveOut && ev.runsOnPlay > 0) {
       math = `Productive out — ${ev.runsOnPlay} run scored`;
     } else if (ev.doublePlay) {
-      math = `Double play! Two outs.`;
+      math = `Double play — two outs!`;
     } else {
-      math = ev.isSafe ? "" : "Rally cleared.";
+      math = ev.isSafe ? "" : (g.rally > g.startRally + 0.01 ? `Out — rally holds at ×${g.rally.toFixed(1)}` : "Out.");
     }
     setReadout(OUTCOME_LABEL[o] || o, cls, ev, math);
 
@@ -570,7 +603,7 @@
     const pf = $("#sb-progress"); if (pf) pf.style.width = pct + "%";
     setText("res-outs", g.outsRemaining);
     setText("res-pinch", g.pinchHitsRemaining);
-    setText("res-inning", g.inning);
+    setText("res-inning", gi + 1);
     setRally(g.rally, false);
     setText("payroll-amt", run.payroll);
     renderDiamond();
@@ -582,6 +615,7 @@
       pinchBtn.classList.toggle("active", STATE.pinchMode);
       pinchBtn.disabled = g.pinchHitsRemaining <= 0;
     }
+    refreshAtBat();
   }
 
   function renderDiamond() {
@@ -690,13 +724,15 @@
   function animateRally(ev) {
     const g = STATE.game;
     if (ev.rallyDelta === -999) {
-      // reset / shatter
+      // reset / shatter (legacy hot-hand mode)
       setRally(g.rally, false);
       const w = $("#sb-rally-wrap");
       if (w) { w.classList.remove("rally-reset"); void w.offsetWidth; w.classList.add("rally-reset"); }
-    } else {
+    } else if (ev.rallyDelta > 0) {
       setRally(g.rally, true);
-      if (ev.isSafe) SFX.rally(g.rally);
+      SFX.rally(g.rally);
+    } else {
+      setRally(g.rally, false); // no change (an out) — sync without a pulse
     }
   }
   function setRally(v, grow) {
@@ -776,8 +812,8 @@
     overlay(`
       <div class="ov-card win-ov">
         <div class="ov-burst">✦</div>
-        <h2>GAME WON</h2>
-        <div class="ov-sub">You beat ${g.pitcher.name} — ${g.score} vs ${g.target}.</div>
+        <h2>${gameLabel(g.gameIndex).toUpperCase()} CLEARED</h2>
+        <div class="ov-sub">You beat ${g.pitcher.name} — <b>${g.score}</b> vs ${g.target}.</div>
         <div class="brk">${rows}<div class="brk-row brk-total"><span>Total earned</span><b>+$${total}</b></div></div>
         <div class="ov-pay">Payroll: <b>$${STATE.run.payroll}</b></div>
         <button class="btn btn-big btn-gold" data-act="to-shop">Visit the Shop ▸</button>
@@ -787,8 +823,8 @@
   function showGameOver(g) {
     overlay(`
       <div class="ov-card lose-ov">
-        <h2>ELIMINATED</h2>
-        <div class="ov-sub">You came up short against ${g.pitcher.name}.<br>Final: ${g.score} / ${g.target} · reached ${roundName(g.gameIndex)} (${gameLabel(g.gameIndex)}).</div>
+        <h2>GAME OVER</h2>
+        <div class="ov-sub">You came up short against ${g.pitcher.name}.<br>Eliminated in the <b>${ordinal(g.gameIndex + 1)} inning</b> — ${g.score} / ${g.target}.</div>
         <div class="ov-stat">Best game score this run: ${STATE.run.stat.bestScore || g.score}</div>
         <div class="ov-actions">
           <button class="btn btn-big btn-gold" data-act="replay-seed">↻ Replay Seed</button>
@@ -1009,7 +1045,7 @@
         else if (idx === gi) cls += " current";
         else cls += " future";
         if (isBossGame) cls += " boss";
-        const label = isBossGame ? "BOSS" : "G" + (gj + 1);
+        const label = "Inn " + (idx + 1) + (isBossGame ? " ♦" : "");
         const tgt = Math.round((CONFIG.targets[idx] || 0) * (isBossGame && run.bosses[ri].rule === "ace" ? (CONFIG.aceTargetMult || 1.25) : 1));
         games.push(`<div class="${cls}" title="Target ${tgt}"><span class="bg-label">${label}</span><span class="bg-target">${tgt}</span></div>`);
       }
@@ -1026,7 +1062,7 @@
     return `
     <div class="screen map-screen">
       <div class="map-head">
-        <h2>The Gauntlet</h2>
+        <h2>The Linescore</h2>
         <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b> · Seed ${seedChip(run.seed)}</div>
       </div>
       <div class="bracket">${rounds}</div>
@@ -1404,10 +1440,9 @@
      ============================================================ */
   function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
   function roundName(gi) { return ROUNDS[Math.floor(gi / GAMES_PER_ROUND)].name; }
-  function gameLabel(gi) {
-    const g = gi % GAMES_PER_ROUND;
-    return g === GAMES_PER_ROUND - 1 ? "Boss Game" : "Game " + (g + 1);
-  }
+  function isBossInning(gi) { return (gi % GAMES_PER_ROUND) === GAMES_PER_ROUND - 1; }
+  function gameLabel(gi) { return "Inning " + (gi + 1) + (isBossInning(gi) ? " · Boss" : ""); }
+  function ordinal(n) { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 
   /* ============================================================
      SAVE / LOAD
@@ -1437,12 +1472,13 @@
       const fr = e.target.closest("[data-franchise]");
       const buyEl = e.target.closest("[data-buy]");
       const cardEl = e.target.closest(".card[data-idx]");
-      const coachShop = null;
+      const apEl = e.target.closest("[data-approach]");
       const sellEl = e.target.closest("[data-sell]");
 
       if (fr) { startFromFranchise(fr.getAttribute("data-franchise")); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
-      if (STATE.screen === "game" && cardEl && !STATE.busy) { playCard(parseInt(cardEl.getAttribute("data-idx"), 10)); return; }
+      if (STATE.screen === "game" && apEl && !STATE.busy) { commitAtBat(apEl.getAttribute("data-approach")); return; }
+      if (STATE.screen === "game" && cardEl && !STATE.busy) { selectBatter(parseInt(cardEl.getAttribute("data-idx"), 10)); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
 
       if (!act) return;
@@ -1457,6 +1493,7 @@
       case "toggle-sound": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); render(); break;
       case "toggle-sound-menu": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); showMenu(); break;
       case "play-game": startGame(); break;
+      case "cancel-atbat": cancelAtBat(); break;
       case "open-deck": openDeckView(); break;
       case "open-dugout": openDugoutView(); break;
       case "reroll": doReroll(); break;
@@ -1540,9 +1577,11 @@
       if (ov && ov.classList.contains("show") && !ov.classList.contains("lock")) { closeOverlay(); return; }
     }
     if (STATE.screen !== "game" || STATE.busy) return;
+    if (STATE.atBat && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); commitAtBat("swing"); return; }
+    if (STATE.atBat && (e.key === "Escape")) { cancelAtBat(); return; }
     if (e.key >= "1" && e.key <= "8") {
       const idx = parseInt(e.key, 10) - 1;
-      if (idx < STATE.game.hand.length) playCard(idx);
+      if (idx < STATE.game.hand.length) selectBatter(idx);
     } else if (e.key === "p" || e.key === "P") {
       if (STATE.game.pinchHitsRemaining > 0) { STATE.pinchMode = !STATE.pinchMode; renderGame(); }
     }
@@ -1614,7 +1653,7 @@
     // expose a small debug API for testing
     global.DD = {
       STATE, CONFIG,
-      play: (i) => playCard(i || 0),
+      play: (i, ap) => playAB(i || 0, ap || "swing"),
       autoPlay: autoPlay,
       startFranchise: startFromFranchise,
       win: () => { STATE.game.score = STATE.game.target; },
@@ -1631,12 +1670,18 @@
       if (STATE.busy) { await sleep(60); continue; }
       const g = STATE.game;
       const risp = g.bases[1] || g.bases[2];
-      let best = 0, bestScore = -1;
+      let best = 0, bestScore = -1, bestCard = null;
       g.hand.forEach((c, i) => {
         let s = c.contact * 0.5 + c.power * (risp ? 1.1 : 0.7) + c.eye * 0.4 + c.speed * 0.2;
-        if (s > bestScore) { bestScore = s; best = i; }
+        if (s > bestScore) { bestScore = s; best = i; bestCard = c; }
       });
-      await playCard(best);
+      // pick an approach the way a player might: power for sluggers w/ runners, patience for high-eye
+      let ap = "swing";
+      if (bestCard) {
+        if (bestCard.power >= 80 && (risp || g.outsRemaining > 1)) ap = "power";
+        else if (bestCard.eye >= 75 && !risp) ap = "contact";
+      }
+      await playAB(best, ap);
       await sleep(30);
     }
     return STATE.game ? STATE.game.result : null;

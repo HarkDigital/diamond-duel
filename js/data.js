@@ -11,26 +11,31 @@
   /* -------------------------------------------------------- */
   const CONFIG = {
     // Resources per game
-    outsPerGame: 27,
+    // A run = one 9-inning game. Each inning is a "round" with its own target and
+    // a budget of 3 outs (every out is precious). Reach the inning's target -> advance.
+    outsPerGame: 3,        // outs per INNING (var name kept for minimal churn)
     handSize: 6,
-    pinchHits: 3,
+    pinchHits: 3,          // pinch-hit swaps per inning
     startingRally: 1.0,
 
-    // Rally
+    // Rally — builds across the whole inning (snowball) and resets at the inning's end,
+    // NOT on every out. Your 3 outs are the limited resource; the rally is your multiplier.
+    rallyResetsOnOut: false,
     rallyIncrement: 0.5, // per safe outcome
     walkRallyIncrement: 0.5, // overridden by Patience Guru
     rallyResetValue: 1.0,
 
-    // Base outcome weights (league-ish starting point; tune freely)
+    // Base outcome weights. Higher reach-base (vs a real league) keeps innings from
+    // busting on a fluke with only 3 outs; a contact/patience build tames it further.
     baseWeights: {
-      K: 21,
-      BB: 9,
+      K: 8,
+      BB: 11,
       HBP: 1,
-      OUT: 40,
-      "1B": 16,
-      "2B": 5.5,
-      "3B": 0.6,
-      HR: 7,
+      OUT: 18,
+      "1B": 19,
+      "2B": 6.5,
+      "3B": 0.8,
+      HR: 7.5,
     },
 
     // Stat coefficients. Stats are 0..100; we normalize to (stat-50)/50 in [-1,1].
@@ -58,24 +63,31 @@
     // Bag values
     bag: { BB: 1, HBP: 1, "1B": 2, "2B": 3, "3B": 4, HR: 5 },
 
-    // Target curve across the 12-game gauntlet (idx 0..11). Boss games are idx 2,5,8,11.
-    // Tuned via headless simulation: a strong scaled build clears the gauntlet ~40%+
-    // (higher for skilled human play), a half-built deck falls off in the late rounds,
-    // and the unupgraded starting deck cannot survive past round 2.
-    targets: [40, 55, 80, 108, 145, 190, 250, 320, 360, 440, 530, 610],
+    // Per-INNING target curve (innings 1..9, idx 0..8). Boss innings are idx 2,5,8.
+    // Early innings are clearable with the starting deck; late innings require a build.
+    targets: [10, 13, 18, 23, 30, 40, 52, 67, 86],
 
-    // Ordinary / boss pitcher scaling across the bracket
+    // Pitcher scaling across the 9 innings (idx 0..8). "PerGame" = per inning here.
     pitcher: {
-      baseStuff: 40,
+      baseStuff: 34,
       stuffPerGame: 2.2,
-      baseCommand: 42,
-      commandPerGame: 1.7,
-      bossStuffBonus: 5,
-      bossCommandBonus: 4,
+      baseCommand: 38,
+      commandPerGame: 2.0,
+      bossStuffBonus: 6,
+      bossCommandBonus: 5,
     },
 
     // Ace boss target multiplier
     aceTargetMult: 1.25,
+
+    // At-bat APPROACHES — the per-plate-appearance decision. Each scales outcome weights.
+    approaches: {
+      swing:  { id: "swing",  name: "Swing Away",     icon: "🏏", desc: "Balanced — your natural swing.", w: {} },
+      power:  { id: "power",  name: "Power Swing",    icon: "💪", desc: "Sell out for the big fly. More HR & extra-base hits, but more strikeouts.",
+        w: { HR: 1.65, "2B": 1.45, "3B": 1.4, "1B": 0.7, BB: 0.55, K: 1.3, OUT: 1.0 } },
+      contact:{ id: "contact",name: "Work the Count", icon: "👁️", desc: "Patient & protective. Many more walks, far fewer strikeouts — but little power.",
+        w: { BB: 2.1, HBP: 1.3, K: 0.5, "1B": 1.2, "2B": 0.7, "3B": 0.6, HR: 0.5, OUT: 0.95 } },
+    },
 
     // Economy
     economy: {
@@ -346,13 +358,13 @@
   /* -------------------------------------------------------- */
   /* BRACKET STRUCTURE                                        */
   /* -------------------------------------------------------- */
+  // 3 phases of 3 innings = a 9-inning game. The 3rd inning of each phase is a boss.
   const ROUNDS = [
-    { id: "wildcard", name: "Wild Card" },
-    { id: "division", name: "Division Series" },
-    { id: "championship", name: "Championship Series" },
-    { id: "worldseries", name: "World Series" },
+    { id: "early", name: "Early Innings" },
+    { id: "middle", name: "Middle Innings" },
+    { id: "late", name: "Late Innings" },
   ];
-  const GAMES_PER_ROUND = 3; // game 0, game 1, boss(2)
+  const GAMES_PER_ROUND = 3; // innings per phase; the 3rd (idx 2) is a boss inning
 
   /* -------------------------------------------------------- */
   /* RARITY metadata (colors handled in CSS via class)        */

@@ -72,7 +72,7 @@
   }
 
   /* ---------- outcome distribution ---------- */
-  function buildDistribution(es, pitcher, plat, run) {
+  function buildDistribution(es, pitcher, plat, run, approach) {
     const w = Object.assign({}, CONFIG.baseWeights);
     const co = CONFIG.coeff;
     const nc = norm(es.contact), np = norm(es.power), ne = norm(es.eye);
@@ -90,6 +90,10 @@
     if (plat.mult !== 1) {
       w["1B"] *= plat.mult; w["2B"] *= plat.mult; w["3B"] *= plat.mult; w["HR"] *= plat.mult;
     }
+
+    // at-bat approach reshapes the swing profile (Swing Away / Power / Work the Count)
+    const ap = approach && CONFIG.approaches && CONFIG.approaches[approach];
+    if (ap && ap.w) { for (const k in ap.w) if (w[k] != null) w[k] *= ap.w[k]; }
 
     // floors
     for (const k in w) w[k] = Math.max(0, w[k]);
@@ -172,10 +176,11 @@
   }
 
   /* ---------- the resolver ---------- */
-  function resolveAtBat(batter, pitcher, game, run, rng) {
+  function resolveAtBat(batter, pitcher, game, run, rng, approach) {
     const C = CONFIG;
     const ev = {
       batterName: batter.name,
+      approach: approach || "swing",
       triggers: [],
       payrollGained: 0,
       steals: [],
@@ -195,8 +200,8 @@
     const plat = platoonState(batter, pitcher, run);
     ev.platoon = plat.state;
 
-    // roll outcome
-    const w = buildDistribution(es, pitcher, plat, run);
+    // roll outcome (the chosen approach reshapes the odds)
+    const w = buildDistribution(es, pitcher, plat, run, approach);
     let outcome = rng.weighted(Object.keys(w).map((k) => ({ v: k, w: w[k] })));
 
     // boss: ground-ball specialist downgrades doubles
@@ -349,9 +354,11 @@
       if (productiveOut && hasCoach(run, "smallBall")) {
         game.rally += 0.5; rallyDelta = 0.5;
         ev.triggers.push("coach:small_ball");
-      } else {
+      } else if (CONFIG.rallyResetsOnOut) {
         game.rally = game.startRally;
-        rallyDelta = -999; // sentinel: reset
+        rallyDelta = -999; // sentinel: reset (legacy hot-hand mode)
+      } else {
+        rallyDelta = 0; // rally persists across outs — only the inning's end resets it
       }
     }
 

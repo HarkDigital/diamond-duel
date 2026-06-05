@@ -640,6 +640,29 @@ body.portrait #toast{ display:none !important; }
 .diamond .base-2{ top:1.5%; } .diamond .base-home{ bottom:1.5%; }
 .readout{ flex:0 0 auto; min-height:0; }
 
+/* ===== At-bat: batter steps up & you choose an approach ===== */
+.atbat-panel{ width:100%; text-align:center; animation:roPop .3s cubic-bezier(.2,1.5,.3,1); }
+.atbat-up{ font-size:1.12rem; font-weight:800; }
+.atbat-up b{ color:var(--gold); }
+.atbat-q{ font-size:.86rem; color:var(--ink-dim); margin:3px 0 10px; letter-spacing:.3px; }
+.approach-row{ display:flex; gap:8px; justify-content:center; }
+.approach-btn{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center; gap:4px;
+  background:linear-gradient(180deg,#1e3050,#16243a); border:1px solid var(--line); color:var(--ink);
+  border-radius:12px; padding:11px 6px; cursor:pointer; font:inherit;
+  transition:transform .1s, border-color .15s, background .15s, box-shadow .15s; }
+.approach-btn:hover{ transform:translateY(-3px); border-color:var(--gold-2); background:linear-gradient(180deg,#24405f,#1a2c44); box-shadow:0 8px 18px rgba(0,0,0,.4); }
+.approach-btn .ap-icon{ font-size:1.55rem; line-height:1; }
+.approach-btn .ap-name{ font-size:.74rem; font-weight:800; letter-spacing:.2px; white-space:nowrap; }
+.approach-btn.ap-power:hover{ border-color:var(--power); }
+.approach-btn.ap-contact:hover{ border-color:var(--eye); }
+.atbat-cancel{ margin-top:9px; background:none; border:none; color:var(--ink-faint); font:inherit; font-size:.82rem; cursor:pointer; }
+.atbat-cancel:hover{ color:var(--ink); }
+/* hand "picking a swing" state — selected batter lifts & glows, others dim */
+.hand.picking .card{ opacity:.45; }
+.hand.picking .card:hover{ opacity:.8; transform:translateY(-6px); }
+.hand.picking .card.selected{ opacity:1; transform:translateY(-14px) scale(1.06);
+  box-shadow:0 20px 40px rgba(0,0,0,.55), 0 0 0 3px var(--gold); border-color:var(--gold-2); }
+
 /* On short (phone-landscape) viewports, compact the viewport-level overlays so
    they fit the limited height with no scroll. Tablets/desktops stay roomy. */
 @media (max-height: 470px){
