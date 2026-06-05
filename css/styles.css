@@ -504,3 +504,157 @@ body.portrait #toast{ display:none !important; }
 @keyframes rotatePhone{ 0%,35%{ transform:rotate(0deg) } 55%,100%{ transform:rotate(-90deg) } }
 .rh-title{ font-size:7vw; font-weight:900; color:var(--gold); letter-spacing:.5px; }
 .rh-sub{ font-size:3.8vw; color:var(--ink-dim); max-width:84vw; line-height:1.55; }
+
+/* ===================================================================
+   READABILITY + POLISH PASS — bigger text/elements within the canvas
+   so everything stays legible once the stage scales down on phones.
+   =================================================================== */
+
+/* ---- scoreboard ---- */
+.scoreboard{ padding:14px 22px; border-radius:18px; }
+.sb-matchup .sb-round{ font-size:.9rem; }
+.sb-matchup .sb-vs{ font-size:.72rem; }
+.sb-matchup .sb-pitcher{ font-size:1.1rem; margin-top:3px; }
+.sb-rule{ font-size:.84rem; }
+.sb-score-num{ font-size:2.6rem; }
+.sb-progress{ height:14px; max-width:480px; }
+.sb-runs{ font-size:.88rem; }
+.sb-rally-label{ font-size:.78rem; letter-spacing:5px; }
+.sb-rally-num{ font-size:3.1rem; }
+
+/* ---- resources ---- */
+.resources{ gap:10px; }
+.res{ padding:10px 8px; border-radius:14px; }
+.res b{ font-size:1.9rem; }
+.res span{ font-size:.72rem; letter-spacing:2px; }
+
+/* ---- diamond ---- */
+.diamond-wrap{ padding:16px; border-radius:16px; }
+.diamond{ width:248px; height:212px; }
+.runner{ width:16px; height:16px; }
+
+/* ---- readout (the hero outcome moment) ---- */
+.readout{ padding:16px 14px; border-radius:16px; }
+.readout-empty{ font-size:.95rem; }
+.ro-label{ font-size:2.2rem; }
+.ro-batter{ font-size:1.06rem; margin-top:4px; }
+.ro-math{ font-size:1.16rem; margin-top:9px; }
+.ro-math b{ font-size:1.45rem; }
+.plat{ font-size:.72rem; padding:2px 8px; }
+
+/* ---- play log ---- */
+.play-log{ padding:14px 16px; gap:8px; border-radius:16px; }
+.log-entry{ font-size:1.02rem; padding:9px 14px; border-left-width:5px; border-radius:11px; }
+.lg-pts,.lg-run{ font-size:1.02rem; margin-left:6px; }
+
+/* ---- dugout / coaches ---- */
+.dugout-title{ font-size:.84rem; letter-spacing:3px; }
+.dugout{ gap:9px; }
+.coach-chip{ padding:11px 13px; border-radius:13px; border-left-width:6px; }
+.coach-name{ font-size:1.02rem; }
+.coach-scale{ font-size:1rem; }
+.coach-text{ font-size:.82rem; line-height:1.38; margin-top:4px; }
+.coach-chip.empty{ font-size:.9rem; padding:16px 13px; }
+.payroll-chip{ font-size:1.1rem; padding:9px 17px; border-radius:13px; }
+
+/* ---- hand cards: bigger & cleaner ---- */
+.hand{ gap:13px; }
+.hand-actions{ gap:18px; }
+.btn-pinch{ font-size:1.05rem; padding:13px 26px; }
+.hand-hint{ font-size:.92rem; }
+.card{ width:170px; min-height:228px; padding:13px 12px; border-top-width:5px; border-radius:16px; }
+.card:hover{ transform:translateY(-10px) scale(1.04); }
+.card-top{ margin-bottom:10px; gap:8px; }
+.bats{ width:28px; height:28px; font-size:1rem; border-radius:8px; }
+.card-name{ font-size:1.08rem; }
+.card-pos{ font-size:.76rem; }
+.card-stats{ gap:8px; margin-bottom:9px; }
+.sbar{ gap:8px; font-size:.86rem; }
+.sbar-l{ width:14px; font-size:.88rem; }
+.sbar-track{ height:10px; border-radius:6px; }
+.sbar-fill{ border-radius:6px; }
+.sbar-v{ width:26px; font-size:.88rem; }
+.card-tags{ gap:5px; }
+.ctag{ font-size:.7rem; padding:3px 8px; border-radius:6px; }
+.edition{ font-size:.64rem; padding:3px 8px; top:10px; right:10px; }
+
+/* widen the side columns a touch to match the bigger type */
+.game-body{ grid-template-columns:336px 1fr 270px; gap:16px; }
+
+/* ===================== overlays: bigger & more horizontal ===================== */
+.ov-card{ padding:26px 32px; }
+.ov-card h2{ font-size:2.1rem; }
+.ov-sub{ font-size:1.04rem; margin:10px 0 16px; }
+
+/* MENU as a compact horizontal tile grid — fits any landscape height, no scroll */
+.menu-card{ max-width:740px; }
+.menu-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:18px 0 4px; }
+.menu-tile{ display:flex; flex-direction:row; align-items:center; gap:13px; text-align:left;
+  padding:14px 16px; min-height:0; border-radius:14px; font:inherit; }
+.menu-tile .mi-icon{ font-size:1.9rem; line-height:1; flex:none; width:32px; text-align:center; }
+.menu-tile .mi-text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.menu-tile .mi-label{ font-size:1.06rem; font-weight:800; letter-spacing:.2px; white-space:nowrap; }
+.menu-tile .menu-note{ font-size:.8rem; color:var(--ink-faint); font-weight:500; white-space:nowrap; }
+.menu-tile:hover{ transform:translateY(-2px); }
+.menu-tile.tile-resume{ background:linear-gradient(180deg,var(--gold),var(--gold-2)); color:#2a1c00; border-color:var(--gold-deep); box-shadow:0 6px 18px rgba(245,166,35,.3); }
+.menu-tile.tile-resume .menu-note{ color:#6b5212; }
+.menu-tile.tile-danger{ background:linear-gradient(180deg,#7a2f2f,#5f1d1d); border-color:#5a1414; color:#ffe3e3; }
+.menu-tile.tile-danger .menu-note{ color:#e6a3a3; }
+
+/* STATS — bigger text, wide 4-col grid so it stays short (fits any landscape) */
+.stats-card{ width:min(760px,94vw); max-width:760px; }
+.stats-card h3{ font-size:.86rem; margin:12px 0 7px; }
+.stats-card h3:first-of-type{ margin-top:2px; }
+.stat-grid{ grid-template-columns:repeat(4,1fr); gap:10px; }
+.stat-cell{ padding:10px 12px; min-width:0; }
+.stat-val{ font-size:1.24rem; word-break:break-word; }
+.stat-label{ font-size:.72rem; }
+
+/* HOW TO PLAY: two columns so it fits with bigger type */
+.ov-card.howto{ width:min(720px,94vw); max-width:720px; }
+.howto-sub{ font-size:1.4rem; }
+.howto-body{ column-count:1; max-height:none; overflow:visible; margin:14px 0 16px; max-width:760px; margin-left:auto; margin-right:auto; }
+.howto section{ margin-bottom:13px; }
+.howto h3{ font-size:1.08rem; }
+.howto p,.howto li{ font-size:.94rem; line-height:1.5; }
+.howto-pageno{ color:var(--ink-faint); font-weight:700; font-size:1rem; margin-left:6px; }
+.howto-nav{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:4px; }
+.howto-nav .btn{ min-width:110px; }
+.ht-dots{ display:flex; gap:9px; }
+.ht-dot{ width:10px; height:10px; border-radius:50%; background:var(--line); transition:background .2s; }
+.ht-dot.on{ background:var(--gold); box-shadow:0 0 8px rgba(255,203,71,.6); }
+
+/* picker / pack / deck grids a touch bigger */
+.picker .picker-grid,.deck-view .deck-grid,.pack-grid{ gap:12px; }
+
+/* On short (phone-landscape) viewports, compact the viewport-level overlays so
+   they fit the limited height with no scroll. Tablets/desktops stay roomy. */
+@media (max-height: 470px){
+  .overlay{ padding:6px; }
+  .overlay-inner{ max-height:97vh; }
+  .ov-card{ padding:15px 24px; border-radius:16px; }
+  .ov-card h2{ font-size:1.45rem; }
+  .ov-sub{ font-size:.9rem; margin:5px 0 9px; }
+  .ov-burst{ font-size:1.7rem; } .ov-burst.big{ font-size:2.3rem; }
+  .ov-actions{ gap:8px; }
+  .brk{ margin-bottom:10px; }
+  /* menu */
+  .menu-grid{ gap:9px; margin:12px 0 2px; }
+  .menu-tile{ padding:11px 13px; gap:11px; }
+  .menu-tile .mi-icon{ font-size:1.6rem; width:28px; }
+  .menu-tile .mi-label{ font-size:.98rem; }
+  .menu-tile .menu-note{ font-size:.74rem; }
+  /* stats */
+  .stats-card h3{ font-size:.76rem; margin:7px 0 5px; }
+  .stat-grid{ gap:7px; }
+  .stat-cell{ padding:6px 9px; }
+  .stat-val{ font-size:1rem; }
+  .stat-label{ font-size:.64rem; }
+  /* how to play */
+  .howto-sub{ font-size:1.1rem; }
+  .howto-body{ column-gap:22px; margin:10px 0 12px; }
+  .howto section{ margin-bottom:9px; }
+  .howto h3{ font-size:.95rem; margin-bottom:3px; }
+  .howto p,.howto li{ font-size:.82rem; line-height:1.4; }
+  .howto-rally,.howto-tips{ padding:9px 11px; }
+}
