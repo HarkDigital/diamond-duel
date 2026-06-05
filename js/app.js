@@ -209,8 +209,8 @@
   }
 
   /* ---------------- the at-bat loop ---------------- */
-  // Step 1 — tap (or drag to the field) a batter: they "step up" in a popup so the
-  // field diagram never shrinks; then you choose how to attack.
+  // Step 1 — drag a batter into the box (or press 1–8): they "step up" and the swing
+  // buttons appear inline in the at-bat bar (no popup).
   function selectBatter(handIndex) {
     if (STATE.busy || !STATE.game || STATE.game.ended) return;
     const card = STATE.game.hand[handIndex];
@@ -219,9 +219,9 @@
     STATE.atBat = { card, idx: handIndex };
     if (TIP) TIP.hide();
     markPicking();
-    showAtBatPopup();
+    renderAtBatBar();
   }
-  function cancelAtBat() { STATE.atBat = null; hideAtBatPopup(); markPicking(); }
+  function cancelAtBat() { STATE.atBat = null; markPicking(); renderAtBatBar(); }
 
   // rough steal success % (mirrors the engine) for the Send button label
   function stealOdds(runner) {
@@ -229,8 +229,8 @@
     let p = (runner.speed - 50) * 0.013 + 0.25 + (burner ? 0.22 : 0);
     return Math.round(Math.max(0.35, Math.min(0.97, p)) * 100);
   }
-  // The approach popup that floats over the play area (so the field never shrinks).
-  function atBatPopupHTML(card) {
+  // the swing controls shown inline in the at-bat bar once a batter has stepped up
+  function atBatControlsHTML(card) {
     const aps = CONFIG.approaches;
     const g = STATE.game;
     const plat = Engine.platoonState(card, g.pitcher, STATE.run);
@@ -244,25 +244,36 @@
     let sends = "";
     [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
     const tactics = (buntBtn || sends) ? `<div class="tactics-row">${buntBtn}${sends}</div>` : "";
-    return `<div class="atbat-pop-inner">
-        <button class="atbat-cancel" data-act="cancel-atbat" aria-label="Cancel" title="Pick someone else">${icon("close")}</button>
-        <div class="atbat-up"><b>${shortName(card.name)}</b> steps up ${platTag} ${traitTag} ${streak}</div>
-        <div class="atbat-q">How do you swing?</div>
-        <div class="approach-row">${btn(aps.swing)}${btn(aps.power)}${btn(aps.contact)}</div>
-        ${tactics}
+    return `<div class="ab-active">
+        <div class="ab-head"><b>${shortName(card.name)}</b> steps up ${platTag} ${traitTag} ${streak}<span class="ab-q"> — how do you swing?</span></div>
+        <div class="ab-controls">
+          <div class="approach-row">${btn(aps.swing)}${btn(aps.power)}${btn(aps.contact)}</div>
+          ${tactics}
+          <button class="ab-cancel" data-act="cancel-atbat" aria-label="Cancel" title="Pick someone else">${icon("close")}</button>
+        </div>
       </div>`;
   }
-  function showAtBatPopup() {
-    if (!STATE.atBat) return;
-    let pop = document.getElementById("atbat-pop");
-    if (!pop) { pop = document.createElement("div"); pop.id = "atbat-pop"; pop.className = "atbat-pop"; const app = $("#app"); if (app) app.appendChild(pop); }
-    pop.innerHTML = atBatPopupHTML(STATE.atBat.card);
-    pop.classList.add("show");
-    pop.classList.remove("pop"); void pop.offsetWidth; pop.classList.add("pop");
+  // the idle drop-box on the right that you drag a batter into
+  function batZoneHTML() {
+    return `<div class="ab-idle">
+        <div class="ab-idle-hint">Drag a batter into the box to send them to the plate</div>
+        <div class="bat-zone" id="bat-zone">
+          <span class="bz-icon">${icon("bat")}</span>
+          <span class="bz-text"><b>Drop batter here</b><span>step up to the plate</span></span>
+        </div>
+      </div>`;
   }
-  function hideAtBatPopup() {
-    const pop = document.getElementById("atbat-pop");
-    if (pop) { pop.classList.remove("show"); pop.innerHTML = ""; }
+  function renderAtBatBar() {
+    const bar = $("#atbat-bar");
+    if (!bar) return;
+    if (STATE.atBat) {
+      bar.classList.add("active");
+      bar.innerHTML = atBatControlsHTML(STATE.atBat.card);
+      bar.classList.remove("pop"); void bar.offsetWidth; bar.classList.add("pop");
+    } else {
+      bar.classList.remove("active");
+      bar.innerHTML = batZoneHTML();
+    }
   }
 
   // ACTIVE steal — the player Sends a runner. Caught = an out (precious!).
@@ -308,7 +319,7 @@
   }
   function refreshAtBat() {
     markPicking();
-    if (STATE.atBat) showAtBatPopup(); else hideAtBatPopup();
+    renderAtBatBar();
   }
 
   // Step 2 — choose an approach: resolve the plate appearance with that swing profile.
@@ -320,8 +331,8 @@
     if (idx < 0) { STATE.atBat = null; renderGame(); return; }
     STATE.busy = true;
     STATE.atBat = null;
-    hideAtBatPopup();
     markPicking();
+    renderAtBatBar();
 
     // remove from hand -> discard (fly the card toward the plate for a little juice)
     const cardEl = $(`#hand .card[data-uid="${card.uid}"]`);
@@ -602,9 +613,8 @@
               <div class="runner-layer" id="runner-layer"></div>
               <div class="run-pop-layer" id="run-pop-layer"></div>
             </div>
-            <div class="drag-hint" id="drag-hint">${icon("bat")} Drag a batter here</div>
           </div>
-          <div class="readout" id="readout"><div class="readout-empty">Drag a batter onto the field to step up.</div></div>
+          <div class="readout" id="readout"><div class="readout-empty">Drag a batter to the box on the right to step up.</div></div>
         </div>
 
         <div class="col-center">
@@ -622,11 +632,11 @@
         </div>
       </div>
 
+      <!-- at-bat bar: drop a batter into the box (right) to step up; the swing buttons appear here -->
+      <div class="atbat-bar" id="atbat-bar"></div>
+
       <div class="hand-row">
         <div class="hand" id="hand"></div>
-        <div class="hand-actions">
-          <div class="hand-hint">Drag a batter onto the field to send them up. Keys 1–8.</div>
-        </div>
       </div>
     </div>`;
   }
@@ -1010,14 +1020,14 @@
       </div>`);
   }
 
-  function confirmAbandon() {
+  function confirmAbandon(cancelAct) {
     overlay(`
       <div class="ov-card confirm-card">
         <h2>Abandon this run?</h2>
         <div class="ov-sub">Your current run will end and its progress is lost for good. (Your career stats are kept.)</div>
         <div class="ov-actions">
-          <button class="btn btn-danger" data-act="abandon-confirm">Abandon Run</button>
-          <button class="btn btn-ghost" data-act="back-to-menu">Cancel</button>
+          <button class="btn btn-danger" data-act="abandon-confirm">Yes, abandon</button>
+          <button class="btn btn-ghost" data-act="${cancelAct || "back-to-menu"}">No, keep playing</button>
         </div>
       </div>`);
   }
@@ -1644,7 +1654,7 @@
   function handleAct(a) {
     switch (a) {
       case "continue": resumeRun(); break;
-      case "abandon": clearSave(); STATE.run = null; STATE.game = null; render(); break;
+      case "abandon": confirmAbandon("close-ov"); break;
       case "toggle-sound": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); render(); break;
       case "toggle-sound-menu": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); showMenu(); break;
       case "play-game": startGame(); break;
@@ -1663,7 +1673,7 @@
       case "howto-next": showHowTo((STATE._howtoPage || 0) + 1); break;
       case "howto-prev": showHowTo((STATE._howtoPage || 0) - 1); break;
       case "to-menu": closeOverlay(); if (STATE.run) saveRun(); STATE.screen = "title"; render(); break;
-      case "abandon-run": confirmAbandon(); break;
+      case "abandon-run": confirmAbandon("back-to-menu"); break;
       case "replay-seed": if (STATE.run) replaySeed(STATE.run.seed, STATE.run.franchiseId); break;
       case "abandon-confirm": clearSave(); STATE.run = null; STATE.game = null; closeOverlay(); STATE.screen = "title"; render(); break;
       case "confirm-newrun": { const id = STATE._pendingFranchise; STATE._pendingFranchise = null; if (id) doStartRun(id); break; }
@@ -1828,11 +1838,11 @@
     const m = (getComputedStyle(st).transform || "").match(/matrix\(([^,]+)/);
     return m ? (parseFloat(m[1]) || 1) : 1;
   }
-  function overDiamond(x, y) {
-    const dw = $(".diamond-wrap");
-    if (!dw) return false;
-    const r = dw.getBoundingClientRect();
-    return x >= r.left - 10 && x <= r.right + 10 && y >= r.top - 10 && y <= r.bottom + 10;
+  function overDropZone(x, y) {
+    const bz = $("#bat-zone");
+    if (!bz) return false;
+    const r = bz.getBoundingClientRect();
+    return x >= r.left - 24 && x <= r.right + 24 && y >= r.top - 24 && y <= r.bottom + 24;
   }
   function onCardPointerDown(e) {
     if (STATE.screen !== "game" || STATE.busy || STATE.atBat) return;
@@ -1855,8 +1865,8 @@
     if (_drag.moved) {
       const s = stageScale();
       _drag.cardEl.style.transform = `translate(${dx / s}px, ${dy / s}px) scale(1.06) rotate(2.5deg)`;
-      _drag.over = overDiamond(e.clientX, e.clientY);
-      const dw = $(".diamond-wrap"); if (dw) dw.classList.toggle("drop-active", _drag.over);
+      _drag.over = overDropZone(e.clientX, e.clientY);
+      const bz = $("#bat-zone"); if (bz) bz.classList.toggle("drop-active", _drag.over);
     }
   }
   function onCardPointerUp(e) {
@@ -1865,16 +1875,16 @@
     d.cardEl.classList.remove("dragging");
     d.cardEl.style.transform = "";
     const app = $("#app"); if (app) app.classList.remove("is-dragging");
-    const dw = $(".diamond-wrap"); if (dw) dw.classList.remove("drop-active");
-    if (d.over) { selectBatter(d.idx); return; }   // dropped on the field — step up
+    const bz = $("#bat-zone"); if (bz) bz.classList.remove("drop-active");
+    if (d.over) { selectBatter(d.idx); return; }   // dropped in the box — step up
     if (!d.moved) { hintDrag(d.cardEl); }          // a plain tap isn't enough; nudge them to drag
     // otherwise: released in open space — snap back (transform already cleared)
   }
-  // a tap on a card just reminds the player to drag it to the field
+  // a tap on a card just reminds the player to drag it into the box
   function hintDrag(cardEl) {
     if (cardEl) { cardEl.classList.remove("nudge"); void cardEl.offsetWidth; cardEl.classList.add("nudge"); }
-    const note = $("#drag-hint");
-    if (note) { note.classList.remove("pulse"); void note.offsetWidth; note.classList.add("pulse"); }
+    const bz = $("#bat-zone");
+    if (bz) { bz.classList.remove("pulse"); void bz.offsetWidth; bz.classList.add("pulse"); }
     if (SFX && SFX.click) SFX.click();
   }
   function setupDrag() {

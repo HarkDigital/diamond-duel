@@ -869,6 +869,21 @@ body.portrait #toast{ display:none !important; }
   .atbat-cancel{ margin-top:5px; font-size:.76rem; }
   .coach-icon{ width:42px; height:42px; }
   .coach-icon .ci-glyph .ico{ width:22px; height:22px; }
+  /* compact the at-bat bar so the field keeps more room on short phones */
+  .atbat-bar{ min-height:102px; margin-top:6px; }
+  .bat-zone{ width:250px; min-height:88px; gap:11px; }
+  .bat-zone .bz-icon .ico{ width:28px; height:28px; }
+  .bat-zone .bz-text b{ font-size:1rem; } .bat-zone .bz-text span{ font-size:.74rem; }
+  .ab-idle-hint{ font-size:.9rem; max-width:240px; }
+  .atbat-bar.active{ padding:6px 12px 9px; }
+  .ab-head{ font-size:1rem; margin-bottom:5px; }
+  .ab-controls{ gap:10px; }
+  .atbat-bar .approach-btn{ width:150px; padding:8px 9px; gap:4px; }
+  .atbat-bar .approach-btn .ap-icon .ico{ width:24px; height:24px; }
+  .atbat-bar .approach-btn .ap-name{ font-size:.86rem; }
+  .atbat-bar .ap-desc{ font-size:.66rem; max-width:135px; line-height:1.25; }
+  .atbat-bar .tactic-btn{ font-size:.8rem; padding:6px 12px; }
+  .ab-cancel{ width:32px; height:32px; } .ab-cancel .ico{ width:17px; height:17px; }
 }
 
 /* ============================================================
@@ -957,3 +972,51 @@ body.portrait #toast{ display:none !important; }
 .foot-btns .btn-ghost:hover{ color:#fff; background:rgba(255,255,255,.12); }
 /* keep the replay-seed hint gold even on the field */
 .seed-hint.replay,.seed-hint.replay code{ color:var(--gold); }
+
+/* ============================================================
+   AT-BAT BAR — between the (shorter) play summary and the hand.
+   Idle: a drop box on the right you drag a batter into.
+   Active: the swing buttons appear inline (no popup).
+   ============================================================ */
+.atbat-bar{ flex:0 0 auto; margin-top:8px; min-height:128px; display:flex; align-items:stretch; }
+.atbat-bar.pop{ animation:abBarPop .26s cubic-bezier(.2,1.4,.3,1); }
+@keyframes abBarPop{ 0%{ transform:scale(.99); opacity:.5 } 100%{ transform:scale(1); opacity:1 } }
+
+/* ---- idle: hint (left) + drop box (right) ---- */
+.ab-idle{ flex:1; display:flex; align-items:center; justify-content:flex-end; gap:24px; padding-right:2px; }
+.ab-idle-hint{ color:#f4f9ff; text-shadow:0 1px 4px rgba(0,0,0,.6); font-size:1.05rem; font-weight:600; text-align:right; max-width:330px; line-height:1.4; }
+.bat-zone{ flex:0 0 auto; width:330px; min-height:116px; display:flex; align-items:center; justify-content:center; gap:16px;
+  border:2px dashed var(--gold-2); border-radius:18px; cursor:default;
+  background:linear-gradient(180deg, rgba(255,203,71,.1), rgba(255,203,71,.03));
+  color:var(--gold); transition:transform .12s, box-shadow .2s, background .2s, border-color .15s; }
+.bat-zone .bz-icon{ display:flex; } .bat-zone .bz-icon .ico{ width:36px; height:36px; }
+.bat-zone .bz-text{ display:flex; flex-direction:column; line-height:1.2; }
+.bat-zone .bz-text b{ font-size:1.18rem; } .bat-zone .bz-text span{ font-size:.84rem; color:var(--ink-dim); }
+.bat-zone.drop-active{ transform:scale(1.05); border-style:solid; border-color:var(--gold); background:rgba(255,203,71,.22); box-shadow:0 0 38px rgba(255,203,71,.55); }
+.bat-zone.pulse{ animation:bzPulse .5s ease; }
+@keyframes bzPulse{ 0%,100%{ transform:scale(1) } 35%{ transform:scale(1.06); box-shadow:0 0 28px rgba(255,203,71,.6) } }
+#app.is-dragging .bat-zone{ border-color:var(--gold); background:rgba(255,203,71,.14); }
+
+/* ---- active: batter header + swing buttons ---- */
+.atbat-bar.active{ background:linear-gradient(180deg,#16273f,#0e1c30); border:1px solid var(--gold-2); border-radius:16px;
+  padding:9px 16px 13px; box-shadow:0 0 0 4px rgba(255,203,71,.1); }
+.ab-active{ flex:1; display:flex; flex-direction:column; min-width:0; }
+.ab-head{ font-size:1.18rem; font-weight:700; text-align:center; margin-bottom:8px; }
+.ab-head b{ color:var(--gold); } .ab-q{ color:var(--ink-dim); font-weight:500; }
+.ab-controls{ display:flex; align-items:stretch; justify-content:center; gap:14px; flex:1; min-height:0; }
+.ab-controls .approach-row{ display:flex; gap:13px; flex:0 1 auto; margin:0; }
+.atbat-bar .approach-btn{ flex:0 0 auto; width:188px; padding:11px 12px; gap:6px; border-radius:14px; }
+.atbat-bar .approach-btn .ap-icon{ }
+.atbat-bar .approach-btn .ap-icon .ico{ width:30px; height:30px; }
+.atbat-bar .approach-btn .ap-name{ font-size:1.04rem; }
+.atbat-bar .ap-desc{ font-size:.78rem; color:var(--ink-faint); line-height:1.3; font-weight:500; white-space:normal; max-width:170px; }
+.atbat-bar .tactics-row{ display:flex; flex-direction:column; gap:8px; justify-content:center; margin:0; flex:0 0 auto; }
+.atbat-bar .tactic-btn{ font-size:.92rem; padding:9px 16px; }
+.ab-cancel{ flex:0 0 auto; align-self:center; width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center;
+  border-radius:11px; background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--ink-dim); cursor:pointer;
+  transition:color .12s, border-color .12s; }
+.ab-cancel .ico{ width:20px; height:20px; }
+.ab-cancel:hover{ color:var(--bad); border-color:var(--bad); }
+
+/* the play summary is shorter now to make room for the bar */
+.col-center{ min-height:0; }
