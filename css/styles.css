@@ -405,6 +405,83 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .shake{animation:shake .4s}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 
-::-webkit-scrollbar{width:10px; height:10px}
+::-webkit-scrollbar{width:8px; height:8px}
 ::-webkit-scrollbar-thumb{background:#22324c; border-radius:8px}
 ::-webkit-scrollbar-track{background:transparent}
+
+/* ===================================================================
+   FIXED-VIEWPORT LAYOUT — landscape, no page scroll (Balatro-style).
+   The whole UI lives in a 1600x900 stage scaled to fit the screen.
+   =================================================================== */
+html,body{ height:100%; width:100%; overflow:hidden; }
+body{ position:fixed; inset:0; margin:0; }
+#stage{
+  position:absolute; left:50%; top:50%;
+  width:1600px; height:900px;
+  transform:translate(-50%,-50%) scale(var(--scale,1));
+  transform-origin:center center;
+}
+#app{ width:1600px; height:900px; min-height:0; overflow:hidden; position:relative; }
+.screen{ width:1600px; height:900px; max-width:none; margin:0; padding:24px 34px; overflow:hidden; display:flex; flex-direction:column; }
+
+/* corner buttons stay viewport-fixed (always a usable size) */
+#howto-btn,#menu-btn{ z-index:45; }
+
+/* ---------------- TITLE ---------------- */
+.title-screen{ padding:30px 48px 56px; justify-content:center; gap:4px; }
+.title-hero{ margin-bottom:4px; }
+.tagline{ margin-top:8px; }
+.pick-h{ margin:18px 0 12px; }
+.seed-row{ margin:0 auto 14px; }
+.franchise-grid{ grid-template-columns:repeat(5,1fr); gap:13px; flex:0 0 auto; }
+.franchise-card{ padding:14px 15px; }
+.fr-tag{ min-height:32px; margin:5px 0 10px; font-size:.84rem; }
+.fr-sub{ min-height:26px; }
+.title-foot{ position:absolute; left:0; right:0; bottom:16px; padding:0 40px; margin:0; }
+
+/* ---------------- MAP ---------------- */
+.map-screen{ justify-content:center; gap:20px; padding:30px 60px; }
+.map-head{ margin-bottom:6px; }
+.bracket{ margin-bottom:0; }
+
+/* ---------------- GAME ---------------- */
+.game-screen{ gap:10px; padding:14px 28px 16px; }
+.scoreboard{ flex:0 0 auto; padding:12px 20px; }
+.sb-rally-num{ font-size:2.6rem; }
+.game-body{ flex:1 1 auto; min-height:0; margin-top:0; grid-template-columns:310px 1fr 248px; gap:14px; }
+.col-left{ min-height:0; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+.col-center{ min-height:0; }
+.col-right{ min-height:0; display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+.resources{ flex:0 0 auto; }
+.diamond-wrap{ flex:0 0 auto; }
+.diamond{ width:230px; height:198px; }
+.readout{ flex:1 1 auto; min-height:96px; }
+.play-log{ height:100%; max-height:none; }
+.dugout{ overflow-y:auto; min-height:0; flex:1 1 auto; }
+.hand-row{ flex:0 0 auto; margin-top:4px; gap:8px; }
+.hand{ min-height:0; align-items:flex-start; gap:11px; }
+.hand-actions{ gap:16px; }
+
+/* ---------------- SHOP (compact, fills the stage) ---------------- */
+.shop-screen{ padding:16px 32px 18px; gap:10px; }
+.shop-head{ flex:0 0 auto; margin-bottom:2px; }
+.shop-grid{ flex:1 1 auto; min-height:0; display:block; column-count:2; column-gap:28px; overflow:hidden; }
+.shop-section{ break-inside:avoid; -webkit-column-break-inside:avoid; margin-bottom:14px; }
+.shop-section h3{ margin-bottom:5px; font-size:.74rem; }
+.shop-row{ gap:9px; }
+.shop-item{ width:138px; padding:7px; gap:6px; }
+.shop-item .card{ min-height:0; padding:7px; }
+.shop-item .card .card-tags{ display:none; }
+.shop-item .card .card-stats{ gap:3px; margin-bottom:4px; }
+.shop-item .card .card-top{ margin-bottom:5px; }
+.shop-coach,.shop-misc{ min-height:104px; }
+.buy-btn{ padding:7px; }
+
+/* ---------------- portrait nudge ---------------- */
+#rotate-hint{
+  display:none; position:fixed; inset:0; z-index:200; background:var(--bg0);
+  color:var(--ink); font-weight:700; font-size:5vw; text-align:center;
+  align-items:center; justify-content:center; padding:8vw; line-height:1.6;
+}
+body.portrait #rotate-hint{ display:flex; }
+body.portrait #stage,body.portrait #howto-btn,body.portrait #menu-btn{ display:none; }

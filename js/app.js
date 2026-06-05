@@ -1569,8 +1569,33 @@
   /* ============================================================
      BOOT
      ============================================================ */
+  // Scale the fixed 1600x900 stage to fit the viewport (landscape, no scroll).
+  const STAGE_W = 1600, STAGE_H = 900;
+  let _lastW = 0, _lastH = 0;
+  function fitStage() {
+    const stage = document.getElementById("stage");
+    if (!stage) return;
+    const w = window.innerWidth, h = window.innerHeight;
+    if (w === _lastW && h === _lastH) return; // cheap no-op when nothing changed
+    _lastW = w; _lastH = h;
+    const s = Math.min(w / STAGE_W, h / STAGE_H);
+    stage.style.setProperty("--scale", s);
+    // nudge users in portrait to rotate (only when clearly portrait-ish on a small screen)
+    const portrait = h > w && w < 760;
+    document.body.classList.toggle("portrait", portrait);
+  }
+
   function boot() {
     SFX.setEnabled(META.sound);
+    fitStage();
+    window.addEventListener("resize", fitStage);
+    window.addEventListener("orientationchange", fitStage);
+    window.addEventListener("load", fitStage);
+    setTimeout(fitStage, 60);
+    setTimeout(fitStage, 300);
+    // catch viewport changes that don't fire a window resize (some mobile browsers, embedded views)
+    if (window.ResizeObserver) { try { new ResizeObserver(fitStage).observe(document.documentElement); } catch (e) {} }
+    setInterval(fitStage, 300); // safety net; near-free thanks to change-detection
     render();
     const hb = document.getElementById("howto-btn");
     if (hb) hb.onclick = showHowTo;
