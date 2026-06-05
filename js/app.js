@@ -152,6 +152,7 @@
     const game = {
       pitcher,
       outsRemaining: outs,
+      outsMax: outs,
       outsThisInning: 0,
       rally: run.startRally,
       startRally: run.startRally,
@@ -184,7 +185,7 @@
     STATE.screen = "game";
     render();
     // little intro flash
-    pushLog(`▶ ${roundName(gi)} · ${gameLabel(gi)} — facing ${pitcher.name}. Target ${target}.`, "neutral");
+    pushLog(`${icon("chevronR")} ${roundName(gi)} · ${gameLabel(gi)} — facing ${pitcher.name}. Target ${target}.`, "neutral");
   }
 
   function drawCard() {
@@ -231,20 +232,20 @@
     const plat = Engine.platoonState(card, g.pitcher, STATE.run);
     const platTag = plat.state === "adv" ? `<span class="plat plat-adv">platoon +</span>` : plat.state === "dis" ? `<span class="plat plat-dis">platoon −</span>` : "";
     const tr = getTrait(card.trait);
-    const traitTag = tr ? `<span class="trait-chip" title="${tr.name} — ${tr.desc}">${tr.icon}</span>` : "";
-    const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" title="Hot — boosted stats">🔥</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" title="Cold — reduced stats">❄️</span>` : "";
-    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${a.icon}</span><span class="ap-name">${a.name}</span></button>`;
+    const traitTag = tr ? `<span class="trait-chip" data-tip="<b>${tr.name}</b><br>${tr.desc}">${icon(tr.icon)}</span>` : "";
+    const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</span>` : "";
+    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${icon(a.icon)}</span><span class="ap-name">${a.name}</span></button>`;
     const runnersOn = g.bases.some(Boolean);
-    const buntBtn = runnersOn ? `<button class="tactic-btn" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">🤏 Bunt</button>` : "";
+    const buntBtn = runnersOn ? `<button class="tactic-btn" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt</button>` : "";
     let sends = "";
-    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">↗ Send ${r.nick || shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
+    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">${icon("arrowUpRight")} Send ${r.nick || shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
     const tactics = (buntBtn || sends) ? `<div class="tactics-row">${buntBtn}${sends}</div>` : "";
     return `<div class="atbat-panel">
         <div class="atbat-up"><b>${card.nick || card.name}</b> steps in ${platTag} ${traitTag} ${streak}</div>
         <div class="atbat-q">How do you swing?</div>
         <div class="approach-row">${btn(aps.swing)}${btn(aps.power)}${btn(aps.contact)}</div>
         ${tactics}
-        <button class="atbat-cancel" data-act="cancel-atbat">◂ pick someone else</button>
+        <button class="atbat-cancel" data-act="cancel-atbat">${icon("chevronL")} pick someone else</button>
       </div>`;
   }
 
@@ -259,11 +260,11 @@
       renderDiamond();
       if (res.caught) {
         SFX.out();
-        pushLog(`✗ Caught stealing — ${res.runner.name} is out!`, "bad");
+        pushLog(`${icon("out")} Caught stealing — ${res.runner.name} is out!`, "bad");
         setReadout("CAUGHT STEALING", "bad", { batterName: res.runner.name, platoon: "neutral" }, "Out on the basepaths.");
       } else {
         const to = res.to === 1 ? "2nd" : res.to === 2 ? "3rd" : "home";
-        pushLog(`↗ ${res.runner.name} steals ${to}!`, "steal");
+        pushLog(`${icon("arrowUpRight")} ${res.runner.name} steals ${to}!`, "steal");
         if (res.rallyBonus) animateRally({ rallyDelta: res.rallyBonus });
         (res.triggers || []).forEach(flashCoachByFx);
       }
@@ -479,7 +480,7 @@
     else if (STATE.screen === "map") root.innerHTML = renderMap();
     wireScreen();
     if (STATE.screen === "game") { renderGame(); }
-    // the ☰ menu button only makes sense once a run is underway (title is the main menu)
+    // the menu button only makes sense once a run is underway (title is the main menu)
     const mb = document.getElementById("menu-btn");
     if (mb) mb.style.display = STATE.screen === "title" ? "none" : "";
   }
@@ -492,7 +493,7 @@
     <div class="screen title-screen">
       <div class="title-hero">
         <div class="logo">
-          <span class="logo-diamond">◆</span>
+          <span class="logo-diamond">${icon("diamond")}</span>
           <h1>DIAMOND<span>DUEL</span></h1>
         </div>
         <p class="tagline">A baseball roguelike deckbuilder. Build a lineup, stack the rally, out-score the ace.</p>
@@ -503,15 +504,15 @@
         <input id="seed-input" class="seed-input" type="text" maxlength="32" autocomplete="off" spellcheck="false"
                placeholder="optional seed — leave blank for a random run" value="${STATE._replaySeed ? escAttr(STATE._replaySeed) : ""}" />
         ${STATE._replaySeed
-        ? `<div class="seed-hint replay">↻ Replaying <code>${escAttr(STATE._replaySeed)}</code>${STATE._replayFranchise ? ` — pick <b>${(FRANCHISES.find(f => f.id === STATE._replayFranchise) || {}).name || ""}</b> below to reproduce it exactly` : ""}</div>`
+        ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code>${STATE._replayFranchise ? ` — pick <b>${(FRANCHISES.find(f => f.id === STATE._replayFranchise) || {}).name || ""}</b> below to reproduce it exactly` : ""}</div>`
         : `<div class="seed-hint">Paste a seed to replay a specific run, or leave it blank for a fresh one.</div>`}
       </div>
       <div class="franchise-grid">${fr}</div>
       <div class="title-foot">
         <div class="foot-btns">
-          <button class="btn btn-ghost" data-act="howto">❔ How to Play</button>
-          <button class="btn btn-ghost" data-act="open-stats">📊 Stats</button>
-          <button class="btn btn-ghost" data-act="toggle-sound">${META.sound ? "🔊" : "🔇"} Sound: ${META.sound ? "On" : "Off"}</button>
+          <button class="btn btn-ghost" data-act="howto">${icon("help")} How to Play</button>
+          <button class="btn btn-ghost" data-act="open-stats">${icon("stats")} Stats</button>
+          <button class="btn btn-ghost" data-act="toggle-sound">${META.sound ? icon("soundOn") : icon("soundOff")} Sound: ${META.sound ? "On" : "Off"}</button>
         </div>
         <span class="foot-stats">${META.wins} ${META.wins === 1 ? "championship" : "championships"} · ${META.runs} runs · best ${META.bestScore || 0}</span>
         <span class="foot-version">v1.0</span>
@@ -530,7 +531,7 @@
     const isReplayTarget = STATE._replaySeed && STATE._replayFranchise === f.id;
     return `
       <button class="franchise-card${isReplayTarget ? " fr-replay-target" : ""}" data-franchise="${f.id}">
-        ${isReplayTarget ? `<div class="fr-replay-badge">↻ original</div>` : ""}
+        ${isReplayTarget ? `<div class="fr-replay-badge">${icon("replay")} original</div>` : ""}
         <div class="fr-head"><h3>${f.name}</h3></div>
         <p class="fr-tag">${f.tagline}</p>
         <div class="fr-stats">
@@ -539,9 +540,9 @@
           ${miniStat("EYE", mini(totals.e))}
           ${miniStat("SPD", mini(totals.s))}
         </div>
-        <div class="fr-bonus">${coach ? `★ ${coach.name}` : "—"}</div>
+        <div class="fr-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "—"}</div>
         <div class="fr-sub">${f.bonusText}</div>
-        <span class="fr-go">Start ▸</span>
+        <span class="fr-go">Start ${icon("chevronR")}</span>
       </button>`;
   }
   function miniStat(label, v) {
@@ -573,20 +574,17 @@
 
       <div class="game-body">
         <div class="col-left">
-          <div class="resources">
-            <div class="res"><b id="res-outs">0</b><span>OUTS</span></div>
-            <div class="res"><b id="res-inning">1</b><span>INNING</span></div>
-          </div>
           <div class="diamond-wrap">
             <div class="diamond" id="diamond">
               <div class="base base-2" data-base="2"></div>
               <div class="base base-1" data-base="1"></div>
               <div class="base base-3" data-base="3"></div>
               <div class="base base-home"></div>
+              <div class="runner-layer" id="runner-layer"></div>
               <div class="run-pop-layer" id="run-pop-layer"></div>
             </div>
           </div>
-          <div class="readout" id="readout"><div class="readout-empty">Play a card to begin the at-bat.</div></div>
+          <div class="readout" id="readout"><div class="readout-empty">Tap a batter to begin the at-bat.</div></div>
         </div>
 
         <div class="col-center">
@@ -596,6 +594,10 @@
         <div class="col-right">
           <div class="dugout-title">DUGOUT</div>
           <div class="dugout" id="dugout"></div>
+          <div class="situation">
+            <div class="sit-cell sit-outs"><div class="sit-pips" id="out-pips"></div><span>OUTS LEFT</span></div>
+            <div class="sit-cell sit-inning"><b id="res-inning">1</b><span>INNING</span></div>
+          </div>
           <div class="payroll-chip" id="payroll-chip">$<span id="payroll-amt">0</span></div>
         </div>
       </div>
@@ -626,7 +628,7 @@
     setText("sb-runs", g.runsScored);
     const pct = Math.min(100, (g.score / g.target) * 100);
     const pf = $("#sb-progress"); if (pf) pf.style.width = pct + "%";
-    setText("res-outs", g.outsRemaining);
+    renderOutPips(g);
     setText("res-inning", gi + 1);
     setRally(g.rally, false);
     setText("payroll-amt", run.payroll);
@@ -636,15 +638,62 @@
     refreshAtBat();
   }
 
+  // base-center coordinates (% of the square diamond): index 0=1st, 1=2nd, 2=3rd, plus home
+  const BASE_XY = [[84, 50], [50, 16], [16, 50]];
+  const HOME_XY = [50, 84];
+  let _runnerUid = 0;
+  function renderOutPips(g) {
+    const el = $("#out-pips");
+    if (!el) return;
+    const total = g.outsMax || (g.outsRemaining + (g.outsThisInning || 0)) || 3;
+    let h = "";
+    for (let i = 0; i < total; i++) h += `<span class="out-pip ${i < g.outsRemaining ? "left" : "used"}"></span>`;
+    el.innerHTML = h;
+  }
   function renderDiamond() {
     const g = STATE.game;
+    if (!g) return;
     for (let i = 0; i < 3; i++) {
       const el = $(`.base[data-base="${i + 1}"]`);
-      if (!el) continue;
-      const runner = g.bases[i];
-      el.classList.toggle("occupied", !!runner);
-      el.innerHTML = runner ? `<div class="runner ${speedClass(runner.speed)}" title="${runner.name} · SPD ${Math.round(runner.speed)}"></div>` : "";
+      if (el) el.classList.toggle("occupied", !!g.bases[i]);
     }
+    reconcileRunners(g);
+  }
+  // Animated runner tokens: each runner keeps a stable id, so the engine moving a
+  // runner from base to base smoothly slides its token (CSS transition on left/top).
+  function reconcileRunners(g) {
+    const layer = $("#runner-layer");
+    if (!layer) return;
+    const want = {};
+    for (let i = 0; i < 3; i++) {
+      const r = g.bases[i];
+      if (!r) continue;
+      if (!r._uid) r._uid = "r" + (++_runnerUid);
+      want[r._uid] = { base: i, r };
+    }
+    Object.keys(want).forEach((uid) => {
+      const { base, r } = want[uid];
+      const xy = BASE_XY[base];
+      let tok = layer.querySelector(`.rtok[data-rid="${uid}"]`);
+      if (!tok) {
+        tok = document.createElement("div");
+        tok.className = "rtok " + speedClass(r.speed);
+        tok.setAttribute("data-rid", uid);
+        tok.title = `${r.name} · SPD ${Math.round(r.speed)}`;
+        tok.style.left = HOME_XY[0] + "%"; tok.style.top = HOME_XY[1] + "%"; // sprint up from home
+        layer.appendChild(tok);
+        void tok.offsetWidth; // commit the start position so the move animates
+      }
+      tok.style.left = xy[0] + "%";
+      tok.style.top = xy[1] + "%";
+    });
+    $$(".rtok", layer).forEach((tok) => {
+      const rid = tok.getAttribute("data-rid");
+      if (!want[rid] && !tok.classList.contains("leaving")) {
+        tok.classList.add("leaving"); // scored / erased — fade & shrink out
+        setTimeout(() => { if (tok.parentNode) tok.parentNode.removeChild(tok); }, 460);
+      }
+    });
   }
   function speedClass(s) { return s >= 80 ? "spd-fast" : s >= 60 ? "spd-mid" : "spd-slow"; }
 
@@ -667,14 +716,14 @@
     const tagHTML = roleTags.map((t) => `<span class="ctag ct-${t}">${t}</span>`).join("");
     const idxAttr = idx != null ? `data-idx="${idx}"` : "";
     const tr = (typeof getTrait === "function") ? getTrait(c.trait) : null;
-    const traitBadge = tr ? `<div class="card-trait" title="${tr.name} — ${tr.desc}">${tr.icon}</div>` : "";
+    const traitBadge = tr ? `<div class="card-trait" data-tip="<b>${tr.name}</b><br>${tr.desc}">${icon(tr.icon)}</div>` : "";
     const st = c._streak || 0;
-    const streakBadge = st >= 2 ? `<div class="card-streak hot" title="Hot — boosted stats">🔥</div>` : st <= -2 ? `<div class="card-streak cold" title="Cold — reduced stats">❄️</div>` : "";
+    const streakBadge = st >= 2 ? `<div class="card-streak hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</div>` : st <= -2 ? `<div class="card-streak cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</div>` : "";
     return `
-      <div class="card rar-${c.rarity} ${c.edition ? "has-ed ed-bg-" + c.edition : ""}${st >= 2 ? " is-hot" : st <= -2 ? " is-cold" : ""}" ${idxAttr} data-uid="${c.uid}">
+      <div class="card rar-${c.rarity} ${c.edition ? "has-ed ed-bg-" + c.edition : ""}${st >= 2 ? " is-hot" : st <= -2 ? " is-cold" : ""}" ${idxAttr} data-uid="${c.uid}" data-tip="${cardTip(c)}">
         <div class="card-top">
           <div class="bats bats-${c.bats}">${c.bats}</div>
-          <div class="card-name" title="${c.name}">${c.nick || shortName(c.name)}</div>
+          <div class="card-name">${c.nick || shortName(c.name)}</div>
           ${traitBadge}
           <div class="card-pos">${pos}</div>
         </div>
@@ -691,6 +740,19 @@
   function statBar(label, v, cls) {
     const w = Math.max(2, Math.min(100, v));
     return `<div class="sbar"><span class="sbar-l">${label}</span><div class="sbar-track"><div class="sbar-fill ${cls}" style="width:${w}%"></div></div><span class="sbar-v">${Math.round(v)}</span></div>`;
+  }
+  // qualitative word for a 0..100ish stat, used in the player explainer tooltip
+  function statWord(v) { return v >= 88 ? "elite" : v >= 72 ? "high" : v >= 52 ? "average" : v >= 36 ? "low" : "poor"; }
+  // the rich explainer shown when a player card is tapped/hovered (task: explain stats)
+  function cardTip(c) {
+    const tr = (typeof getTrait === "function") ? getTrait(c.trait) : null;
+    const hand = c.bats === "S" ? "switch-hitter — never platoon-disadvantaged" : (c.bats === "L" ? "bats left" : "bats right");
+    return `<b>${c.name}</b> · ${hand}`
+      + `<br><b class='t-c'>Contact ${Math.round(c.contact)}</b> · ${statWord(c.contact)} — singles &amp; avoids strikeouts`
+      + `<br><b class='t-p'>Power ${Math.round(c.power)}</b> · ${statWord(c.power)} — extra-base hits &amp; home runs`
+      + `<br><b class='t-e'>Eye ${Math.round(c.eye)}</b> · ${statWord(c.eye)} — draws walks`
+      + `<br><b class='t-s'>Speed ${Math.round(c.speed)}</b> · ${statWord(c.speed)} — steals &amp; extra bases`
+      + (tr ? `<br><span class='tip-trait'>${tr.name} — ${tr.desc}</span>` : "");
   }
   function shortName(n) { const p = n.split(" "); return p.length > 1 ? p[0][0] + ". " + p.slice(1).join(" ") : n; }
   function editionLabel(e) { return ({ gold: "GOLD", clutch: "CLUTCH", prospect: "PROSPECT", foil: "FOIL", veteran: "VET" })[e] || e.toUpperCase(); }
@@ -709,17 +771,18 @@
   }
   // Compact dugout badge — just the coach's icon; the full rule lives in the tap/hover tooltip.
   function coachIconHTML(c) {
-    const icon = c.icon || "★";
+    const glyph = c.icon ? icon(c.icon) : icon("star");
     const scale = (c.state && c.state.bonus) ? `<span class="coach-badge">+${c.state.bonus.toFixed(1)}</span>` : "";
-    return `<div class="coach-icon rar-${c.rarity}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}"><span class="ci-glyph">${icon}</span>${scale}</div>`;
+    return `<div class="coach-icon rar-${c.rarity}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}"><span class="ci-glyph">${glyph}</span>${scale}</div>`;
   }
   function coachChipHTML(c, opts) {
     opts = opts || {};
     let sub = "";
     if (c.state && c.state.bonus) sub = `<span class="coach-scale">+${c.state.bonus.toFixed(1)}</span>`;
+    const glyph = c.icon ? `<span class="coach-chip-ico">${icon(c.icon)}</span>` : "";
     return `<div class="coach-chip rar-${c.rarity}" data-coach="${c.id}" data-uid="${c.uid}" title="${c.text}">
-      <div class="coach-name">${c.name}${sub}</div>
-      <div class="coach-text">${c.text}</div>
+      ${glyph}<div class="coach-chip-body"><div class="coach-name">${c.name}${sub}</div>
+      <div class="coach-text">${c.text}</div></div>
     </div>`;
   }
 
@@ -840,12 +903,12 @@
     const rows = breakdown.map((b) => `<div class="brk-row"><span>${b.label}</span><b>+$${b.amt}</b></div>`).join("");
     overlay(`
       <div class="ov-card win-ov">
-        <div class="ov-burst">✦</div>
+        <div class="ov-burst">${icon("sparkle")}</div>
         <h2>${gameLabel(g.gameIndex).toUpperCase()} CLEARED</h2>
         <div class="ov-sub">You beat ${g.pitcher.name} — <b>${g.score}</b> vs ${g.target}.</div>
         <div class="brk">${rows}<div class="brk-row brk-total"><span>Total earned</span><b>+$${total}</b></div></div>
         <div class="ov-pay">Payroll: <b>$${STATE.run.payroll}</b></div>
-        <button class="btn btn-big btn-gold" data-act="to-shop">Visit the Shop ▸</button>
+        <button class="btn btn-big btn-gold" data-act="to-shop">Visit the Shop ${icon("chevronR")}</button>
       </div>`);
   }
 
@@ -856,7 +919,7 @@
         <div class="ov-sub">You came up short against ${g.pitcher.name}.<br>Eliminated in the <b>${ordinal(g.gameIndex + 1)} inning</b> — ${g.score} / ${g.target}.</div>
         <div class="ov-stat">Best game score this run: ${STATE.run.stat.bestScore || g.score}</div>
         <div class="ov-actions">
-          <button class="btn btn-big btn-gold" data-act="replay-seed">↻ Replay Seed</button>
+          <button class="btn btn-big btn-gold" data-act="replay-seed">${icon("replay")} Replay Seed</button>
           <button class="btn btn-secondary" data-act="retry-run">New Run</button>
           <button class="btn btn-ghost" data-act="to-title">Main Menu</button>
         </div>
@@ -869,12 +932,12 @@
     SFX.win();
     overlay(`
       <div class="ov-card victory-ov">
-        <div class="ov-burst big">🏆</div>
+        <div class="ov-burst big">${icon("trophy")}</div>
         <h2>WORLD SERIES CHAMPIONS</h2>
         <div class="ov-sub">You ran the entire gauntlet with ${FRANCHISES.find(f => f.id === STATE.run.franchiseId).name}.<br>Seed: ${seedChip(STATE.run.seed)}</div>
         <div class="ov-stat">Games won: ${STATE.run.stat.gamesWon} · Best game score: ${STATE.run.stat.bestScore}</div>
         <div class="ov-actions">
-          <button class="btn btn-secondary" data-act="replay-seed">↻ Replay Seed</button>
+          <button class="btn btn-secondary" data-act="replay-seed">${icon("replay")} Replay Seed</button>
           <button class="btn btn-big btn-gold" data-act="retry-run">New Run</button>
           <button class="btn btn-ghost" data-act="to-title">Main Menu</button>
         </div>
@@ -885,18 +948,18 @@
   function showMenu() {
     if (SFX && SFX.click) SFX.click();
     const inRun = !!STATE.run;
-    const tile = (act, icon, label, note, cls) =>
-      `<button class="btn menu-tile ${cls || ""}" data-act="${act}"><span class="mi-icon">${icon}</span><span class="mi-text"><span class="mi-label">${label}</span>${note ? `<span class="menu-note">${note}</span>` : ""}</span></button>`;
+    const tile = (act, ic, label, note, cls) =>
+      `<button class="btn menu-tile ${cls || ""}" data-act="${act}"><span class="mi-icon">${ic}</span><span class="mi-text"><span class="mi-label">${label}</span>${note ? `<span class="menu-note">${note}</span>` : ""}</span></button>`;
     overlay(`
       <div class="ov-card menu-card">
         <h2>Menu</h2>
         <div class="menu-grid">
-          ${inRun ? tile("menu-resume", "▶", "Resume", "back to the game", "tile-resume") : ""}
-          ${tile("open-stats", "📊", "Stats", "career &amp; run")}
-          ${tile("howto", "❔", "How to Play", "the rules")}
-          ${tile("toggle-sound-menu", META.sound ? "🔊" : "🔇", "Sound: " + (META.sound ? "On" : "Off"), "toggle audio")}
-          ${inRun ? tile("to-menu", "↩", "Main Menu", "keeps your run") : ""}
-          ${inRun ? tile("abandon-run", "✕", "Abandon Run", "quit &amp; discard", "tile-danger") : ""}
+          ${inRun ? tile("menu-resume", icon("chevronR"), "Resume", "back to the game", "tile-resume") : ""}
+          ${tile("open-stats", icon("stats"), "Stats", "career &amp; run")}
+          ${tile("howto", icon("help"), "How to Play", "the rules")}
+          ${tile("toggle-sound-menu", META.sound ? icon("soundOn") : icon("soundOff"), "Sound: " + (META.sound ? "On" : "Off"), "toggle audio")}
+          ${inRun ? tile("to-menu", icon("chevronL"), "Main Menu", "keeps your run") : ""}
+          ${inRun ? tile("abandon-run", icon("close"), "Abandon Run", "quit &amp; discard", "tile-danger") : ""}
         </div>
         ${inRun ? "" : `<button class="btn btn-ghost" data-act="close-ov">Close</button>`}
       </div>`);
@@ -938,7 +1001,7 @@
     }
     overlay(`
       <div class="ov-card stats-card">
-        <h2>📊 Stats</h2>
+        <h2><span class="h2-ico">${icon("stats")}</span> Stats</h2>
         <h3>Career</h3>
         <div class="stat-grid">
           ${statCell("Championships", m.wins)}
@@ -948,8 +1011,8 @@
         </div>
         ${runHTML}
         <div class="stats-actions">
-          ${STATE.run ? `<button class="btn btn-secondary" data-act="replay-seed">↻ Replay this seed</button>` : ""}
-          <button class="btn ${STATE.run ? "" : "btn-gold"}" data-act="${STATE.run ? "back-to-menu" : "close-ov"}">${STATE.run ? "◂ Back" : "Close"}</button>
+          ${STATE.run ? `<button class="btn btn-secondary" data-act="replay-seed">${icon("replay")} Replay this seed</button>` : ""}
+          <button class="btn ${STATE.run ? "" : "btn-gold"}" data-act="${STATE.run ? "back-to-menu" : "close-ov"}">${STATE.run ? icon("chevronL") + " Back" : "Close"}</button>
         </div>
       </div>`);
   }
@@ -959,7 +1022,7 @@
 
   /* ---------- seeds: copy + replay ---------- */
   function escAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-  function seedChip(seed) { return `<code class="seed-copy" data-seed="${escAttr(seed)}" title="Click to copy this seed">${seed} ⧉</code>`; }
+  function seedChip(seed) { return `<code class="seed-copy" data-seed="${escAttr(seed)}" title="Click to copy this seed">${seed} ${icon("copy", "ico-sm")}</code>`; }
   function copySeed(seed) {
     const done = () => { toast("Seed copied — " + seed); if (SFX && SFX.coin) SFX.coin(); };
     try {
@@ -1022,7 +1085,7 @@
     `<section><h3>⑥ Runners</h3><p>Hits advance runners around the diamond. A runner on 2nd or 3rd is <b>in scoring position</b> — drive them home for +1 bag value each, and several coaches pay out heavily when runners are aboard.</p></section>`,
     `<section><h3>⑦ Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They sit in dugout slots and trigger passively or in the right situation — flat bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run long. Lean into a synergy.</p></section>`,
     `<section><h3>⑧ The innings &amp; the shop</h3><p>Nine innings across three phases — <b>Early</b>, <b>Middle</b>, <b>Late</b> — and the third inning of each is a <b>Boss</b>. Boss pitchers carry a nasty rule, telegraphed ahead of time so you can shop for it. Between innings you spend <b>Payroll ($)</b> on players, coaches, analytics, scouting, upgrades, and packs. <em>You can't clear the late innings with your starting deck — building is the point.</em></p></section>`,
-    `<section class="howto-tips"><h3>★ Quick tips</h3><ul><li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same direction beats a pile of random ones.</li></ul></section>`,
+    `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same direction beats a pile of random ones.</li></ul></section>`,
   ];
   const HOWTO_PAGES = [[0, 1], [2], [3, 4], [5, 6], [7, 8]];
   function showHowTo(page) {
@@ -1039,9 +1102,9 @@
         <h2>How to Play <span class="howto-sub">Diamond Duel</span> <span class="howto-pageno">${p + 1}/${np}</span></h2>
         <div class="howto-body">${body}</div>
         <div class="howto-nav">
-          <button class="btn btn-ghost" data-act="${first ? "close-ov" : "howto-prev"}">${first ? "Close" : "◂ Back"}</button>
+          <button class="btn btn-ghost" data-act="${first ? "close-ov" : "howto-prev"}">${first ? "Close" : icon("chevronL") + " Back"}</button>
           <div class="ht-dots">${dots}</div>
-          <button class="btn btn-gold" data-act="${last ? "close-ov" : "howto-next"}">${last ? "Got it ▸" : "Next ▸"}</button>
+          <button class="btn btn-gold" data-act="${last ? "close-ov" : "howto-next"}">${last ? "Got it " + icon("check") : "Next " + icon("chevronR")}</button>
         </div>
       </div>`);
   }
@@ -1074,7 +1137,7 @@
         else if (idx === gi) cls += " current";
         else cls += " future";
         if (isBossGame) cls += " boss";
-        const label = "Inn " + (idx + 1) + (isBossGame ? " ♦" : "");
+        const label = "Inn " + (idx + 1) + (isBossGame ? " " + icon("diamond", "ico-boss") : "");
         const tgt = Math.round((CONFIG.targets[idx] || 0) * (isBossGame && run.bosses[ri].rule === "ace" ? (CONFIG.aceTargetMult || 1.25) : 1));
         games.push(`<div class="${cls}" title="Target ${tgt}"><span class="bg-label">${label}</span><span class="bg-target">${tgt}</span></div>`);
       }
@@ -1102,7 +1165,7 @@
         </div>
         <div class="mn-right">
           <button class="btn btn-secondary" data-act="open-deck">View Deck (${run.deck.length})</button>
-          <button class="btn btn-big btn-gold" data-act="play-game">Play Ball ▸</button>
+          <button class="btn btn-big btn-gold" data-act="play-game">Play Ball ${icon("chevronR")}</button>
         </div>
       </div>
     </div>`;
@@ -1164,7 +1227,7 @@
       const aff = run.payroll >= slot.cost && !owned;
       let body = "";
       if (slot.kind === "card") body = cardHTML(cloneCardPreview(it), null);
-      else if (slot.kind === "coach") body = `<div class="shop-coach"><div class="sc-name">${it.name}</div><div class="sc-text">${it.text}</div></div>`;
+      else if (slot.kind === "coach") body = `<div class="shop-coach">${it.icon ? `<span class="sc-ico">${icon(it.icon)}</span>` : ""}<div class="sc-name">${it.name}</div><div class="sc-text">${it.text}</div></div>`;
       else body = `<div class="shop-misc shop-${slot.kind}"><div class="sm-name">${it.name}</div><div class="sm-text">${it.text}</div></div>`;
       return `
         <div class="shop-item ${owned ? "sold" : ""} ${aff ? "" : "cant"}" data-group="${group}" data-i="${i}">
@@ -1190,7 +1253,7 @@
           <button class="btn btn-reroll" data-act="reroll">Reroll ($${rerollCost()})</button>
           <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
           <button class="btn btn-secondary" data-act="open-dugout">Dugout (${run.dugout.length}/${run.dugoutSlots})</button>
-          <button class="btn btn-big btn-gold" data-act="leave-shop">Proceed ▸</button>
+          <button class="btn btn-big btn-gold" data-act="leave-shop">Proceed ${icon("chevronR")}</button>
         </div>
       </div>
       ${dugFull ? `<div class="shop-warn">Dugout full (${run.dugout.length}/${run.dugoutSlots}). Sell a coach in the Dugout view to make room.</div>` : ""}
@@ -1360,8 +1423,8 @@
       const picked = ctx.picked.indexOf(i) >= 0;
       let body;
       if (o.kind === "card") body = cardHTML(cloneCardPreview(o.item), null);
-      else body = `<div class="shop-coach"><div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div></div>`;
-      return `<div class="pack-opt ${picked ? "picked" : ""}" data-packpick="${i}">${body}${picked ? '<div class="pick-check">✓</div>' : ""}</div>`;
+      else body = `<div class="shop-coach">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div></div>`;
+      return `<div class="pack-opt ${picked ? "picked" : ""}" data-packpick="${i}">${body}${picked ? '<div class="pick-check">' + icon("check") + '</div>' : ""}</div>`;
     }).join("");
     overlay(`
       <div class="ov-card pack-ov">
@@ -1707,7 +1770,9 @@
     document.addEventListener("scroll", snapBack, { passive: true });
     render();
     const mb = document.getElementById("menu-btn");
-    if (mb) mb.onclick = showMenu;
+    if (mb) { mb.innerHTML = icon("menu"); mb.onclick = showMenu; }
+    const rh = document.getElementById("rh-icon");
+    if (rh) rh.innerHTML = icon("phone");
     initTooltips();
     // expose a small debug API for testing
     global.DD = {
@@ -1718,6 +1783,8 @@
       win: () => { STATE.game.score = STATE.game.target; },
       give: (n) => { STATE.run.payroll += (n || 50); if (STATE.screen === "shop") render(); },
       state: () => STATE,
+      render: () => render(),
+      renderGame: () => renderGame(),
     };
   }
 

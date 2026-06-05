@@ -88,10 +88,10 @@
 
     // At-bat APPROACHES — the per-plate-appearance decision. Each scales outcome weights.
     approaches: {
-      swing:  { id: "swing",  name: "Swing Away",     icon: "🏏", desc: "Balanced — your natural swing.", w: {} },
-      power:  { id: "power",  name: "Power Swing",    icon: "💪", desc: "Sell out for the big fly. More HR & extra-base hits, but more strikeouts.",
+      swing:  { id: "swing",  name: "Swing Away",     icon: "bat", desc: "Balanced — your natural swing.", w: {} },
+      power:  { id: "power",  name: "Power Swing",    icon: "muscle", desc: "Sell out for the big fly. More HR & extra-base hits, but more strikeouts.",
         w: { HR: 1.65, "2B": 1.45, "3B": 1.4, "1B": 0.7, BB: 0.55, K: 1.3, OUT: 1.0 } },
-      contact:{ id: "contact",name: "Work the Count", icon: "👁️", desc: "Patient & protective. Many more walks, far fewer strikeouts — but little power.",
+      contact:{ id: "contact",name: "Work the Count", icon: "eye", desc: "Patient & protective. Many more walks, far fewer strikeouts — but little power.",
         w: { BB: 2.1, HBP: 1.3, K: 0.5, "1B": 1.2, "2B": 0.7, "3B": 0.6, HR: 0.5, OUT: 0.95 } },
     },
 
@@ -191,21 +191,55 @@
     P("jackrabbit_jones", "Jackrabbit Jones", "S", 80, 40, 70, 99, ["speedster", "legend", "switch", "CF"], "legend", 9, "Jackrabbit"),
     P("otis_lane", "Otis Lane", "L", 99, 56, 72, 64, ["contact", "legend", "lefty", "2B"], "legend", 9, "Smooth"),
     P("cannon_dupree", "Cannon Dupree", "R", 66, 95, 78, 30, ["slugger", "legend", "1B"], "legend", 10, "Cannon"),
+
+    /* --- Wave 2: a deeper free-agent pool --- */
+    // Speedsters / table-setters
+    P("zip_calloway", "Zip Calloway", "L", 62, 26, 56, 91, ["speedster", "table-setter", "lefty", "CF"], "star", 5, "Zip"),
+    P("comet_reyes", "Comet Reyes", "S", 58, 30, 52, 93, ["speedster", "switch", "SS"], "common", 3, "Comet"),
+    P("breeze_holloway", "Breeze Holloway", "R", 60, 22, 58, 86, ["speedster", "OF"], "common", 3, "Breeze"),
+    P("scooter_pace", "Scooter Pace", "S", 60, 38, 56, 72, ["speedster", "switch", "rookie", "2B"], "common", 3, "Scooter"),
+    // Contact
+    P("dink_harper", "Dink Harper", "L", 89, 30, 62, 58, ["contact", "table-setter", "lefty", "2B"], "star", 5, "Dink"),
+    P("spray_okafor", "Marcus Okafor", "S", 85, 34, 54, 64, ["contact", "switch", "CF"], "common", 4, "Spray"),
+    P("punch_lavoie", "Pierre Lavoie", "R", 87, 38, 50, 48, ["contact", "veteran", "1B"], "star", 5, "Punch"),
+    // Sluggers
+    P("boom_castillo", "Boom Castillo", "R", 48, 93, 44, 28, ["slugger", "1B"], "star", 6, "Boom"),
+    P("moose_kowalski", "Moose Kowalski", "R", 44, 95, 40, 22, ["slugger", "veteran", "DH"], "allstar", 7, "Moose"),
+    P("blast_jennings", "Blast Jennings", "L", 50, 89, 52, 34, ["slugger", "lefty", "RF"], "star", 6, "Blast"),
+    P("crusher_voss", "Crusher Voss", "R", 42, 91, 38, 26, ["slugger", "rookie", "3B"], "star", 6, "Crusher"),
+    // Eye / Moneyball
+    P("elias_pike", "Elias Pike", "L", 68, 52, 90, 46, ["contact", "lefty", "RF"], "star", 6, "The Vault"),
+    P("roy_mcgill", "Roy McGill", "R", 64, 60, 86, 40, ["slugger", "1B"], "star", 5),
+    P("andre_delacroix", "Andre Delacroix", "S", 70, 48, 88, 54, ["contact", "switch", "2B"], "star", 6, "The Count"),
+    // Balanced / utility
+    P("dusty_quintero", "Dusty Quintero", "R", 68, 64, 58, 56, ["utility", "veteran", "SS"], "star", 5, "Dusty"),
+    P("ace_brannigan", "Ace Brannigan", "L", 66, 62, 60, 60, ["utility", "lefty", "OF"], "common", 4, "Ace"),
+    P("rudy_falk", "Rudy Falk", "S", 64, 56, 64, 58, ["utility", "switch", "3B"], "common", 4),
+    // Catchers / corner bats
+    P("wally_brennan", "Wally Brennan", "R", 72, 68, 64, 32, ["contact", "veteran", "C"], "star", 5, "Wally"),
+    P("gunnar_polk", "Gunnar Polk", "L", 60, 76, 48, 36, ["slugger", "lefty", "C"], "common", 4, "Gunnar"),
+    // Commons / filler
+    P("pip_sandoval", "Pip Sandoval", "R", 56, 46, 52, 56, ["utility", "OF"], "common", 3, "Pip"),
+    P("cole_morrow", "Cole Morrow", "L", 58, 52, 48, 50, ["utility", "lefty", "1B"], "common", 3),
+    P("doc_ellwood", "Doc Ellwood", "R", 54, 48, 54, 54, ["contact", "OF"], "common", 3, "Doc"),
+    // Legends
+    P("sully_byrne", "Sully Byrne", "L", 92, 80, 70, 60, ["slugger", "legend", "lefty", "RF"], "legend", 11, "The Natural"),
+    P("kid_zamora", "Kid Zamora", "S", 84, 62, 80, 88, ["speedster", "legend", "switch", "CF"], "legend", 10, "Kid"),
   ];
 
   /* -------------------------------------------------------- */
   /* TRAITS — signature player abilities (read by the engine)  */
   /* -------------------------------------------------------- */
   const TRAITS = {
-    launch:      { id: "launch",      name: "Launch",      icon: "🚀", desc: "Power Swing never adds strikeouts for this hitter — sell out risk-free." },
-    eagle:       { id: "eagle",       name: "Eagle Eye",   icon: "🦅", desc: "Work the Count draws even more walks and never strikes out." },
-    burner:      { id: "burner",      name: "Burner",      icon: "🔥", desc: "Steals almost always succeed and takes the extra base far more often." },
-    clutch:      { id: "clutch",      name: "Clutch",      icon: "🧊", desc: "With 2 outs or a runner in scoring position, this at-bat scores at +1.0 Rally." },
-    mistake:     { id: "mistake",     name: "Mistake Hitter", icon: "🎯", desc: "Big hit bonus against pitchers with weak Command." },
-    acekiller:   { id: "acekiller",   name: "Ace Killer",  icon: "⚔️", desc: "+1.0 Rally and +1 Bag value against Boss pitchers." },
-    sparkplug:   { id: "sparkplug",   name: "Sparkplug",   icon: "⚡", desc: "If this hitter leads off an inning and reaches base, +0.5 Rally for the rest of the inning." },
-    streaky:     { id: "streaky",     name: "Streaky",     icon: "📈", desc: "Hot and cold streaks hit twice as hard." },
-    ice:         { id: "ice",         name: "Ice Veins",   icon: "🧘", desc: "Never goes cold — immune to slumps." },
+    launch:      { id: "launch",      name: "Launch",      icon: "launch",    desc: "Power Swing never adds strikeouts for this hitter — sell out risk-free." },
+    eagle:       { id: "eagle",       name: "Eagle Eye",   icon: "eagle",     desc: "Work the Count draws even more walks and never strikes out." },
+    burner:      { id: "burner",      name: "Burner",      icon: "burner",    desc: "Steals almost always succeed and takes the extra base far more often." },
+    clutch:      { id: "clutch",      name: "Clutch",      icon: "clutch",    desc: "With 2 outs or a runner in scoring position, this at-bat scores at +1.0 Rally." },
+    mistake:     { id: "mistake",     name: "Mistake Hitter", icon: "mistake", desc: "Big hit bonus against pitchers with weak Command." },
+    acekiller:   { id: "acekiller",   name: "Ace Killer",  icon: "acekiller", desc: "+1.0 Rally and +1 Bag value against Boss pitchers." },
+    sparkplug:   { id: "sparkplug",   name: "Sparkplug",   icon: "sparkplug", desc: "If this hitter leads off an inning and reaches base, +0.5 Rally for the rest of the inning." },
+    streaky:     { id: "streaky",     name: "Streaky",     icon: "streaky",   desc: "Hot and cold streaks hit twice as hard." },
+    ice:         { id: "ice",         name: "Ice Veins",   icon: "ice",       desc: "Never goes cold — immune to slumps." },
   };
   // assign signature traits to key players (others have none)
   const TRAIT_ASSIGN = {
@@ -216,6 +250,14 @@
     cannon_dupree: "mistake", bruno_vargas: "mistake",
     hank_delgado: "acekiller", marty_soto: "ice", desmond_pratt: "streaky",
     ozzie_klein: "sparkplug", sunny_okada: "sparkplug", rex_stoneman: "streaky",
+    // wave 2
+    boom_castillo: "launch", crusher_voss: "launch", moose_kowalski: "acekiller",
+    elias_pike: "eagle", roy_mcgill: "eagle", andre_delacroix: "eagle",
+    zip_calloway: "burner", comet_reyes: "burner", kid_zamora: "burner",
+    wally_brennan: "clutch", gunnar_polk: "clutch",
+    sully_byrne: "mistake", blast_jennings: "streaky", ace_brannigan: "streaky",
+    dusty_quintero: "ice", punch_lavoie: "ice",
+    scooter_pace: "sparkplug", dink_harper: "sparkplug",
   };
   PLAYERS.forEach((p) => { p.trait = TRAIT_ASSIGN[p.id] || null; });
 
@@ -229,35 +271,35 @@
   /* -------------------------------------------------------- */
   const COACHES = [
     // Flat boosters
-    { id: "launch_angle", name: "Launch Angle Coordinator", fx: "launchAngle", icon: "🚀", trigger: "passive", rarity: "common", cost: 4, text: "All home runs gain +2 Bag value." },
-    { id: "contact_instructor", name: "Contact Hitting Instructor", fx: "contactInstructor", icon: "🎯", trigger: "passive", rarity: "common", cost: 4, text: "All singles gain +1 Bag value." },
-    { id: "gap_coach", name: "Gap-to-Gap Coach", fx: "gapCoach", icon: "↔️", trigger: "passive", rarity: "common", cost: 4, text: "All doubles & triples gain +2 Bag value." },
-    { id: "patience_guru", name: "Patience Guru", fx: "patienceGuru", icon: "🧘", trigger: "passive", rarity: "common", cost: 4, text: "Walks & HBP grant +1.0 Rally (instead of +0.5)." },
+    { id: "launch_angle", name: "Launch Angle Coordinator", fx: "launchAngle", icon: "rocket", trigger: "passive", rarity: "common", cost: 4, text: "All home runs gain +2 Bag value." },
+    { id: "contact_instructor", name: "Contact Hitting Instructor", fx: "contactInstructor", icon: "target", trigger: "passive", rarity: "common", cost: 4, text: "All singles gain +1 Bag value." },
+    { id: "gap_coach", name: "Gap-to-Gap Coach", fx: "gapCoach", icon: "moveX", trigger: "passive", rarity: "common", cost: 4, text: "All doubles & triples gain +2 Bag value." },
+    { id: "patience_guru", name: "Patience Guru", fx: "patienceGuru", icon: "hourglass", trigger: "passive", rarity: "common", cost: 4, text: "Walks & HBP grant +1.0 Rally (instead of +0.5)." },
 
     // Sequence / situational
-    { id: "hit_and_run", name: "Hit-and-Run", fx: "hitAndRun", icon: "🏃", trigger: "situational", rarity: "common", cost: 5, text: "Playing a Contact card with a runner on first grants +0.5 Rally." },
-    { id: "table_setter", name: "Table-Setter", fx: "tableSetter", icon: "🍽️", trigger: "situational", rarity: "star", cost: 6, text: "If the first batter of an inning reaches base, +0.5 Rally on every safe play for the rest of that inning." },
-    { id: "two_out_magic", name: "Two-Out Magic", fx: "twoOutMagic", icon: "✨", trigger: "situational", rarity: "star", cost: 6, text: "Events recorded with two outs score at +1.0 Rally." },
-    { id: "risp_specialist", name: "RISP Specialist", fx: "rispSpecialist", icon: "🧲", trigger: "situational", rarity: "star", cost: 6, text: "With a runner in scoring position, +1 Bag value per run driven in." },
-    { id: "back_to_back", name: "Back-to-Back", fx: "backToBack", icon: "💥", trigger: "situational", rarity: "star", cost: 6, text: "Playing two Slugger cards in a row grants +1.0 Rally on the second." },
-    { id: "small_ball", name: "Small Ball", fx: "smallBall", icon: "🤏", trigger: "situational", rarity: "star", cost: 6, text: "Productive outs and stolen bases grant +0.5 Rally (and a productive out won't reset your Rally)." },
-    { id: "rally_cap", name: "Rally Caps", fx: "rallyCap", icon: "🧢", trigger: "situational", rarity: "star", cost: 6, text: "Every 3rd consecutive safe outcome scores with an extra +1.5 Rally." },
+    { id: "hit_and_run", name: "Hit-and-Run", fx: "hitAndRun", icon: "footprints", trigger: "situational", rarity: "common", cost: 5, text: "Playing a Contact card with a runner on first grants +0.5 Rally." },
+    { id: "table_setter", name: "Table-Setter", fx: "tableSetter", icon: "layers", trigger: "situational", rarity: "star", cost: 6, text: "If the first batter of an inning reaches base, +0.5 Rally on every safe play for the rest of that inning." },
+    { id: "two_out_magic", name: "Two-Out Magic", fx: "twoOutMagic", icon: "sparkle", trigger: "situational", rarity: "star", cost: 6, text: "Events recorded with two outs score at +1.0 Rally." },
+    { id: "risp_specialist", name: "RISP Specialist", fx: "rispSpecialist", icon: "home", trigger: "situational", rarity: "star", cost: 6, text: "With a runner in scoring position, +1 Bag value per run driven in." },
+    { id: "back_to_back", name: "Back-to-Back", fx: "backToBack", icon: "repeat", trigger: "situational", rarity: "star", cost: 6, text: "Playing two Slugger cards in a row grants +1.0 Rally on the second." },
+    { id: "small_ball", name: "Small Ball", fx: "smallBall", icon: "gauge", trigger: "situational", rarity: "star", cost: 6, text: "Productive outs and stolen bases grant +0.5 Rally (and a productive out won't reset your Rally)." },
+    { id: "rally_cap", name: "Rally Caps", fx: "rallyCap", icon: "cap", trigger: "situational", rarity: "star", cost: 6, text: "Every 3rd consecutive safe outcome scores with an extra +1.5 Rally." },
 
     // Roster-composition (tag readers)
-    { id: "bash_brothers", name: "Bash Brothers", fx: "bashBrothers", icon: "💪", trigger: "passive", rarity: "star", cost: 6, text: "While 4+ Sluggers are in your deck, all hits gain +1 Bag value." },
-    { id: "whitey_ball", name: "Whitey Ball", fx: "whiteyBall", icon: "💨", trigger: "passive", rarity: "star", cost: 6, text: "While 3+ Speedsters are in your deck, all runners gain +18 Speed." },
-    { id: "platoon_manager", name: "Platoon Manager", fx: "platoonManager", icon: "🔀", trigger: "passive", rarity: "common", cost: 5, text: "Your platoon advantage bonus is doubled." },
-    { id: "sabermetrician", name: "Sabermetrician", fx: "sabermetrician", icon: "📊", trigger: "passive", rarity: "star", cost: 6, text: "Walks count as singles for Bag value (Bag 2)." },
+    { id: "bash_brothers", name: "Bash Brothers", fx: "bashBrothers", icon: "muscle", trigger: "passive", rarity: "star", cost: 6, text: "While 4+ Sluggers are in your deck, all hits gain +1 Bag value." },
+    { id: "whitey_ball", name: "Whitey Ball", fx: "whiteyBall", icon: "wind", trigger: "passive", rarity: "star", cost: 6, text: "While 3+ Speedsters are in your deck, all runners gain +18 Speed." },
+    { id: "platoon_manager", name: "Platoon Manager", fx: "platoonManager", icon: "shuffle", trigger: "passive", rarity: "common", cost: 5, text: "Your platoon advantage bonus is doubled." },
+    { id: "sabermetrician", name: "Sabermetrician", fx: "sabermetrician", icon: "barChart", trigger: "passive", rarity: "star", cost: 6, text: "Walks count as singles for Bag value (Bag 2)." },
 
     // Scaling
-    { id: "prospect_pipeline", name: "Prospect Pipeline", fx: "prospectPipeline", icon: "🌱", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.2 Rally (applied to every event) each time a Rookie records a hit.", state: { bonus: 0 } },
-    { id: "hot_streak", name: "Hot Streak", fx: "hotStreak", icon: "🔥", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.5 Rally per game in which you hit a home run. Resets after a game with no homer.", state: { bonus: 0, homerThisGame: false } },
-    { id: "veteran_presence", name: "Veteran Presence", fx: "veteranPresence", icon: "🎖️", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.1 Rally (applied to every event) each time a Veteran records a hit.", state: { bonus: 0 } },
+    { id: "prospect_pipeline", name: "Prospect Pipeline", fx: "prospectPipeline", icon: "sprout", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.2 Rally (applied to every event) each time a Rookie records a hit.", state: { bonus: 0 } },
+    { id: "hot_streak", name: "Hot Streak", fx: "hotStreak", icon: "flame", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.5 Rally per game in which you hit a home run. Resets after a game with no homer.", state: { bonus: 0, homerThisGame: false } },
+    { id: "veteran_presence", name: "Veteran Presence", fx: "veteranPresence", icon: "medal", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.1 Rally (applied to every event) each time a Veteran records a hit.", state: { bonus: 0 } },
 
     // Economy
-    { id: "frugal_fo", name: "Frugal Front Office", fx: "frugalFO", icon: "💰", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll per leftover out when you win a game." },
-    { id: "sign_stealer", name: "Sign Stealer", fx: "signStealer", icon: "🕵️", trigger: "economy", rarity: "common", cost: 5, text: "Your first shop reroll each visit is free." },
-    { id: "gold_glove_agent", name: "Gold Glove Agent", fx: "goldGloveAgent", icon: "🧤", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll every time you hit a home run." },
+    { id: "frugal_fo", name: "Frugal Front Office", fx: "frugalFO", icon: "coin", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll per leftover out when you win a game." },
+    { id: "sign_stealer", name: "Sign Stealer", fx: "signStealer", icon: "eyeOff", trigger: "economy", rarity: "common", cost: 5, text: "Your first shop reroll each visit is free." },
+    { id: "gold_glove_agent", name: "Gold Glove Agent", fx: "goldGloveAgent", icon: "shield", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll every time you hit a home run." },
   ];
 
   function getCoach(id) {

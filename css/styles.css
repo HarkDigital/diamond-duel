@@ -46,6 +46,14 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .btn-ghost:hover{color:var(--ink); background:rgba(255,255,255,.05)}
 .btn-secondary{background:linear-gradient(180deg,#1e2f49,#16243a)}
 
+/* ---------------- inline SVG icons (custom, no emoji) ---------------- */
+.ico{ width:1.15em; height:1.15em; display:inline-block; vertical-align:-0.18em; flex:none; }
+.ico-sm{ width:.92em; height:.92em; }
+.btn .ico{ margin-top:-1px; }
+/* buttons/labels that pair an icon with text get a little gap */
+.foot-btns .btn .ico,.menu-tile .ico,.howto-nav .btn .ico,.stats-actions .btn .ico,
+.tactic-btn .ico,.atbat-cancel .ico,.ov-actions .btn .ico,.mn-right .btn .ico,.shop-money .btn .ico,.seed-hint .ico{ margin-right:5px; }
+
 /* ============================================================
    TITLE
    ============================================================ */
@@ -267,7 +275,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .br-games{display:flex; flex-direction:column; gap:8px}
 .bracket-game{display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:10px; border:1px solid var(--line); background:#0c1828; font-size:.85rem}
 .bracket-game.done{opacity:.5; border-color:var(--good)}
-.bracket-game.done .bg-label::after{content:" ✓"; color:var(--good)}
+.bracket-game.done .bg-label::after{content:""; display:inline-block; width:5px; height:9px; margin-left:7px; vertical-align:1px; border:solid var(--good); border-width:0 2px 2px 0; transform:rotate(45deg)}
 .bracket-game.current{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,203,71,.3); background:#16233a}
 .bracket-game.boss{background:rgba(255,107,107,.08); border-color:rgba(255,107,107,.35)}
 .bracket-game.boss .bg-label{color:var(--bad); font-weight:900}
@@ -348,17 +356,15 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(30px); background:#1b2c46; border:1px solid var(--line); color:var(--ink); padding:11px 18px; border-radius:12px; opacity:0; pointer-events:none; transition:all .3s; z-index:80; box-shadow:var(--shadow); font-weight:600}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
-/* Persistent corner buttons — How to Play (bottom-left) + Menu (bottom-right) */
-#howto-btn,#menu-btn{
-  position:fixed; bottom:14px; z-index:40;
-  background:rgba(19,35,58,.92); border:1px solid var(--line); color:var(--ink-dim);
-  font:inherit; font-weight:700; font-size:.8rem; padding:8px 13px; border-radius:11px;
+/* Menu button — icon-only square, flush in the very top-right corner */
+#menu-btn{
+  position:fixed; z-index:45; width:40px; height:40px; padding:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(19,35,58,.85); border:1px solid var(--line); color:var(--ink-dim); border-radius:11px;
   cursor:pointer; backdrop-filter:blur(4px); box-shadow:0 4px 14px rgba(0,0,0,.4);
   transition:transform .1s, color .15s, border-color .15s, background .15s;
 }
-#howto-btn{ left:14px; }
-#menu-btn{ right:14px; }
-#howto-btn:hover,#menu-btn:hover{ color:var(--gold); border-color:var(--gold-2); background:rgba(26,44,70,.96); transform:translateY(-2px); }
+#menu-btn .ico{ width:22px; height:22px; vertical-align:0; margin:0; }
+#menu-btn:hover{ color:var(--gold); border-color:var(--gold-2); background:rgba(26,44,70,.96); transform:translateY(-1px); }
 
 /* Pause / main menu + stats + confirm */
 .btn-danger{ background:linear-gradient(180deg,#7a2f2f,#5f1d1d); border-color:#4a0f0f; color:#ffe3e3; }
@@ -444,7 +450,7 @@ body{ position:fixed; inset:0; margin:0; }
 .screen{ width:100%; height:100%; max-width:none; margin:0; padding:24px 34px; overflow:hidden; display:flex; flex-direction:column; }
 
 /* Menu button stays viewport-fixed in the TOP-RIGHT, clear of notches */
-#menu-btn{ z-index:45; top:calc(12px + env(safe-area-inset-top,0px)); right:calc(12px + env(safe-area-inset-right,0px)); bottom:auto; left:auto; }
+#menu-btn{ z-index:45; top:calc(8px + env(safe-area-inset-top,0px)); right:calc(8px + env(safe-area-inset-right,0px)); bottom:auto; left:auto; }
 
 /* ---------------- TITLE ---------------- */
 .title-screen{ padding:30px 48px 56px; justify-content:center; gap:4px; }
@@ -591,7 +597,7 @@ body.portrait #toast{ display:none !important; }
 .edition{ font-size:.64rem; padding:3px 8px; top:10px; right:10px; }
 
 /* widen the side columns a touch to match the bigger type */
-.game-body{ grid-template-columns:336px 1fr 270px; gap:16px; }
+.game-body{ grid-template-columns:360px 1fr 218px; gap:16px; }
 
 /* ===================== overlays: bigger & more horizontal ===================== */
 .ov-card{ padding:26px 32px; }
@@ -639,14 +645,36 @@ body.portrait #toast{ display:none !important; }
 /* picker / pack / deck grids a touch bigger */
 .picker .picker-grid,.deck-view .deck-grid,.pack-grid{ gap:12px; }
 
-/* ===== Field column: responsive diamond that scales to its space, so the readout
-   always shows on short (phone) stages and the diamond grows on taller (tablet) stages ===== */
+/* ===== Field column: now just the (larger) diamond + the at-bat readout ===== */
 .col-left{ min-height:0; }
-.resources{ flex:0 0 auto; }
-.res{ padding:9px 8px; } .res b{ font-size:1.75rem; }
 .diamond-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:6px; }
-.diamond{ width:auto; height:100%; max-height:360px; aspect-ratio:1; max-width:100%; margin:0; }
+.diamond{ width:auto; height:100%; max-height:440px; aspect-ratio:1; max-width:100%; margin:0; }
 .readout{ flex:0 0 auto; min-height:0; }
+
+/* ===== animated runners ===== */
+.runner-layer{ position:absolute; inset:0; pointer-events:none; z-index:4; }
+.rtok{ position:absolute; width:18px; height:18px; border-radius:50%; transform:translate(-50%,-50%);
+  box-shadow:0 2px 7px rgba(0,0,0,.55), 0 0 0 2px rgba(10,15,28,.5);
+  transition:left .5s cubic-bezier(.34,.05,.2,1), top .5s cubic-bezier(.34,.05,.2,1), opacity .42s ease, transform .42s ease; }
+.rtok.spd-fast{ background:radial-gradient(circle at 35% 30%,#fff,var(--speed)); }
+.rtok.spd-mid{ background:radial-gradient(circle at 35% 30%,#fff,var(--great)); }
+.rtok.spd-slow{ background:radial-gradient(circle at 35% 30%,#fff,#cbd5e1); }
+.rtok.leaving{ opacity:0; transform:translate(-50%,-50%) scale(.35); }
+
+/* ===== dugout column: coaches, then the moved Outs/Inning, then payroll ===== */
+.col-right{ display:flex; flex-direction:column; gap:10px; }
+.dugout{ flex:0 0 auto; }
+.situation{ margin-top:auto; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:stretch; }
+.sit-cell{ background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:10px 12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+.sit-cell span{ font-size:.62rem; letter-spacing:2px; color:var(--ink-faint); font-weight:800; }
+.sit-inning b{ font-size:1.9rem; font-weight:900; font-variant-numeric:tabular-nums; line-height:1; }
+.sit-inning{ min-width:74px; }
+.sit-pips{ display:flex; gap:7px; align-items:center; min-height:24px; }
+.out-pip{ width:18px; height:18px; border-radius:50%; border:2px solid var(--line); background:#0a1322; transition:background .2s, box-shadow .2s, border-color .2s; }
+.out-pip.left{ background:radial-gradient(circle at 35% 30%, #fff, var(--good)); border-color:var(--good); box-shadow:0 0 10px rgba(90,209,122,.5); }
+.out-pip.used{ background:#0a1322; border-color:#2a3346; box-shadow:none; }
+.col-right .payroll-chip{ margin-top:0; align-self:stretch; text-align:center; }
 
 /* ===== At-bat: batter steps up & you choose an approach ===== */
 .atbat-panel{ width:100%; text-align:center; animation:roPop .3s cubic-bezier(.2,1.5,.3,1); }
@@ -748,11 +776,14 @@ body.portrait #toast{ display:none !important; }
   .card-stats{ gap:6px; margin-bottom:6px; }
   .sbar-track{ height:9px; }
   .hand-hint{ display:none; }                 /* recover a full line for the field */
-  .resources .res{ padding:6px 8px; }
-  .resources .res b{ font-size:1.55rem; }
   .diamond-wrap{ padding:4px; }
   .diamond{ max-height:none; }                /* fill the space the hand gave back */
   .readout{ padding:9px 10px; }
+  /* compact the moved Outs/Inning panel */
+  .situation{ gap:7px; }
+  .sit-cell{ padding:7px 9px; }
+  .sit-inning b{ font-size:1.5rem; }
+  .out-pip{ width:15px; height:15px; }
   /* keep the at-bat panel compact so the field holds its size while picking a swing */
   .approach-btn{ padding:6px 4px; gap:2px; }
   .approach-btn .ap-icon{ font-size:1.15rem; }
@@ -763,5 +794,64 @@ body.portrait #toast{ display:none !important; }
   .tactic-btn{ padding:6px 10px; font-size:.76rem; }
   .atbat-cancel{ margin-top:5px; font-size:.76rem; }
   .coach-icon{ width:42px; height:42px; }
-  .coach-icon .ci-glyph{ font-size:1.35rem; }
+  .coach-icon .ci-glyph .ico{ width:22px; height:22px; }
 }
+
+/* ============================================================
+   ICON GLYPH SIZING + COLOR for the converted (ex-emoji) elements
+   ============================================================ */
+.approach-btn .ap-icon{ display:flex; align-items:center; justify-content:center; }
+.approach-btn .ap-icon .ico{ width:26px; height:26px; }
+.approach-btn.ap-power .ap-icon{ color:var(--power); }
+.approach-btn.ap-contact .ap-icon{ color:var(--eye); }
+.approach-btn.ap-swing .ap-icon{ color:var(--gold); }
+.coach-icon{ color:#d6e6ff; }
+.coach-icon .ci-glyph{ display:flex; align-items:center; justify-content:center; }
+.coach-icon .ci-glyph .ico{ width:24px; height:24px; }
+.coach-icon.empty{ color:var(--ink-faint); }
+.coach-chip{ display:flex; align-items:flex-start; gap:9px; }
+.coach-chip-ico{ flex:none; color:#d6e6ff; display:flex; padding-top:1px; }
+.coach-chip-ico .ico{ width:22px; height:22px; }
+.coach-chip-body{ flex:1; min-width:0; }
+.card-trait{ color:var(--gold); }
+.card-trait .ico{ width:16px; height:16px; }
+.card-streak .ico{ width:16px; height:16px; }
+.trait-chip{ color:var(--gold); }
+.trait-chip .ico,.streak-chip .ico{ width:18px; height:18px; vertical-align:-0.28em; }
+.streak-chip.hot,.card-streak.hot{ color:#ff9a3c; } .streak-chip.cold,.card-streak.cold{ color:#56b4ff; }
+.sc-ico{ color:#d6e6ff; display:block; margin-bottom:5px; } .sc-ico .ico{ width:24px; height:24px; }
+.fr-bonus .fr-star{ color:var(--gold); } .fr-bonus .fr-star .ico{ width:15px; height:15px; vertical-align:-0.22em; }
+.logo-diamond .ico{ width:1em; height:1em; vertical-align:-0.1em; }
+.ov-burst .ico{ width:1em; height:1em; color:var(--gold); } .victory-ov .ov-burst .ico{ color:var(--gold); }
+.h2-ico{ color:var(--gold); } .h2-ico .ico{ width:.92em; height:.92em; }
+.pick-check .ico{ width:16px; height:16px; }
+.ico-boss{ width:.85em; height:.85em; vertical-align:-0.08em; }
+.seed-copy .ico{ width:.85em; height:.85em; opacity:.8; }
+.tactic-btn .ico{ width:1em; height:1em; vertical-align:-0.16em; }
+/* tooltip stat colors + trait line */
+#tooltip .t-c{ color:var(--contact); } #tooltip .t-p{ color:var(--power); } #tooltip .t-e{ color:var(--eye); } #tooltip .t-s{ color:var(--speed); }
+#tooltip .tip-trait{ display:block; margin-top:5px; color:var(--gold); font-size:.9em; }
+
+/* ============================================================
+   DECK & DUGOUT inspector views — compact so they fit with no scroll
+   ============================================================ */
+.deck-view{ width:min(1160px,97vw); max-width:1160px; }
+.deck-view .deck-grid{ max-height:78vh; gap:8px; align-content:flex-start; }
+.deck-view .card{ width:104px; min-height:0; padding:7px 8px; border-radius:11px; border-top-width:4px; }
+.deck-view .card:hover{ transform:translateY(-4px); }
+.deck-view .card .card-tags{ display:none; }
+.deck-view .card .card-top{ margin-bottom:5px; gap:5px; }
+.deck-view .card .card-stats{ gap:4px; margin-bottom:0; }
+.deck-view .card .bats{ width:20px; height:20px; font-size:.72rem; border-radius:6px; }
+.deck-view .card .card-name{ font-size:.78rem; }
+.deck-view .card .sbar{ gap:5px; font-size:.62rem; }
+.deck-view .card .sbar-l{ width:10px; font-size:.62rem; }
+.deck-view .card .sbar-track{ height:6px; }
+.deck-view .card .sbar-v{ width:18px; font-size:.62rem; }
+.deck-view .card .card-trait{ width:14px; } .deck-view .card .card-trait .ico{ width:13px; height:13px; }
+
+.dugout-view{ width:min(860px,96vw); max-width:860px; }
+.dugout-view .dug-list{ display:grid; grid-template-columns:repeat(2,1fr); gap:11px; max-height:74vh; }
+.dug-row{ display:flex; align-items:stretch; gap:9px; }
+.dug-row .coach-chip{ flex:1; min-width:0; }
+.dug-row .btn-sell{ flex:none; align-self:center; white-space:nowrap; }
