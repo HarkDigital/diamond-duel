@@ -120,6 +120,8 @@
 
     // Dugout
     dugoutSlots: 8,
+    // Charms (consumable powerups, Balatro-Arcana style)
+    charmSlots: 4,
 
     // Edition effects
     edition: {
@@ -350,6 +352,41 @@
   ];
 
   /* -------------------------------------------------------- */
+  /* CHARMS — consumable powerups (Balatro's Arcana, baseball  */
+  /* superstitions). Held in your charm pouch, used any time   */
+  /* during a game. target: player | coach | immediate.        */
+  /* -------------------------------------------------------- */
+  const CHARMS = [
+    // --- applied to a player card (permanent, this run) ---
+    { id: "ch_pinetar", name: "Pine Tar", icon: "target", kind: "charm", target: "player", op: "bump", arg: "contact", amt: 24, rarity: "common", cost: 4, text: "Rub on +24 Contact for one of your players." },
+    { id: "ch_cork", name: "Corked Bat", icon: "muscle", kind: "charm", target: "player", op: "bump", arg: "power", amt: 24, rarity: "common", cost: 4, text: "Sneak +24 Power onto one of your players." },
+    { id: "ch_eyeblack", name: "Eye Black", icon: "eye", kind: "charm", target: "player", op: "bump", arg: "eye", amt: 24, rarity: "common", cost: 4, text: "Smear on +24 Eye for one of your players." },
+    { id: "ch_spikes", name: "Track Spikes", icon: "wind", kind: "charm", target: "player", op: "bump", arg: "speed", amt: 24, rarity: "common", cost: 4, text: "Lace up +24 Speed for one of your players." },
+    { id: "ch_allstar", name: "All-Star Nod", icon: "star", kind: "charm", target: "player", op: "allup", amt: 9, rarity: "star", cost: 6, text: "+9 to all four stats of one of your players." },
+    { id: "ch_clutch", name: "Clutch Gene", icon: "sparkle", kind: "charm", target: "player", op: "trait", arg: "clutch", rarity: "star", cost: 6, text: "Give a player the Clutch trait — scores at +1.0 Rally with 2 outs or a runner in scoring position." },
+    { id: "ch_burner", name: "Lead-off Legs", icon: "burner", kind: "charm", target: "player", op: "trait", arg: "burner", rarity: "star", cost: 6, text: "Give a player the Burner trait — steals almost always succeed." },
+    // --- applied to a coach badge ---
+    { id: "ch_copy", name: "Carbon Copy", icon: "copy", kind: "charm", target: "coach", op: "copycoach", rarity: "allstar", cost: 8, text: "Duplicate one of your coaches into an open dugout slot." },
+    // --- immediate, affect the current at-bat / inning ---
+    { id: "ch_ibb", name: "Intentional Walk", icon: "arrowUpRight", kind: "charm", target: "immediate", op: "freewalk", rarity: "common", cost: 5, text: "Take a free base — put a runner on first (forces runners up) and bump your Rally. No out used." },
+    { id: "ch_momentum", name: "Momentum Shift", icon: "zap", kind: "charm", target: "immediate", op: "rally", amt: 1.5, rarity: "star", cost: 6, text: "Swing the game your way: +1.5 Rally right now." },
+    { id: "ch_secondwind", name: "Second Wind", icon: "shield", kind: "charm", target: "immediate", op: "extraout", rarity: "star", cost: 7, text: "Catch your breath — gain one extra out this inning." },
+  ];
+
+  function getCharm(id) { return CHARMS.find((c) => c.id === id); }
+
+  /* -------------------------------------------------------- */
+  /* ACHIEVEMENTS — feats of play that gift you a Charm        */
+  /* -------------------------------------------------------- */
+  const ACHIEVEMENTS = [
+    { id: "grand_slam", name: "Grand Slam", text: "Hit a home run with the bases loaded." },
+    { id: "perfect_inning", name: "Perfect Inning", text: "Clear an inning without making a single out." },
+    { id: "long_ball", name: "Going Yard", text: "Hit two home runs in one inning." },
+    { id: "patient_eye", name: "Take Your Base", text: "Draw three walks in one inning." },
+    { id: "thief", name: "Highway Robbery", text: "Steal three bases in one inning." },
+  ];
+
+  /* -------------------------------------------------------- */
   /* FRONT OFFICE UPGRADES (vouchers)                          */
   /* -------------------------------------------------------- */
   const UPGRADES = [
@@ -451,6 +488,8 @@
   global.BOSSES = BOSSES;
   global.ANALYTICS = ANALYTICS;
   global.SCOUTING = SCOUTING;
+  global.CHARMS = CHARMS;
+  global.ACHIEVEMENTS = ACHIEVEMENTS;
   global.UPGRADES = UPGRADES;
   global.PACKS = PACKS;
   global.FRANCHISES = FRANCHISES;
@@ -462,4 +501,5 @@
   global.getTrait = getTrait;
   global.getCoach = getCoach;
   global.getBoss = getBoss;
+  global.getCharm = getCharm;
 })(window);

@@ -506,9 +506,10 @@ body{ position:fixed; inset:0; margin:0; }
 .shop-item .card .card-tags{ display:flex; }      /* show the ability tags in the shop */
 .shop-item .card .card-stats{ gap:7px; margin-bottom:8px; }
 .shop-item .card .card-top{ margin-bottom:9px; }
-.shop-item .card .card-name{ font-size:.94rem; min-width:0; }
+.shop-item .card .card-name{ font-size:.86rem; min-width:0; }
 .shop-item .card .card-pos{ display:none; }        /* free up width so names fit */
-.shop-item .card .card-top{ gap:6px; }
+.shop-item .card .card-trait{ display:none; }      /* trait shows in the ? tooltip; give the name room */
+.shop-item .card .card-top{ gap:5px; }
 .shop-item .card .bats{ width:24px; height:24px; font-size:.82rem; }
 .shop-item .card .card-trait .ico{ width:14px; height:14px; }
 .shop-item .card .card-info{ width:18px; height:18px; }
@@ -875,7 +876,7 @@ body.portrait #toast{ display:none !important; }
   .bat-zone .bz-icon .ico{ width:28px; height:28px; }
   .bat-zone .bz-text b{ font-size:1rem; } .bat-zone .bz-text span{ font-size:.74rem; }
   .ab-idle-hint{ font-size:.9rem; max-width:240px; }
-  .atbat-bar.active{ padding:6px 12px 9px; }
+  .atbat-bar.active{ padding:3px 0 2px; }
   .ab-head{ font-size:1rem; margin-bottom:5px; }
   .ab-controls{ gap:10px; }
   .atbat-bar .approach-btn{ width:150px; padding:8px 9px; gap:4px; }
@@ -998,13 +999,14 @@ body.portrait #toast{ display:none !important; }
 #app.is-dragging .bat-zone{ border-color:var(--gold); background:rgba(255,203,71,.14); }
 
 /* ---- active: batter header + swing buttons ---- */
-.atbat-bar.active{ background:linear-gradient(180deg,#16273f,#0e1c30); border:1px solid var(--gold-2); border-radius:16px;
-  padding:9px 16px 13px; box-shadow:0 0 0 4px rgba(255,203,71,.1); }
+/* active bar: no wrapping panel so the buttons' left edge lines up with the summary box */
+.atbat-bar.active{ background:none; border:none; border-radius:0; padding:4px 0 2px; box-shadow:none; }
 .ab-active{ flex:1; display:flex; flex-direction:column; min-width:0; }
-.ab-head{ font-size:1.18rem; font-weight:700; text-align:center; margin-bottom:8px; }
+.ab-head{ font-size:1.18rem; font-weight:700; text-align:left; margin-bottom:8px; padding-left:2px; }
 .ab-head b{ color:var(--gold); } .ab-q{ color:var(--ink-dim); font-weight:500; }
-.ab-controls{ display:flex; align-items:stretch; justify-content:center; gap:14px; flex:1; min-height:0; }
+.ab-controls{ display:flex; align-items:stretch; justify-content:flex-start; gap:14px; flex:1; min-height:0; }
 .ab-controls .approach-row{ display:flex; gap:13px; flex:0 1 auto; margin:0; }
+.ab-controls .ab-cancel{ margin-left:auto; }
 .atbat-bar .approach-btn{ flex:0 0 auto; width:188px; padding:11px 12px; gap:6px; border-radius:14px; }
 .atbat-bar .approach-btn .ap-icon{ }
 .atbat-bar .approach-btn .ap-icon .ico{ width:30px; height:30px; }
@@ -1020,3 +1022,66 @@ body.portrait #toast{ display:none !important; }
 
 /* the play summary is shorter now to make room for the bar */
 .col-center{ min-height:0; }
+
+/* ============================================================
+   GAME LAYOUT v2 — field box (full height, with Outs/Inning) |
+   skinnier summary | Charms | dugout, with the at-bat bar aligned
+   under the summary.
+   ============================================================ */
+.game-main{
+  flex:1 1 auto; min-height:0; margin-top:0;
+  display:grid;
+  grid-template-columns:320px minmax(0,1fr) 134px 204px;
+  grid-template-rows:minmax(0,1fr) auto;
+  grid-template-areas:
+    "field summary charms dugout"
+    "field atbat   atbat  atbat";
+  gap:14px;
+}
+/* field box: green panel containing the diamond + outs/inning */
+.col-field{ grid-area:field; min-height:0; display:flex; flex-direction:column; gap:9px; overflow:hidden;
+  background:radial-gradient(120% 78% at 50% 16%, #1d5d30 0%, #103a1c 60%, #0c2913 100%);
+  border:1px solid var(--line); border-radius:16px; padding:12px; }
+.col-field .diamond-wrap{ flex:1 1 auto; min-height:0; background:none; border:none; padding:0; display:flex; align-items:center; justify-content:center; }
+.col-field .diamond{ width:auto; height:100%; aspect-ratio:1; max-width:100%; max-height:none; margin:0; }
+.field-situation{ flex:0 0 auto; display:grid; grid-template-columns:1fr auto; gap:9px; }
+.field-situation .sit-cell{ background:rgba(7,20,12,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px;
+  padding:8px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
+.field-situation .sit-cell span{ font-size:.62rem; letter-spacing:2px; color:#cfe6d4; font-weight:800; }
+.field-situation .sit-inning b{ font-size:1.7rem; font-weight:900; font-variant-numeric:tabular-nums; line-height:1; }
+.field-situation .sit-inning{ min-width:70px; }
+.field-situation .sit-pips{ display:flex; gap:7px; align-items:center; min-height:22px; }
+
+/* transient outcome popping over the field (replaces the old readout box) */
+.field-result{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:8; opacity:0; transition:opacity .2s; }
+.field-result.show{ opacity:1; animation:roPop .4s cubic-bezier(.2,1.5,.3,1); }
+.field-result .ro-card{ background:rgba(8,18,12,.86); border:1px solid var(--line); border-radius:14px; padding:9px 18px; box-shadow:0 12px 34px rgba(0,0,0,.55); width:auto; }
+.field-result .ro-label{ font-size:1.9rem; } .field-result .ro-batter{ font-size:.95rem; } .field-result .ro-math{ font-size:1.05rem; margin-top:4px; }
+
+.col-summary{ grid-area:summary; min-height:0; }
+.col-summary .play-log{ height:100%; max-height:none; }
+.col-dugout{ grid-area:dugout; min-height:0; display:flex; flex-direction:column; gap:9px; overflow:hidden; }
+.col-dugout .dugout{ flex:0 0 auto; }
+.col-dugout .payroll-chip{ margin-top:auto; align-self:stretch; text-align:center; }
+
+/* Charms column (powerups) */
+.col-powerups{ grid-area:charms; min-height:0; display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+.pw-title{ font-size:.7rem; letter-spacing:3px; color:#f4f9ff; text-shadow:0 1px 4px rgba(0,0,0,.6); font-weight:800; padding-left:2px; }
+.powerups{ display:flex; flex-flow:row wrap; gap:8px; align-content:flex-start; }
+.charm-badge{ position:relative; width:46px; height:46px; border-radius:12px; flex:none;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  background:linear-gradient(180deg,#2a2150,#1a1438); border:1px solid #4a3a7a; border-bottom:3px solid var(--rar-allstar);
+  transition:transform .12s, box-shadow .2s, border-color .15s; }
+.charm-badge .cb-glyph{ display:flex; } .charm-badge .cb-glyph .ico{ width:24px; height:24px; color:#e9ddff; }
+.charm-badge.rar-common{ border-bottom-color:var(--rar-common); } .charm-badge.rar-star{ border-bottom-color:var(--rar-star); } .charm-badge.rar-allstar{ border-bottom-color:var(--rar-allstar); }
+.charm-badge:hover{ transform:translateY(-2px); border-color:var(--gold-2); box-shadow:0 8px 20px rgba(120,80,220,.4); }
+.charm-badge.empty{ border-style:dashed; border-bottom-style:dashed; background:rgba(255,255,255,.03); color:var(--ink-faint); opacity:.4; font-size:1.2rem; font-weight:700; cursor:default; }
+#tooltip .tip-use{ display:block; margin-top:4px; color:var(--ink-dim); font-size:.85em; font-style:italic; }
+
+/* the at-bat bar now lives in the grid (row 2, aligned with the summary) */
+.game-main .atbat-bar{ grid-area:atbat; margin-top:0; }
+
+/* shop: charm item icon tint */
+.shop-charm .charm-ico .ico{ color:#cdb6ff; }
+.charm-picker .picker-grid{ max-height:60vh; }
+.charm-picker .pick-coach{ width:200px; }
