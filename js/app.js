@@ -449,6 +449,7 @@
       <div class="franchise-grid">${fr}</div>
       <div class="title-foot">
         <div class="foot-btns">
+          <button class="btn btn-ghost" data-act="howto">❔ How to Play</button>
           <button class="btn btn-ghost" data-act="open-stats">📊 Stats</button>
           <button class="btn btn-ghost" data-act="toggle-sound">${META.sound ? "🔊" : "🔇"} Sound: ${META.sound ? "On" : "Off"}</button>
         </div>
@@ -1602,8 +1603,6 @@
     window.addEventListener("scroll", snapBack, { passive: true });
     document.addEventListener("scroll", snapBack, { passive: true });
     render();
-    const hb = document.getElementById("howto-btn");
-    if (hb) hb.onclick = showHowTo;
     const mb = document.getElementById("menu-btn");
     if (mb) mb.onclick = showMenu;
     // expose a small debug API for testing
