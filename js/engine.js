@@ -38,12 +38,22 @@
     if (pitcher.rule === "junkballer" && game.inningPA === 0) {
       c -= 22; p -= 22; e -= 22; s -= 22; debuffed = true;
     }
+    // hot/cold streaks shift hitting stats (Ice Veins immune to cold; Streaky doubles the swing)
+    const sc = CONFIG.streak || { hotAt: 2, coldAt: 2, perLevel: 7, maxLevel: 3 };
+    let st = card._streak || 0;
+    if (card.trait === "ice" && st < 0) st = 0;
+    let mod = 0;
+    if (st >= sc.hotAt) mod = Math.min(sc.maxLevel, st) * sc.perLevel;
+    else if (st <= -sc.coldAt) mod = Math.max(-sc.maxLevel, st) * sc.perLevel;
+    if (card.trait === "streaky") mod *= 2;
+    c += mod; p += mod; e += mod * 0.5;
     return {
-      contact: clamp(c, 0, 130),
-      power: clamp(p, 0, 130),
-      eye: clamp(e, 0, 130),
-      speed: clamp(s, 0, 130),
+      contact: clamp(c, 0, 140),
+      power: clamp(p, 0, 140),
+      eye: clamp(e, 0, 140),
+      speed: clamp(s, 0, 140),
       debuffed,
+      hot: st >= sc.hotAt, cold: st <= -sc.coldAt, streak: st,
     };
   }
 
@@ -72,7 +82,7 @@
   }
 
   /* ---------- outcome distribution ---------- */
-  function buildDistribution(es, pitcher, plat, run, approach) {
+  function buildDistribution(es, pitcher, plat, run, approach, batter) {
     const w = Object.assign({}, CONFIG.baseWeights);
     const co = CONFIG.coeff;
     const nc = norm(es.contact), np = norm(es.power), ne = norm(es.eye);
@@ -94,6 +104,12 @@
     // at-bat approach reshapes the swing profile (Swing Away / Power / Work the Count)
     const ap = approach && CONFIG.approaches && CONFIG.approaches[approach];
     if (ap && ap.w) { for (const k in ap.w) if (w[k] != null) w[k] *= ap.w[k]; }
+
+    // signature traits reshape the swing
+    const tr = batter && batter.trait;
+    if (tr === "launch" && approach === "power") w.K /= ((CONFIG.approaches.power.w.K) || 1); // sell out, no extra Ks
+    if (tr === "eagle") { w.BB *= 1.45; w.K *= 0.5; }
+    if (tr === "mistake" && pitcher.command < 42) { w["1B"] *= 1.25; w["2B"] *= 1.4; w["3B"] *= 1.3; w.HR *= 1.45; }
 
     // floors
     for (const k in w) w[k] = Math.max(0, w[k]);
@@ -175,6 +191,26 @@
     if (SFX) SFX.steal();
   }
 
+  // ACTIVE steal — the player chooses to Send a runner. Real risk: caught = an out.
+  function attemptSteal(game, run, rng, fromBase) {
+    const b = game.bases;
+    const runner = b[fromBase];
+    if (!runner || fromBase >= 2 || b[fromBase + 1] != null) return { ok: false };
+    const burner = runner.card && runner.card.trait === "burner";
+    const p = clamp(stealChance(runner.speed, run) + (burner ? 0.22 : 0), 0.35, 0.97);
+    const res = { ok: true, runner, from: fromBase, rallyBonus: 0, triggers: [] };
+    if (rng.chance(p)) {
+      b[fromBase + 1] = runner; b[fromBase] = null; runner.stoleThisInning = true;
+      res.caught = false; res.to = fromBase + 1;
+      if (hasCoach(run, "smallBall")) { game.rally += 0.5; res.rallyBonus = 0.5; res.triggers.push("coach:small_ball"); }
+    } else {
+      b[fromBase] = null;
+      game.outsRemaining -= 1; game.outsThisInning += 1;
+      res.caught = true;
+    }
+    return res;
+  }
+
   /* ---------- the resolver ---------- */
   function resolveAtBat(batter, pitcher, game, run, rng, approach) {
     const C = CONFIG;
@@ -200,8 +236,8 @@
     const plat = platoonState(batter, pitcher, run);
     ev.platoon = plat.state;
 
-    // roll outcome (the chosen approach reshapes the odds)
-    const w = buildDistribution(es, pitcher, plat, run, approach);
+    // roll outcome (the chosen approach + the batter's trait reshape the odds)
+    const w = buildDistribution(es, pitcher, plat, run, approach, batter);
     let outcome = rng.weighted(Object.keys(w).map((k) => ({ v: k, w: w[k] })));
 
     // boss: ground-ball specialist downgrades doubles
@@ -223,7 +259,24 @@
     let newBases = game.bases.slice();
     const batterRunner = { name: batter.name, nick: batter.nick, speed: es.speed, card: batter };
 
-    if (finalOutcome === "BB" || finalOutcome === "HBP") {
+    // BUNT approach — a sacrifice that overrides the rolled outcome.
+    if (approach === "bunt") {
+      ev.bunt = true;
+      ev.buntSafe = rng.chance(clamp((CONFIG.buntSafeBase || 0.06) + (es.speed - 60) * 0.005, 0.02, 0.45));
+    }
+
+    if (ev.bunt && ev.buntSafe) {
+      // beaten out for a bunt single — batter safe at first, runners advance one
+      const r = runnersAdvance(game.bases, [1, 1, 1], 0, batterRunner);
+      newBases = r.newBases; runsOnPlay = r.runs; outsAdded = 0; finalOutcome = "1B";
+    } else if (ev.bunt) {
+      // sacrifice — batter out, the lead runner advances one (no double play)
+      newBases = game.bases.slice();
+      if (newBases[2]) { runsOnPlay++; newBases[2] = null; }
+      else if (newBases[1]) { newBases[2] = newBases[1]; newBases[1] = null; }
+      else if (newBases[0]) { newBases[1] = newBases[0]; newBases[0] = null; }
+      outsAdded = 1; productiveOut = true; finalOutcome = "OUT_GB";
+    } else if (finalOutcome === "BB" || finalOutcome === "HBP") {
       const r = forceWalk(game.bases, batterRunner);
       newBases = r.newBases; runsOnPlay = r.runs; outsAdded = 0;
     } else if (finalOutcome === "1B") {
@@ -308,6 +361,8 @@
         if (finalOutcome === "2B" && run.analytics.power) bag += run.analytics.power * 0.5;
         if (finalOutcome === "1B" && run.analytics.contact) bag += run.analytics.contact * 0.5;
       }
+      // Ace Killer trait: +1 bag vs boss pitchers
+      if (batter.trait === "acekiller" && pitcher.isBoss) bag += 1;
     }
 
     /* ---------- event rally bonus (applies to scoring THIS event only) ---------- */
@@ -320,6 +375,9 @@
       eachCoach(run, "rallyCap", () => { if ((consecBefore + 1) % 3 === 0) { eventRallyBonus += 1.5; ev.triggers.push("coach:rally_cap"); } });
       if (batter.edition === "clutch" && rispBefore) { eventRallyBonus += C.edition.clutchRallyBonus; ev.triggers.push("edition:clutch"); }
       if (batter.edition === "veteran") eventRallyBonus += C.edition.veteranRallyBonus;
+      // signature traits
+      if (batter.trait === "clutch" && (outsThisInning === 2 || rispBefore)) { eventRallyBonus += 1.0; ev.triggers.push("trait:clutch"); }
+      if (batter.trait === "acekiller" && pitcher.isBoss) { eventRallyBonus += 1.0; ev.triggers.push("trait:acekiller"); }
     }
 
     /* ---------- score the event ---------- */
@@ -344,6 +402,7 @@
       eachCoach(run, "backToBack", () => { if (batter.tags.indexOf("slugger") >= 0 && wasSluggerLast) { bonus += 1.0; ev.triggers.push("coach:back_to_back"); } });
       if (run.analytics && run.analytics.rally) bonus += run.analytics.rally * 0.1;
       if (run.analytics && run.analytics.patience && (finalOutcome === "BB" || finalOutcome === "HBP")) bonus += run.analytics.patience * 0.25;
+      if (game.sparkBonus) bonus += game.sparkBonus; // Sparkplug trait active this inning
 
       let total = inc + bonus;
       if (pitcher.rule === "workhorse") { total *= 0.5; ev.triggers.push("boss:workhorse"); }
@@ -366,8 +425,11 @@
     if (isSafe) game.consecutiveSafe += 1;
     else if (!(productiveOut && hasCoach(run, "smallBall"))) game.consecutiveSafe = 0;
 
-    /* ---------- table-setter: did the first batter of the inning reach? ---------- */
-    if (game.inningPA === 0 && isSafe) game.inningLeadReached = true;
+    /* ---------- table-setter / sparkplug: did the leadoff batter reach? ---------- */
+    if (game.inningPA === 0 && isSafe) {
+      game.inningLeadReached = true;
+      if (batter.trait === "sparkplug") { game.sparkBonus = 0.5; ev.triggers.push("trait:sparkplug"); }
+    }
 
     /* ---------- editions / scaling state (on a hit) ---------- */
     if (isHit) {
@@ -390,6 +452,13 @@
       eachCoach(run, "hotStreak", (c) => { c.state.homerThisGame = true; });
       eachCoach(run, "goldGloveAgent", () => { ev.payrollGained += 1; ev.triggers.push("coach:gold_glove_agent"); });
     }
+
+    // per-batter hot/cold streak (hits heat up, outs cool down; walks are neutral)
+    if (isHit) batter._streak = (batter._streak >= 0 ? (batter._streak || 0) + 1 : 1);
+    else if (!isSafe) batter._streak = (batter._streak <= 0 ? (batter._streak || 0) - 1 : -1);
+    if (batter.trait === "ice" && batter._streak < 0) batter._streak = 0; // Ice Veins
+    ev.streakAfter = batter._streak;
+    ev.wasHot = es.hot; ev.wasCold = es.cold;
 
     /* ---------- apply outs / runs / book-keeping ---------- */
     game.bases = newBases;
@@ -434,6 +503,7 @@
   global.Engine = {
     resolveAtBat,
     runSteals,
+    attemptSteal,
     maybeAdvanceInning,
     effectiveBatterStats,
     platoonState,

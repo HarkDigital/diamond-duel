@@ -43,6 +43,7 @@
       uid: uid("card"), id: tpl.id, name: tpl.name, nick: tpl.nick || null,
       bats: tpl.bats, contact: tpl.contact, power: tpl.power, eye: tpl.eye, speed: tpl.speed,
       tags: tpl.tags.slice(), edition: tpl.edition || null, rarity: tpl.rarity, cost: tpl.cost,
+      trait: tpl.trait || null, _streak: 0,
     };
   }
   function cloneCoach(tpl) {
@@ -222,19 +223,64 @@
   }
   function cancelAtBat() { STATE.atBat = null; refreshAtBat(); }
 
+  // rough steal success % (mirrors the engine) for the Send button label
+  function stealOdds(runner) {
+    const burner = runner.card && runner.card.trait === "burner";
+    let p = (runner.speed - 50) * 0.013 + 0.25 + (burner ? 0.22 : 0);
+    return Math.round(Math.max(0.35, Math.min(0.97, p)) * 100);
+  }
   // The approach panel shown in the readout area while a batter is "up".
   function atBatPanelHTML(card) {
     const aps = CONFIG.approaches;
     const g = STATE.game;
     const plat = Engine.platoonState(card, g.pitcher, STATE.run);
     const platTag = plat.state === "adv" ? `<span class="plat plat-adv">platoon +</span>` : plat.state === "dis" ? `<span class="plat plat-dis">platoon −</span>` : "";
+    const tr = getTrait(card.trait);
+    const traitTag = tr ? `<span class="trait-chip" title="${tr.name} — ${tr.desc}">${tr.icon}</span>` : "";
+    const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" title="Hot — boosted stats">🔥</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" title="Cold — reduced stats">❄️</span>` : "";
     const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}" title="${a.desc}"><span class="ap-icon">${a.icon}</span><span class="ap-name">${a.name}</span></button>`;
+    const runnersOn = g.bases.some(Boolean);
+    const buntBtn = runnersOn ? `<button class="tactic-btn" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">🤏 Bunt</button>` : "";
+    let sends = "";
+    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">↗ Send ${r.nick || shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
+    const tactics = (buntBtn || sends) ? `<div class="tactics-row">${buntBtn}${sends}</div>` : "";
     return `<div class="atbat-panel">
-        <div class="atbat-up"><b>${card.nick || card.name}</b> steps in ${platTag}</div>
+        <div class="atbat-up"><b>${card.nick || card.name}</b> steps in ${platTag} ${traitTag} ${streak}</div>
         <div class="atbat-q">How do you swing?</div>
         <div class="approach-row">${btn(aps.swing)}${btn(aps.power)}${btn(aps.contact)}</div>
+        ${tactics}
         <button class="atbat-cancel" data-act="cancel-atbat">◂ pick someone else</button>
       </div>`;
+  }
+
+  // ACTIVE steal — the player Sends a runner. Caught = an out (precious!).
+  async function sendRunner(fromBase) {
+    if (STATE.busy || !STATE.game || STATE.game.ended) return;
+    const g = STATE.game, run = STATE.run;
+    STATE.busy = true;
+    const res = Engine.attemptSteal(g, run, STATE.rng, fromBase);
+    if (res && res.ok) {
+      SFX.steal();
+      renderDiamond();
+      if (res.caught) {
+        SFX.out();
+        pushLog(`✗ Caught stealing — ${res.runner.name} is out!`, "bad");
+        setReadout("CAUGHT STEALING", "bad", { batterName: res.runner.name, platoon: "neutral" }, "Out on the basepaths.");
+      } else {
+        const to = res.to === 1 ? "2nd" : res.to === 2 ? "3rd" : "home";
+        pushLog(`↗ ${res.runner.name} steals ${to}!`, "steal");
+        if (res.rallyBonus) animateRally({ rallyDelta: res.rallyBonus });
+        (res.triggers || []).forEach(flashCoachByFx);
+      }
+      await sleep(380);
+      renderGame();
+      if (g.outsRemaining <= 0) {
+        await sleep(220);
+        return g.score >= g.target ? onWin() : onLose();
+      }
+    }
+    STATE.busy = false;
+    refreshAtBat();
   }
   function updateAtBatUI() {
     const ro = $("#readout");
@@ -267,17 +313,7 @@
     // remove from hand -> discard
     g.hand.splice(idx, 1);
     g.discard.push(card);
-
-    // steal phase (automatic for now)
-    const stealEv = { triggers: [], steals: [] };
-    Engine.runSteals(g, run, STATE.rng, stealEv);
-    if (stealEv.steals.length) {
-      renderDiamond();
-      stealEv.triggers.forEach(flashCoachByFx);
-      pushLog(`↗ Stolen base! (${stealEv.steals.join(", ")})`, "steal");
-      await sleep(300);
-    }
-    await sleep(90);
+    await sleep(60);
 
     // resolve with the chosen approach
     const ev = Engine.resolveAtBat(card, g.pitcher, g, run, STATE.rng, approach || "swing");
@@ -335,9 +371,9 @@
     const g = STATE.game;
     const o = ev.outcome;
 
-    // sound
-    if (o === "HR") SFX.homer();
-    else if (o === "2B" || o === "3B") SFX.xbh();
+    // sound + screen-shake juice
+    if (o === "HR") { SFX.homer(); screenShake(true); flashScreen("huge"); }
+    else if (o === "2B" || o === "3B") { SFX.xbh(); screenShake(false); }
     else if (o === "1B") SFX.single();
     else if (o === "BB" || o === "HBP") SFX.walk();
     else if (o === "K") SFX.strikeout();
@@ -379,6 +415,20 @@
   }
 
   function trim(n) { return Number.isInteger(n) ? "" + n : n.toFixed(1); }
+
+  function screenShake(big) {
+    const el = $("#app");
+    if (!el) return;
+    const cls = big ? "shake-big" : "shake-sm";
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), 560);
+  }
+  function flashScreen(kind) {
+    let f = $("#screen-flash");
+    if (!f) { f = document.createElement("div"); f.id = "screen-flash"; const st = document.getElementById("stage"); (st || document.body).appendChild(f); }
+    f.className = "show " + (kind || "");
+    setTimeout(() => { f.className = ""; }, 400);
+  }
 
   /* ---------------- win / lose ---------------- */
   // Cross-game scaling coaches that resolve at the end of a game (Hot Streak).
@@ -648,14 +698,19 @@
     const roleTags = c.tags.filter((t) => ["slugger", "contact", "speedster", "table-setter", "utility", "veteran", "rookie", "legend"].indexOf(t) >= 0).slice(0, 3);
     const tagHTML = roleTags.map((t) => `<span class="ctag ct-${t}">${t}</span>`).join("");
     const idxAttr = idx != null ? `data-idx="${idx}"` : "";
+    const tr = (typeof getTrait === "function") ? getTrait(c.trait) : null;
+    const traitBadge = tr ? `<div class="card-trait" title="${tr.name} — ${tr.desc}">${tr.icon}</div>` : "";
+    const st = c._streak || 0;
+    const streakBadge = st >= 2 ? `<div class="card-streak hot" title="Hot — boosted stats">🔥</div>` : st <= -2 ? `<div class="card-streak cold" title="Cold — reduced stats">❄️</div>` : "";
     return `
-      <div class="card rar-${c.rarity} ${c.edition ? "has-ed ed-bg-" + c.edition : ""}" ${idxAttr} data-uid="${c.uid}">
+      <div class="card rar-${c.rarity} ${c.edition ? "has-ed ed-bg-" + c.edition : ""}${st >= 2 ? " is-hot" : st <= -2 ? " is-cold" : ""}" ${idxAttr} data-uid="${c.uid}">
         <div class="card-top">
           <div class="bats bats-${c.bats}">${c.bats}</div>
           <div class="card-name" title="${c.name}">${c.nick || shortName(c.name)}</div>
+          ${traitBadge}
           <div class="card-pos">${pos}</div>
         </div>
-        ${ed}
+        ${ed}${streakBadge}
         <div class="card-stats">
           ${statBar("C", c.contact, "b-contact")}
           ${statBar("P", c.power, "b-power")}
@@ -1477,6 +1532,8 @@
 
       if (fr) { startFromFranchise(fr.getAttribute("data-franchise")); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
+      const sendEl = e.target.closest("[data-send]");
+      if (STATE.screen === "game" && sendEl && !STATE.busy) { sendRunner(parseInt(sendEl.getAttribute("data-send"), 10)); return; }
       if (STATE.screen === "game" && apEl && !STATE.busy) { commitAtBat(apEl.getAttribute("data-approach")); return; }
       if (STATE.screen === "game" && cardEl && !STATE.busy) { selectBatter(parseInt(cardEl.getAttribute("data-idx"), 10)); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
@@ -1622,6 +1679,45 @@
     document.body.classList.toggle("portrait", portrait);
   }
 
+  // Balatro-style explainer tooltips — auto-upgrades title hints; works on hover & tap.
+  function initTooltips() {
+    let tip = document.getElementById("tooltip");
+    if (!tip) { tip = document.createElement("div"); tip.id = "tooltip"; document.body.appendChild(tip); }
+    let pinned = null;
+    function position(x, y) {
+      const r = tip.getBoundingClientRect();
+      let left = x + 14, top = y + 16;
+      if (left + r.width > window.innerWidth - 8) left = x - r.width - 14;
+      if (top + r.height > window.innerHeight - 8) top = y - r.height - 16;
+      tip.style.left = Math.max(6, left) + "px";
+      tip.style.top = Math.max(6, top) + "px";
+    }
+    function contentOf(el) { return el.getAttribute("data-tip") || el.getAttribute("title") || el.getAttribute("data-title"); }
+    function show(el, x, y) { const c = contentOf(el); if (!c) return; tip.innerHTML = c; tip.classList.add("show"); position(x, y); }
+    function hide() { tip.classList.remove("show"); pinned = null; }
+    document.addEventListener("mouseover", (e) => {
+      const el = e.target.closest("[title], [data-tip]");
+      if (!el || el.id === "tooltip") return;
+      if (el.getAttribute("title")) { el.setAttribute("data-title", el.getAttribute("title")); el.removeAttribute("title"); }
+      show(el, e.clientX, e.clientY);
+    });
+    document.addEventListener("mousemove", (e) => { if (tip.classList.contains("show") && !pinned) position(e.clientX, e.clientY); });
+    document.addEventListener("mouseout", (e) => {
+      const el = e.target.closest("[data-title], [data-tip]");
+      if (el && el.getAttribute("data-title")) { el.setAttribute("title", el.getAttribute("data-title")); el.removeAttribute("data-title"); }
+      if (!pinned) hide();
+    });
+    // tap-to-explain (touch): info elements that have no other tap action
+    document.addEventListener("click", (e) => {
+      const el = e.target.closest(".coach-chip, .card-trait, .trait-chip, .streak-chip, .edition, [data-tip]");
+      if (el && !e.target.closest("[data-buy],[data-act],[data-approach],[data-send],[data-sell],.card[data-idx]")) {
+        const c = contentOf(el);
+        if (c) { pinned = el; tip.innerHTML = c; tip.classList.add("show"); position(e.clientX, e.clientY); e.stopPropagation(); return; }
+      }
+      if (pinned) hide();
+    });
+  }
+
   function boot() {
     SFX.setEnabled(META.sound);
     fitStage();
@@ -1650,6 +1746,7 @@
     render();
     const mb = document.getElementById("menu-btn");
     if (mb) mb.onclick = showMenu;
+    initTooltips();
     // expose a small debug API for testing
     global.DD = {
       STATE, CONFIG,

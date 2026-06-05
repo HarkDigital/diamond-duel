@@ -80,6 +80,13 @@
     // Ace boss target multiplier
     aceTargetMult: 1.25,
 
+    // Hot/cold streaks — consecutive hits/outs shift a player's effective hitting stats.
+    streak: { hotAt: 2, coldAt: 2, perLevel: 7, maxLevel: 3 },
+
+    // Active baserunning
+    stealCaughtBase: 0.18, // base caught-stealing risk when you Send a runner (reduced by Speed/Burner)
+    buntSafeBase: 0.06,    // base chance a bunt is beaten out for a single (raised by Speed)
+
     // At-bat APPROACHES — the per-plate-appearance decision. Each scales outcome weights.
     approaches: {
       swing:  { id: "swing",  name: "Swing Away",     icon: "🏏", desc: "Balanced — your natural swing.", w: {} },
@@ -187,9 +194,36 @@
     P("cannon_dupree", "Cannon Dupree", "R", 66, 95, 78, 30, ["slugger", "legend", "1B"], "legend", 10, "Cannon"),
   ];
 
+  /* -------------------------------------------------------- */
+  /* TRAITS — signature player abilities (read by the engine)  */
+  /* -------------------------------------------------------- */
+  const TRAITS = {
+    launch:      { id: "launch",      name: "Launch",      icon: "🚀", desc: "Power Swing never adds strikeouts for this hitter — sell out risk-free." },
+    eagle:       { id: "eagle",       name: "Eagle Eye",   icon: "🦅", desc: "Work the Count draws even more walks and never strikes out." },
+    burner:      { id: "burner",      name: "Burner",      icon: "🔥", desc: "Steals almost always succeed and takes the extra base far more often." },
+    clutch:      { id: "clutch",      name: "Clutch",      icon: "🧊", desc: "With 2 outs or a runner in scoring position, this at-bat scores at +1.0 Rally." },
+    mistake:     { id: "mistake",     name: "Mistake Hitter", icon: "🎯", desc: "Big hit bonus against pitchers with weak Command." },
+    acekiller:   { id: "acekiller",   name: "Ace Killer",  icon: "⚔️", desc: "+1.0 Rally and +1 Bag value against Boss pitchers." },
+    sparkplug:   { id: "sparkplug",   name: "Sparkplug",   icon: "⚡", desc: "If this hitter leads off an inning and reaches base, +0.5 Rally for the rest of the inning." },
+    streaky:     { id: "streaky",     name: "Streaky",     icon: "📈", desc: "Hot and cold streaks hit twice as hard." },
+    ice:         { id: "ice",         name: "Ice Veins",   icon: "🧘", desc: "Never goes cold — immune to slumps." },
+  };
+  // assign signature traits to key players (others have none)
+  const TRAIT_ASSIGN = {
+    el_toro_mendez: "launch", mack_thunderton: "launch", tank_mercer: "launch", duke_hammond: "launch",
+    lionel_frye: "eagle", walt_pemberton: "eagle", sherman_boyle: "eagle",
+    jackrabbit_jones: "burner", rocket_ruiz: "burner", dash_okafor: "burner",
+    otis_lane: "clutch", buster_kray: "clutch", cy_bigsby: "clutch",
+    cannon_dupree: "mistake", bruno_vargas: "mistake",
+    hank_delgado: "acekiller", marty_soto: "ice", desmond_pratt: "streaky",
+    ozzie_klein: "sparkplug", sunny_okada: "sparkplug", rex_stoneman: "streaky",
+  };
+  PLAYERS.forEach((p) => { p.trait = TRAIT_ASSIGN[p.id] || null; });
+
   function getPlayer(id) {
     return PLAYERS.find((p) => p.id === id);
   }
+  function getTrait(id) { return id ? TRAITS[id] : null; }
 
   /* -------------------------------------------------------- */
   /* COACHES (the jokers). fx id is read by the engine.       */
@@ -383,7 +417,9 @@
   global.ROUNDS = ROUNDS;
   global.GAMES_PER_ROUND = GAMES_PER_ROUND;
   global.RARITY_ORDER = RARITY_ORDER;
+  global.TRAITS = TRAITS;
   global.getPlayer = getPlayer;
+  global.getTrait = getTrait;
   global.getCoach = getCoach;
   global.getBoss = getBoss;
 })(window);
