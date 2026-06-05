@@ -296,6 +296,8 @@
   }
   // highlight the chosen batter in the hand (and dim the rest) while the popup is open
   function markPicking() {
+    const app = $("#app");
+    if (app) app.classList.toggle("has-atbat", !!STATE.atBat);
     const hand = $("#hand");
     if (!hand) return;
     hand.classList.toggle("picking", !!STATE.atBat);
@@ -600,8 +602,9 @@
               <div class="runner-layer" id="runner-layer"></div>
               <div class="run-pop-layer" id="run-pop-layer"></div>
             </div>
+            <div class="drag-hint" id="drag-hint">${icon("bat")} Drag a batter here</div>
           </div>
-          <div class="readout" id="readout"><div class="readout-empty">Tap a batter — or drag them onto the field — to step up.</div></div>
+          <div class="readout" id="readout"><div class="readout-empty">Drag a batter onto the field to step up.</div></div>
         </div>
 
         <div class="col-center">
@@ -658,7 +661,26 @@
   // base-center coordinates (% of the square diamond): index 0=1st, 1=2nd, 2=3rd, plus home
   const BASE_XY = [[84, 50], [50, 16], [16, 50]];
   const HOME_XY = [50, 84];
+  // "stops" along the basepath in running order: 0=home(start) 1=1st 2=2nd 3=3rd 4=home(score)
+  const STOPS = [HOME_XY, BASE_XY[0], BASE_XY[1], BASE_XY[2], HOME_XY];
+  const LEG_MS = 230; // time to run a single base; matches the CSS transition on .rtok
   let _runnerUid = 0;
+  // Run a token from its current stop to a target stop, hitting every base in between
+  // (so a man on first who advances to third rounds 2nd instead of cutting across).
+  function animateTokenTo(tok, toStop, onDone) {
+    if (tok._stepTimer) { clearTimeout(tok._stepTimer); tok._stepTimer = null; }
+    let cur = parseInt(tok.getAttribute("data-stop") || "0", 10);
+    function step() {
+      if (cur >= toStop) { tok._stepTimer = null; if (onDone) onDone(); return; }
+      cur += 1;
+      const xy = STOPS[cur];
+      tok.style.left = xy[0] + "%";
+      tok.style.top = xy[1] + "%";
+      tok.setAttribute("data-stop", cur);
+      tok._stepTimer = setTimeout(step, LEG_MS);
+    }
+    step();
+  }
   function renderOutPips(g) {
     const el = $("#out-pips");
     if (!el) return;
@@ -690,25 +712,28 @@
     }
     Object.keys(want).forEach((uid) => {
       const { base, r } = want[uid];
-      const xy = BASE_XY[base];
+      const targetStop = base + 1; // base 0 (1st) -> stop 1, etc.
       let tok = layer.querySelector(`.rtok[data-rid="${uid}"]`);
       if (!tok) {
         tok = document.createElement("div");
         tok.className = "rtok " + speedClass(r.speed);
         tok.setAttribute("data-rid", uid);
+        tok.setAttribute("data-stop", "0"); // starts at home plate
         tok.title = `${r.name} · SPD ${Math.round(r.speed)}`;
-        tok.style.left = HOME_XY[0] + "%"; tok.style.top = HOME_XY[1] + "%"; // sprint up from home
+        tok.style.left = STOPS[0][0] + "%"; tok.style.top = STOPS[0][1] + "%";
         layer.appendChild(tok);
-        void tok.offsetWidth; // commit the start position so the move animates
+        void tok.offsetWidth; // commit the start position so the run animates
       }
-      tok.style.left = xy[0] + "%";
-      tok.style.top = xy[1] + "%";
+      animateTokenTo(tok, targetStop); // runs the basepath, hitting each base in turn
     });
     $$(".rtok", layer).forEach((tok) => {
       const rid = tok.getAttribute("data-rid");
       if (!want[rid] && !tok.classList.contains("leaving")) {
-        tok.classList.add("leaving"); // scored / erased — fade & shrink out
-        setTimeout(() => { if (tok.parentNode) tok.parentNode.removeChild(tok); }, 460);
+        tok.classList.add("leaving"); // scored — round the remaining bases to home, then fade
+        animateTokenTo(tok, 4, () => {
+          tok.classList.add("crossed");
+          setTimeout(() => { if (tok.parentNode) tok.parentNode.removeChild(tok); }, 260);
+        });
       }
     });
   }
@@ -1097,17 +1122,19 @@
   }
 
   const HOWTO_SECTIONS = [
-    `<section><h3>① The goal</h3><p>One run is a single <b>9-inning game</b>. Each inning, pile up <b>Score</b> to beat that inning's <b>Target</b> before you make your 3rd <b>Out</b>. Clear all nine innings — the last of every three is a tougher <b>Boss</b> — to win. Fall short in any inning and the game is over.</p></section>`,
-    `<section><h3>② Each at-bat</h3><p>Your hand is your lineup. <b>Tap a card</b> (or press <b>1–8</b>) to send that batter up, then choose an <b>approach</b> for the swing. The at-bat resolves to one outcome — strikeout, walk, single, homer… — from the batter's stats and approach versus the pitcher. Then you draw back up and choose again. <em>Who you bat, and how they swing, is the puzzle.</em></p></section>`,
-    `<section class="howto-rally"><h3>③ The Rally — this is the whole game</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value</b> is the event's raw worth: Walk <b>1</b>, Single <b>2</b>, Double <b>3</b>, Triple <b>4</b>, Home Run <b>5</b> — plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> is your multiplier. It starts at <b>×1.0</b> and climbs <b>+0.5</b> every time you reach base safely… but an <b>OUT resets it to ×1.0</b>.</li></ul><p>A three-run homer (bag 8) at <b>×3.0</b> scores <b>24</b> — the same swing leading off at ×1.0 scores just 8. <b>Time your big bats to land while the rally is high.</b></p></section>`,
-    `<section><h3>④ Your resources</h3><ul><li><b>Outs</b> — just <b>3 per inning</b> (some bosses give fewer). Make your third out before reaching the Target and the game ends — every out is precious.</li><li><b>The approach</b> — after you pick a batter, choose how they swing: <b>Swing Away</b>, <b>Power Swing</b>, or <b>Work the Count</b>. With runners on you can also <b>Bunt</b> or <b>Send</b> a runner.</li><li><b>Innings</b> — clear an inning's Target to advance. A new inning resets your outs and clears the bases.</li></ul></section>`,
-    `<section><h3>⑤ Reading a card</h3><p>Four stats (0–100): <b class="s-c">Contact</b> (singles, fewer strikeouts), <b class="s-p">Power</b> (extra-base hits &amp; homers), <b class="s-e">Eye</b> (walks), <b class="s-s">Speed</b> (steals, extra bases, beating the double play). The <b>L / R / S</b> badge is handedness — a lefty facing a righty pitcher (or vice-versa) gets a <b>platoon</b> boost; switch-hitters never face a disadvantage.</p></section>`,
-    `<section><h3>⑥ Runners</h3><p>Hits advance runners around the diamond. A runner on 2nd or 3rd is <b>in scoring position</b> — drive them home for +1 bag value each, and several coaches pay out heavily when runners are aboard.</p></section>`,
-    `<section><h3>⑦ Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They sit in dugout slots and trigger passively or in the right situation — flat bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run long. Lean into a synergy.</p></section>`,
-    `<section><h3>⑧ The innings &amp; the shop</h3><p>Nine innings across three phases — <b>Early</b>, <b>Middle</b>, <b>Late</b> — and the third inning of each is a <b>Boss</b>. Boss pitchers carry a nasty rule, telegraphed ahead of time so you can shop for it. Between innings you spend <b>Payroll ($)</b> on players, coaches, analytics, scouting, upgrades, and packs. <em>You can't clear the late innings with your starting deck — building is the point.</em></p></section>`,
-    `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same direction beats a pile of random ones.</li></ul></section>`,
+    `<section><h3>The goal</h3><p>A run is one <b>9-inning game</b>. Each inning, pile up <b>Score</b> to beat that inning's <b>Target</b> before you make your <b>3rd out</b>. Clear all nine innings to win — the third inning of every three is a tougher <b>Boss</b>. Come up short in any inning and the run is over.</p></section>`,
+    `<section><h3>Sending a batter up</h3><p>Your hand is your lineup. <b>Drag a card onto the field</b> to send that batter to the plate (or press <b>1–8</b>) — a glowing zone shows where to drop. Once they step up, a popup asks how they'll swing. You draw back up after every at-bat.</p></section>`,
+    `<section><h3>Choosing a swing</h3><ul><li><b>Swing Away</b> — balanced; your natural swing.</li><li><b>Power Swing</b> — more homers &amp; extra-base hits, but more strikeouts.</li><li><b>Work the Count</b> — lots of walks, few strikeouts, little power.</li></ul><p>With runners on, you can also <b>Bunt</b> or <b>Send</b> a runner from the same popup.</p></section>`,
+    `<section class="howto-rally"><h3>The Rally — the heart of it</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value:</b> Walk 1, Single 2, Double 3, Triple 4, Home Run 5 — plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> starts at <b>×1.0</b> and climbs <b>+0.5</b> each time you reach base safely — but an <b>out resets it to ×1.0</b>.</li></ul><p>Land your big bats while the rally is high.</p></section>`,
+    `<section><h3>Reading a card</h3><p>Four stats (0–100): <b class='s-c'>Contact</b> (singles, fewer strikeouts), <b class='s-p'>Power</b> (extra-base hits &amp; homers), <b class='s-e'>Eye</b> (walks), <b class='s-s'>Speed</b> (steals &amp; extra bases). The <b>L / R / S</b> badge is handedness — opposite hands earn a <b>platoon</b> boost; switch-hitters never lose it. Tap the <b>?</b> on any card for a full readout.</p></section>`,
+    `<section><h3>Baserunning</h3><p>Hits move runners around the diamond, and a runner on 2nd or 3rd is <b>in scoring position</b> (each drives in +1 bag value). When the path is clear you can <b>Send</b> a runner to steal the next base — but getting caught costs a precious out. A <b>Bunt</b> trades an out to push your runners up.</p></section>`,
+    `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> — the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
+    `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot — bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
+    `<section><h3>Innings &amp; bosses</h3><p>Nine innings across three phases — <b>Early</b>, <b>Middle</b>, <b>Late</b> — and the third of each is a <b>Boss</b> with a nasty rule, telegraphed on the linescore so you can prepare for it. Beat the boss to move on to the next phase.</p></section>`,
+    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> on <b>Players</b> and <b>Coaches</b>, on <b>Analytics &amp; Scouting</b> (permanent buffs and card upgrades), on <b>Booster Packs</b>, and on <b>Front Office</b> vouchers. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck — building is the point.</em></p></section>`,
+    `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
-  const HOWTO_PAGES = [[0, 1], [2], [3, 4], [5, 6], [7, 8]];
+  const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10]];
   function showHowTo(page) {
     if (SFX && SFX.click) SFX.click();
     const np = HOWTO_PAGES.length;
@@ -1833,9 +1860,16 @@
     d.cardEl.style.transform = "";
     const app = $("#app"); if (app) app.classList.remove("is-dragging");
     const dw = $(".diamond-wrap"); if (dw) dw.classList.remove("drop-active");
-    if (!d.moved) { selectBatter(d.idx); return; }      // a tap selects
-    if (d.over) { selectBatter(d.idx); }                 // dropped on the field selects
-    // otherwise: released in space — snap back (transform already cleared)
+    if (d.over) { selectBatter(d.idx); return; }   // dropped on the field — step up
+    if (!d.moved) { hintDrag(d.cardEl); }          // a plain tap isn't enough; nudge them to drag
+    // otherwise: released in open space — snap back (transform already cleared)
+  }
+  // a tap on a card just reminds the player to drag it to the field
+  function hintDrag(cardEl) {
+    if (cardEl) { cardEl.classList.remove("nudge"); void cardEl.offsetWidth; cardEl.classList.add("nudge"); }
+    const note = $("#drag-hint");
+    if (note) { note.classList.remove("pulse"); void note.offsetWidth; note.classList.add("pulse"); }
+    if (SFX && SFX.click) SFX.click();
   }
   function setupDrag() {
     document.addEventListener("pointerdown", onCardPointerDown);
