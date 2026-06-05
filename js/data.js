@@ -119,7 +119,7 @@
     },
 
     // Dugout
-    dugoutSlots: 5,
+    dugoutSlots: 8,
 
     // Edition effects
     edition: {

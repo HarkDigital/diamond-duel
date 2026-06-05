@@ -6,6 +6,7 @@
 
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  let TIP = null; // tooltip controller (set up in initTooltips)
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const SAVE_KEY = "diamondduel.run.v1";
   const META_KEY = "diamondduel.meta.v1";
@@ -208,16 +209,19 @@
   }
 
   /* ---------------- the at-bat loop ---------------- */
-  // Step 1 — tap a batter: they "step up" and you choose how to attack.
+  // Step 1 — tap (or drag to the field) a batter: they "step up" in a popup so the
+  // field diagram never shrinks; then you choose how to attack.
   function selectBatter(handIndex) {
     if (STATE.busy || !STATE.game || STATE.game.ended) return;
     const card = STATE.game.hand[handIndex];
     if (!card) return;
     SFX.resume(); SFX.deal();
-    STATE.atBat = { card };
-    refreshAtBat();
+    STATE.atBat = { card, idx: handIndex };
+    if (TIP) TIP.hide();
+    markPicking();
+    showAtBatPopup();
   }
-  function cancelAtBat() { STATE.atBat = null; refreshAtBat(); }
+  function cancelAtBat() { STATE.atBat = null; hideAtBatPopup(); markPicking(); }
 
   // rough steal success % (mirrors the engine) for the Send button label
   function stealOdds(runner) {
@@ -225,8 +229,8 @@
     let p = (runner.speed - 50) * 0.013 + 0.25 + (burner ? 0.22 : 0);
     return Math.round(Math.max(0.35, Math.min(0.97, p)) * 100);
   }
-  // The approach panel shown in the readout area while a batter is "up".
-  function atBatPanelHTML(card) {
+  // The approach popup that floats over the play area (so the field never shrinks).
+  function atBatPopupHTML(card) {
     const aps = CONFIG.approaches;
     const g = STATE.game;
     const plat = Engine.platoonState(card, g.pitcher, STATE.run);
@@ -234,19 +238,31 @@
     const tr = getTrait(card.trait);
     const traitTag = tr ? `<span class="trait-chip" data-tip="<b>${tr.name}</b><br>${tr.desc}">${icon(tr.icon)}</span>` : "";
     const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</span>` : "";
-    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${icon(a.icon)}</span><span class="ap-name">${a.name}</span></button>`;
+    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${icon(a.icon)}</span><span class="ap-name">${a.name}</span><span class="ap-desc">${a.desc}</span></button>`;
     const runnersOn = g.bases.some(Boolean);
-    const buntBtn = runnersOn ? `<button class="tactic-btn" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt</button>` : "";
+    const buntBtn = runnersOn ? `<button class="tactic-btn ap-bunt" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt</button>` : "";
     let sends = "";
-    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">${icon("arrowUpRight")} Send ${r.nick || shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
+    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
     const tactics = (buntBtn || sends) ? `<div class="tactics-row">${buntBtn}${sends}</div>` : "";
-    return `<div class="atbat-panel">
-        <div class="atbat-up"><b>${card.nick || card.name}</b> steps in ${platTag} ${traitTag} ${streak}</div>
+    return `<div class="atbat-pop-inner">
+        <button class="atbat-cancel" data-act="cancel-atbat" aria-label="Cancel" title="Pick someone else">${icon("close")}</button>
+        <div class="atbat-up"><b>${shortName(card.name)}</b> steps up ${platTag} ${traitTag} ${streak}</div>
         <div class="atbat-q">How do you swing?</div>
         <div class="approach-row">${btn(aps.swing)}${btn(aps.power)}${btn(aps.contact)}</div>
         ${tactics}
-        <button class="atbat-cancel" data-act="cancel-atbat">${icon("chevronL")} pick someone else</button>
       </div>`;
+  }
+  function showAtBatPopup() {
+    if (!STATE.atBat) return;
+    let pop = document.getElementById("atbat-pop");
+    if (!pop) { pop = document.createElement("div"); pop.id = "atbat-pop"; pop.className = "atbat-pop"; const app = $("#app"); if (app) app.appendChild(pop); }
+    pop.innerHTML = atBatPopupHTML(STATE.atBat.card);
+    pop.classList.add("show");
+    pop.classList.remove("pop"); void pop.offsetWidth; pop.classList.add("pop");
+  }
+  function hideAtBatPopup() {
+    const pop = document.getElementById("atbat-pop");
+    if (pop) { pop.classList.remove("show"); pop.innerHTML = ""; }
   }
 
   // ACTIVE steal — the player Sends a runner. Caught = an out (precious!).
@@ -278,22 +294,19 @@
     STATE.busy = false;
     refreshAtBat();
   }
-  function updateAtBatUI() {
-    const ro = $("#readout");
-    if (!ro) return;
-    if (STATE.atBat) ro.innerHTML = atBatPanelHTML(STATE.atBat.card);
-    else if (ro.querySelector(".atbat-panel")) ro.innerHTML = `<div class="readout-empty">Tap a batter to send them to the plate.</div>`;
+  // highlight the chosen batter in the hand (and dim the rest) while the popup is open
+  function markPicking() {
+    const hand = $("#hand");
+    if (!hand) return;
+    hand.classList.toggle("picking", !!STATE.atBat);
+    $$(".card", hand).forEach((el) => {
+      const sel = STATE.atBat && STATE.atBat.card.uid === el.getAttribute("data-uid");
+      el.classList.toggle("selected", !!sel);
+    });
   }
   function refreshAtBat() {
-    const hand = $("#hand");
-    if (hand) {
-      hand.classList.toggle("picking", !!STATE.atBat);
-      $$(".card", hand).forEach((el) => {
-        const sel = STATE.atBat && STATE.atBat.card.uid === el.getAttribute("data-uid");
-        el.classList.toggle("selected", !!sel);
-      });
-    }
-    updateAtBatUI();
+    markPicking();
+    if (STATE.atBat) showAtBatPopup(); else hideAtBatPopup();
   }
 
   // Step 2 — choose an approach: resolve the plate appearance with that swing profile.
@@ -305,11 +318,15 @@
     if (idx < 0) { STATE.atBat = null; renderGame(); return; }
     STATE.busy = true;
     STATE.atBat = null;
+    hideAtBatPopup();
+    markPicking();
 
-    // remove from hand -> discard
+    // remove from hand -> discard (fly the card toward the plate for a little juice)
+    const cardEl = $(`#hand .card[data-uid="${card.uid}"]`);
+    if (cardEl) { cardEl.classList.add("playing"); }
     g.hand.splice(idx, 1);
     g.discard.push(card);
-    await sleep(60);
+    await sleep(110);
 
     // resolve with the chosen approach
     const ev = Engine.resolveAtBat(card, g.pitcher, g, run, STATE.rng, approach || "swing");
@@ -584,7 +601,7 @@
               <div class="run-pop-layer" id="run-pop-layer"></div>
             </div>
           </div>
-          <div class="readout" id="readout"><div class="readout-empty">Tap a batter to begin the at-bat.</div></div>
+          <div class="readout" id="readout"><div class="readout-empty">Tap a batter — or drag them onto the field — to step up.</div></div>
         </div>
 
         <div class="col-center">
@@ -719,13 +736,15 @@
     const traitBadge = tr ? `<div class="card-trait" data-tip="<b>${tr.name}</b><br>${tr.desc}">${icon(tr.icon)}</div>` : "";
     const st = c._streak || 0;
     const streakBadge = st >= 2 ? `<div class="card-streak hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</div>` : st <= -2 ? `<div class="card-streak cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</div>` : "";
+    const infoBtn = `<button class="card-info" data-cardinfo aria-label="Player info" data-tip="${cardTip(c)}">${icon("help")}</button>`;
     return `
       <div class="card rar-${c.rarity} ${c.edition ? "has-ed ed-bg-" + c.edition : ""}${st >= 2 ? " is-hot" : st <= -2 ? " is-cold" : ""}" ${idxAttr} data-uid="${c.uid}" data-tip="${cardTip(c)}">
         <div class="card-top">
           <div class="bats bats-${c.bats}">${c.bats}</div>
-          <div class="card-name">${c.nick || shortName(c.name)}</div>
+          <div class="card-name">${shortName(c.name)}</div>
           ${traitBadge}
           <div class="card-pos">${pos}</div>
+          ${infoBtn}
         </div>
         ${ed}${streakBadge}
         <div class="card-stats">
@@ -754,7 +773,8 @@
       + `<br><b class='t-s'>Speed ${Math.round(c.speed)}</b> · ${statWord(c.speed)} — steals &amp; extra bases`
       + (tr ? `<br><span class='tip-trait'>${tr.name} — ${tr.desc}</span>` : "");
   }
-  function shortName(n) { const p = n.split(" "); return p.length > 1 ? p[0][0] + ". " + p.slice(1).join(" ") : n; }
+  // uniform compact name across the whole UI: "First-initial. Lastname" (e.g. R. Ruiz, N. Reyburn)
+  function shortName(n) { const p = n.split(" "); return p.length > 1 ? p[0][0] + ". " + p[p.length - 1] : n; }
   function editionLabel(e) { return ({ gold: "GOLD", clutch: "CLUTCH", prospect: "PROSPECT", foil: "FOIL", veteran: "VET" })[e] || e.toUpperCase(); }
 
   function renderDugout() {
@@ -1258,11 +1278,15 @@
       </div>
       ${dugFull ? `<div class="shop-warn">Dugout full (${run.dugout.length}/${run.dugoutSlots}). Sell a coach in the Dugout view to make room.</div>` : ""}
       <div class="shop-grid">
-        <div class="shop-section"><h3>Coaches</h3><div class="shop-row">${coaches}</div></div>
-        <div class="shop-section"><h3>Players</h3><div class="shop-row">${cards}</div></div>
-        <div class="shop-section"><h3>Analytics &amp; Scouting</h3><div class="shop-row">${cons}</div></div>
-        <div class="shop-section"><h3>Front Office</h3><div class="shop-row">${ups}</div></div>
-        <div class="shop-section"><h3>Booster Packs</h3><div class="shop-row">${packs}</div></div>
+        <div class="shop-rowgrp shop-rowgrp-top">
+          <div class="shop-section sec-coaches"><h3>Coaches</h3><div class="shop-row">${coaches}</div></div>
+          <div class="shop-section sec-players"><h3>Players</h3><div class="shop-row">${cards}</div></div>
+        </div>
+        <div class="shop-rowgrp shop-rowgrp-bottom">
+          <div class="shop-section"><h3>Analytics &amp; Scouting</h3><div class="shop-row">${cons}</div></div>
+          <div class="shop-section"><h3>Booster Packs</h3><div class="shop-row">${packs}</div></div>
+          <div class="shop-section"><h3>Front Office</h3><div class="shop-row">${ups}</div></div>
+        </div>
       </div>
     </div>`;
   }
@@ -1488,15 +1512,23 @@
   }
   function openDugoutView() {
     const run = STATE.run;
-    const chips = run.dugout.map((c, i) => `
-      <div class="dug-row">
-        ${coachChipHTML(c)}
+    const cells = run.dugout.map((c, i) => {
+      const sub = (c.state && c.state.bonus) ? `<span class="coach-scale">+${c.state.bonus.toFixed(1)}</span>` : "";
+      const glyph = c.icon ? icon(c.icon) : icon("star");
+      return `
+      <div class="dug-cell">
+        <div class="coach-chip rar-${c.rarity}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}">
+          <span class="coach-chip-ico">${glyph}</span>
+          <div class="coach-chip-body"><div class="coach-name">${c.name}${sub}</div></div>
+        </div>
         <button class="btn btn-sell" data-sell="${i}">Sell +$${Math.max(1, Math.floor(c.cost / 2))}</button>
-      </div>`).join("") || `<div class="shop-empty">No coaches yet.</div>`;
+      </div>`;
+    }).join("") || `<div class="shop-empty">No coaches yet.</div>`;
     overlay(`
       <div class="ov-card dugout-view">
         <h2>Dugout (${run.dugout.length}/${run.dugoutSlots})</h2>
-        <div class="dug-list">${chips}</div>
+        <div class="ov-sub">Tap a coach to see what it does · sell any for half its cost.</div>
+        <div class="dug-list">${cells}</div>
         <button class="btn btn-gold" data-act="close-ov">Close</button>
       </div>`);
   }
@@ -1557,23 +1589,26 @@
     if (!root) return;
 
     root.onclick = (e) => {
+      // explainer tooltips (info button + coach/trait badges) — pin on tap, toggle off
+      const tipEl = tipTargetOf(e);
+      if (tipEl) { if (TIP) TIP.toggle(tipEl, e.clientX, e.clientY); return; }
+      if (TIP) TIP.hide();
+
       const seedEl = e.target.closest("[data-seed]");
       if (seedEl) { copySeed(seedEl.getAttribute("data-seed")); return; }
       const act = e.target.closest("[data-act]");
       const fr = e.target.closest("[data-franchise]");
       const buyEl = e.target.closest("[data-buy]");
-      const cardEl = e.target.closest(".card[data-idx]");
       const apEl = e.target.closest("[data-approach]");
       const sellEl = e.target.closest("[data-sell]");
+      const sendEl = e.target.closest("[data-send]");
 
       if (fr) { startFromFranchise(fr.getAttribute("data-franchise")); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
-      const sendEl = e.target.closest("[data-send]");
       if (STATE.screen === "game" && sendEl && !STATE.busy) { sendRunner(parseInt(sendEl.getAttribute("data-send"), 10)); return; }
       if (STATE.screen === "game" && apEl && !STATE.busy) { commitAtBat(apEl.getAttribute("data-approach")); return; }
-      if (STATE.screen === "game" && cardEl && !STATE.busy) { selectBatter(parseInt(cardEl.getAttribute("data-idx"), 10)); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
-
+      // note: tapping/dragging a hand card to bat is handled by the pointer-drag system
       if (!act) return;
       handleAct(act.getAttribute("data-act"));
     };
@@ -1617,6 +1652,10 @@
     ov.onclick = (e) => {
       const seedEl = e.target.closest("[data-seed]");
       if (seedEl) { copySeed(seedEl.getAttribute("data-seed")); return; }
+      // explainer tooltips inside overlays (deck cards' info button, dugout coach badges)
+      const tipEl = tipTargetOf(e);
+      if (tipEl) { if (TIP) TIP.toggle(tipEl, e.clientX, e.clientY); return; }
+      if (TIP) TIP.hide();
       // tap the dimmed backdrop to dismiss simple overlays (not pickers / packs / locked screens)
       if ((e.target.id === "overlay" || e.target.classList.contains("overlay-inner")) && !STATE._pick && !STATE._pack && !ov.classList.contains("lock")) {
         closeOverlay(); return;
@@ -1702,7 +1741,8 @@
     document.body.classList.toggle("portrait", portrait);
   }
 
-  // Balatro-style explainer tooltips — auto-upgrades title hints; works on hover & tap.
+  // Balatro-style explainer tooltips. Hover (desktop) auto-upgrades title hints;
+  // tap-to-pin is driven from the reliable #app / #overlay click handlers via TIP.toggle.
   function initTooltips() {
     let tip = document.getElementById("tooltip");
     if (!tip) { tip = document.createElement("div"); tip.id = "tooltip"; document.body.appendChild(tip); }
@@ -1715,10 +1755,17 @@
       tip.style.left = Math.max(6, left) + "px";
       tip.style.top = Math.max(6, top) + "px";
     }
-    function contentOf(el) { return el.getAttribute("data-tip") || el.getAttribute("title") || el.getAttribute("data-title"); }
+    function contentOf(el) { return el && (el.getAttribute("data-tip") || el.getAttribute("title") || el.getAttribute("data-title")); }
     function show(el, x, y) { const c = contentOf(el); if (!c) return; tip.innerHTML = c; tip.classList.add("show"); position(x, y); }
     function hide() { tip.classList.remove("show"); pinned = null; }
+    function toggle(el, x, y) {
+      if (!el) { hide(); return; }
+      if (pinned === el) { hide(); return; }          // second tap on same item closes it
+      const c = contentOf(el); if (!c) { hide(); return; }
+      pinned = el; tip.innerHTML = c; tip.classList.add("show"); position(x, y);
+    }
     document.addEventListener("mouseover", (e) => {
+      if (pinned) return;                              // don't let hover clobber a pinned tip
       const el = e.target.closest("[title], [data-tip]");
       if (!el || el.id === "tooltip") return;
       if (el.getAttribute("title")) { el.setAttribute("data-title", el.getAttribute("title")); el.removeAttribute("title"); }
@@ -1730,17 +1777,71 @@
       if (el && el.getAttribute("data-title")) { el.setAttribute("title", el.getAttribute("data-title")); el.removeAttribute("data-title"); }
       if (!pinned) hide();
     });
-    // tap-to-explain (touch): info elements that have no other tap action
-    document.addEventListener("click", (e) => {
-      const el = e.target.closest(".coach-chip, .coach-icon, .card-trait, .trait-chip, .streak-chip, .edition, [data-tip]");
-      if (el && !e.target.closest("[data-buy],[data-act],[data-approach],[data-send],[data-sell],.card[data-idx]")) {
-        // tapping the already-open item closes it (toggle), instead of just repositioning
-        if (pinned === el) { hide(); e.stopPropagation(); return; }
-        const c = contentOf(el);
-        if (c) { pinned = el; tip.innerHTML = c; tip.classList.add("show"); position(e.clientX, e.clientY); e.stopPropagation(); return; }
-      }
-      if (pinned) hide();
-    });
+    TIP = { toggle, hide, pinned: () => pinned };
+  }
+  // element that should pin a tooltip on tap (info button, coach badges, etc.)
+  function tipTargetOf(e) {
+    return e.target.closest("[data-cardinfo], .coach-icon, .coach-chip, .card-trait, .trait-chip, .streak-chip, .edition");
+  }
+
+  /* ============================================================
+     DRAG-TO-BAT — tap a card, or drag it onto the field diamond, to send the
+     batter up (Balatro-style). Pointer events unify mouse + touch.
+     ============================================================ */
+  let _drag = null;
+  function stageScale() {
+    const st = document.getElementById("stage");
+    if (!st) return 1;
+    const m = (getComputedStyle(st).transform || "").match(/matrix\(([^,]+)/);
+    return m ? (parseFloat(m[1]) || 1) : 1;
+  }
+  function overDiamond(x, y) {
+    const dw = $(".diamond-wrap");
+    if (!dw) return false;
+    const r = dw.getBoundingClientRect();
+    return x >= r.left - 10 && x <= r.right + 10 && y >= r.top - 10 && y <= r.bottom + 10;
+  }
+  function onCardPointerDown(e) {
+    if (STATE.screen !== "game" || STATE.busy || STATE.atBat) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const cardEl = e.target.closest("#hand .card[data-idx]");
+    if (!cardEl) return;
+    // let the info button + info badges fall through to their click handlers (tooltips)
+    if (e.target.closest("[data-cardinfo], .card-trait, .trait-chip, .streak-chip, .edition")) return;
+    _drag = { idx: parseInt(cardEl.getAttribute("data-idx"), 10), cardEl, x0: e.clientX, y0: e.clientY, moved: false, over: false };
+    try { cardEl.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+  function onCardPointerMove(e) {
+    if (!_drag) return;
+    const dx = e.clientX - _drag.x0, dy = e.clientY - _drag.y0;
+    if (!_drag.moved && Math.hypot(dx, dy) > 7) {
+      _drag.moved = true;
+      _drag.cardEl.classList.add("dragging");
+      const app = $("#app"); if (app) app.classList.add("is-dragging");
+    }
+    if (_drag.moved) {
+      const s = stageScale();
+      _drag.cardEl.style.transform = `translate(${dx / s}px, ${dy / s}px) scale(1.06) rotate(2.5deg)`;
+      _drag.over = overDiamond(e.clientX, e.clientY);
+      const dw = $(".diamond-wrap"); if (dw) dw.classList.toggle("drop-active", _drag.over);
+    }
+  }
+  function onCardPointerUp(e) {
+    if (!_drag) return;
+    const d = _drag; _drag = null;
+    d.cardEl.classList.remove("dragging");
+    d.cardEl.style.transform = "";
+    const app = $("#app"); if (app) app.classList.remove("is-dragging");
+    const dw = $(".diamond-wrap"); if (dw) dw.classList.remove("drop-active");
+    if (!d.moved) { selectBatter(d.idx); return; }      // a tap selects
+    if (d.over) { selectBatter(d.idx); }                 // dropped on the field selects
+    // otherwise: released in space — snap back (transform already cleared)
+  }
+  function setupDrag() {
+    document.addEventListener("pointerdown", onCardPointerDown);
+    document.addEventListener("pointermove", onCardPointerMove);
+    document.addEventListener("pointerup", onCardPointerUp);
+    document.addEventListener("pointercancel", onCardPointerUp);
   }
 
   function boot() {
@@ -1774,6 +1875,7 @@
     const rh = document.getElementById("rh-icon");
     if (rh) rh.innerHTML = icon("phone");
     initTooltips();
+    setupDrag();
     // expose a small debug API for testing
     global.DD = {
       STATE, CONFIG,

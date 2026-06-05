@@ -269,7 +269,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .map-head{text-align:center; margin-bottom:18px}
 .map-head h2{font-size:1.8rem; font-weight:900; letter-spacing:1px}
 .map-sub{color:var(--ink-dim); margin-top:4px}
-.bracket{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px}
+.bracket{display:grid; grid-template-columns:repeat(3,minmax(0,300px)); justify-content:center; gap:18px; margin:0 auto 22px}
 .bracket-round{background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:12px}
 .br-name{text-align:center; font-weight:800; font-size:.85rem; color:var(--gold); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px}
 .br-games{display:flex; flex-direction:column; gap:8px}
@@ -488,20 +488,28 @@ body{ position:fixed; inset:0; margin:0; }
 .hand-actions{ gap:16px; }
 
 /* ---------------- SHOP (compact, fills the stage) ---------------- */
-.shop-screen{ padding:16px 32px 18px; gap:10px; }
-.shop-head{ flex:0 0 auto; margin-bottom:2px; padding-right:112px; }
-.shop-grid{ flex:1 1 auto; min-height:0; display:grid; grid-template-columns:auto auto auto; justify-content:center; align-content:center; column-gap:40px; row-gap:26px; overflow:hidden; }
-.shop-section{ margin-bottom:0; align-self:start; }
-.shop-section h3{ margin-bottom:9px; font-size:.8rem; text-align:center; }
-.shop-row{ gap:12px; justify-content:center; }
-.shop-item{ width:166px; padding:10px; gap:8px; }
-.shop-item .card{ min-height:0; padding:7px; }
-.shop-item .card .card-tags{ display:none; }
-.shop-item .card .card-stats{ gap:4px; margin-bottom:5px; }
-.shop-item .card .card-top{ margin-bottom:6px; }
-.shop-coach,.shop-misc{ min-height:126px; }
-.sc-text,.sm-text{ font-size:.76rem; line-height:1.34; }
-.buy-btn{ padding:8px; }
+.shop-screen{ padding:14px 30px 16px; gap:8px; }
+.shop-head{ flex:0 0 auto; margin-bottom:2px; padding-right:60px; }
+/* two stacked rows: Coaches + Players on top (large), Analytics + Packs + Front Office below */
+.shop-grid{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:space-evenly; align-items:center; gap:14px; overflow:hidden; padding:6px 0; }
+.shop-rowgrp{ display:flex; justify-content:center; align-items:stretch; gap:32px; width:100%; }
+.shop-rowgrp-top{ gap:48px; }
+.shop-section{ margin-bottom:0; display:flex; flex-direction:column; }
+.shop-section h3{ margin-bottom:10px; font-size:.84rem; text-align:center; letter-spacing:2px; }
+.shop-row{ gap:14px; justify-content:center; flex:1 1 auto; align-items:stretch; }
+.shop-item{ width:196px; padding:12px; gap:10px; }
+.shop-item .card{ min-height:0; padding:12px 13px; width:100%; flex:1 1 auto; }
+.shop-item .card .card-tags{ display:flex; }      /* show the ability tags in the shop */
+.shop-item .card .card-stats{ gap:7px; margin-bottom:8px; }
+.shop-item .card .card-top{ margin-bottom:9px; }
+.shop-item .card .card-name{ font-size:1rem; }
+.shop-item .card .card-pos{ display:none; }        /* free up width so names never truncate */
+.shop-item .card .card-info{ display:none; }       /* the whole shop card is already an explainer */
+.shop-coach,.shop-misc{ min-height:172px; display:flex; flex-direction:column; }
+.sc-name,.sm-name{ font-size:1rem; }
+.sc-text,.sm-text{ font-size:.84rem; line-height:1.4; }
+.shop-item .shop-coach .sc-ico{ margin-bottom:7px; }
+.buy-btn{ padding:10px; font-size:1.02rem; }
 
 /* ---------------- portrait gate ---------------- */
 #rotate-hint{
@@ -661,10 +669,10 @@ body.portrait #toast{ display:none !important; }
 .rtok.spd-slow{ background:radial-gradient(circle at 35% 30%,#fff,#cbd5e1); }
 .rtok.leaving{ opacity:0; transform:translate(-50%,-50%) scale(.35); }
 
-/* ===== dugout column: coaches, then the moved Outs/Inning, then payroll ===== */
-.col-right{ display:flex; flex-direction:column; gap:10px; }
+/* ===== dugout column: coaches, then Outs/Inning, then money — all stacked at the top ===== */
+.col-right{ display:flex; flex-direction:column; gap:10px; justify-content:flex-start; }
 .dugout{ flex:0 0 auto; }
-.situation{ margin-top:auto; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:stretch; }
+.situation{ margin-top:2px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:stretch; }
 .sit-cell{ background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:10px 12px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
 .sit-cell span{ font-size:.62rem; letter-spacing:2px; color:var(--ink-faint); font-weight:800; }
@@ -724,6 +732,46 @@ body.portrait #toast{ display:none !important; }
   transform:translateY(4px); transition:opacity .12s, transform .12s; }
 #tooltip.show{ opacity:1; transform:translateY(0); }
 #tooltip b{ color:var(--gold); }
+
+/* ===== At-bat popup — floats over the play area; field never shrinks ===== */
+.atbat-pop{ position:absolute; left:50%; top:44%; z-index:30; width:min(560px,72%);
+  opacity:0; pointer-events:none; transform:translate(-50%,-50%) scale(.92);
+  transition:opacity .14s ease, transform .16s cubic-bezier(.2,1.4,.3,1); }
+.atbat-pop.show{ opacity:1; pointer-events:auto; transform:translate(-50%,-50%) scale(1); }
+.atbat-pop.pop .atbat-pop-inner{ animation:atbatPop .32s cubic-bezier(.2,1.5,.3,1); }
+@keyframes atbatPop{ 0%{transform:scale(.82)} 55%{transform:scale(1.05)} 100%{transform:scale(1)} }
+.atbat-pop-inner{ position:relative; text-align:center; background:linear-gradient(180deg,#18293f,#0e1c30);
+  border:1px solid var(--gold-2); border-radius:18px; padding:17px 20px 19px;
+  box-shadow:0 26px 64px rgba(0,0,0,.62), 0 0 0 4px rgba(255,203,71,.12); }
+.atbat-pop .atbat-up{ font-size:1.3rem; }
+.atbat-pop .atbat-q{ font-size:.95rem; margin:4px 0 13px; }
+.atbat-pop .approach-row{ gap:11px; }
+.atbat-pop .approach-btn{ padding:14px 9px 12px; gap:6px; }
+.atbat-pop .approach-btn .ap-icon{ width:30px; height:30px; }
+.atbat-pop .approach-btn .ap-name{ font-size:.94rem; }
+.ap-desc{ font-size:.68rem; color:var(--ink-faint); line-height:1.3; font-weight:500; white-space:normal; max-width:150px; }
+.atbat-pop .tactics-row{ margin-top:11px; }
+.atbat-pop .tactic-btn{ font-size:.88rem; padding:9px 16px; }
+.atbat-pop .atbat-cancel{ position:absolute; top:9px; right:9px; margin:0; width:30px; height:30px; padding:0;
+  display:flex; align-items:center; justify-content:center; border-radius:9px; background:rgba(255,255,255,.06);
+  border:1px solid var(--line); color:var(--ink-dim); cursor:pointer; }
+.atbat-pop .atbat-cancel .ico{ width:16px; height:16px; }
+.atbat-pop .atbat-cancel:hover{ color:var(--bad); border-color:var(--bad); }
+
+/* ===== card info button + drag-to-bat visuals (Balatro-style) ===== */
+.card-info{ flex:none; width:20px; height:20px; padding:0; border-radius:6px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.07);
+  border:1px solid var(--line); color:var(--ink-dim); transition:color .12s, border-color .12s, background .12s; }
+.card-info .ico{ width:13px; height:13px; }
+.card-info:hover{ color:var(--gold); border-color:var(--gold-2); background:rgba(255,203,71,.12); }
+.hand .card{ cursor:grab; touch-action:none; }
+.hand .card.dragging{ cursor:grabbing; z-index:60; pointer-events:none; transition:none;
+  box-shadow:0 30px 64px rgba(0,0,0,.65), 0 0 0 2px var(--gold-2); }
+#app.is-dragging .hand .card:not(.dragging){ opacity:.55; }
+.diamond-wrap{ position:relative; transition:box-shadow .15s; }
+.diamond-wrap.drop-active{ box-shadow:inset 0 0 0 3px var(--gold), 0 0 34px rgba(255,203,71,.45); }
+.diamond-wrap.drop-active::after{ content:"Drop to bat"; position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
+  background:var(--gold); color:#2a1c00; font-weight:800; font-size:.78rem; padding:3px 12px; border-radius:8px; z-index:6; pointer-events:none; white-space:nowrap; }
 
 /* ===== screen shake + flash juice ===== */
 @keyframes shakeBig{ 0%,100%{transform:translate(0,0)} 12%{transform:translate(-9px,5px)} 26%{transform:translate(8px,-6px)} 40%{transform:translate(-7px,4px)} 56%{transform:translate(6px,-4px)} 72%{transform:translate(-4px,2px)} 88%{transform:translate(2px,-1px)} }
@@ -850,8 +898,11 @@ body.portrait #toast{ display:none !important; }
 .deck-view .card .sbar-v{ width:18px; font-size:.62rem; }
 .deck-view .card .card-trait{ width:14px; } .deck-view .card .card-trait .ico{ width:13px; height:13px; }
 
-.dugout-view{ width:min(860px,96vw); max-width:860px; }
-.dugout-view .dug-list{ display:grid; grid-template-columns:repeat(2,1fr); gap:11px; max-height:74vh; }
-.dug-row{ display:flex; align-items:stretch; gap:9px; }
-.dug-row .coach-chip{ flex:1; min-width:0; }
-.dug-row .btn-sell{ flex:none; align-self:center; white-space:nowrap; }
+.dugout-view{ width:min(880px,96vw); max-width:880px; }
+.dugout-view .dug-list{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; max-height:74vh; margin:14px 0; }
+.dug-cell{ display:flex; flex-direction:column; gap:8px; }
+.dug-cell .coach-chip{ flex:1; min-width:0; cursor:pointer; align-items:center; }
+.dug-cell .coach-chip .coach-name{ font-size:.88rem; white-space:normal; line-height:1.2; }
+.dug-cell .btn-sell{ width:100%; padding:8px; white-space:nowrap; }
+/* on very narrow / short, drop to 3 columns so cells stay readable */
+@media (max-width:1100px){ .dugout-view .dug-list{ grid-template-columns:repeat(3,1fr); } }
