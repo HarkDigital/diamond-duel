@@ -31,7 +31,6 @@
     game: null,
     rng: null,       // current game's rng
     busy: false,
-    pinchMode: false,
     atBat: null,     // { card } — the batter who has stepped up, awaiting an approach
     shop: null,
     overlay: null,
@@ -49,7 +48,7 @@
   function cloneCoach(tpl) {
     return {
       uid: uid("coach"), id: tpl.id, name: tpl.name, fx: tpl.fx, trigger: tpl.trigger,
-      text: tpl.text, rarity: tpl.rarity, cost: tpl.cost,
+      icon: tpl.icon, text: tpl.text, rarity: tpl.rarity, cost: tpl.cost,
       state: tpl.state ? JSON.parse(JSON.stringify(tpl.state)) : undefined,
     };
   }
@@ -70,7 +69,6 @@
       // derived tunables (modifiable by upgrades)
       dugoutSlots: CONFIG.dugoutSlots,
       handSize: CONFIG.handSize,
-      pinchHits: CONFIG.pinchHits,
       startRally: CONFIG.startingRally,
       discount: 0,
       extraCardSlots: 0,
@@ -155,7 +153,6 @@
       pitcher,
       outsRemaining: outs,
       outsThisInning: 0,
-      pinchHitsRemaining: run.pinchHits,
       rally: run.startRally,
       startRally: run.startRally,
       score: 0,
@@ -185,7 +182,6 @@
     STATE.game = game;
     drawToHand();
     STATE.screen = "game";
-    STATE.pinchMode = false;
     render();
     // little intro flash
     pushLog(`▶ ${roundName(gi)} · ${gameLabel(gi)} — facing ${pitcher.name}. Target ${target}.`, "neutral");
@@ -214,7 +210,6 @@
   // Step 1 — tap a batter: they "step up" and you choose how to attack.
   function selectBatter(handIndex) {
     if (STATE.busy || !STATE.game || STATE.game.ended) return;
-    if (STATE.pinchMode) return pinchHit(handIndex);
     const card = STATE.game.hand[handIndex];
     if (!card) return;
     SFX.resume(); SFX.deal();
@@ -238,7 +233,7 @@
     const tr = getTrait(card.trait);
     const traitTag = tr ? `<span class="trait-chip" title="${tr.name} — ${tr.desc}">${tr.icon}</span>` : "";
     const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" title="Hot — boosted stats">🔥</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" title="Cold — reduced stats">❄️</span>` : "";
-    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}" title="${a.desc}"><span class="ap-icon">${a.icon}</span><span class="ap-name">${a.name}</span></button>`;
+    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${a.icon}</span><span class="ap-name">${a.name}</span></button>`;
     const runnersOn = g.bases.some(Boolean);
     const buntBtn = runnersOn ? `<button class="tactic-btn" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">🤏 Bunt</button>` : "";
     let sends = "";
@@ -338,24 +333,6 @@
   }
 
   function snapshotRunner(r) { return r ? { name: r.name, speed: r.speed } : null; }
-
-  async function pinchHit(handIndex) {
-    const g = STATE.game;
-    if (g.pinchHitsRemaining <= 0) { SFX.error(); return; }
-    const card = g.hand[handIndex];
-    if (!card) return;
-    STATE.busy = true;
-    g.hand.splice(handIndex, 1);
-    g.discard.push(card);
-    g.pinchHitsRemaining -= 1;
-    const repl = drawCard();
-    if (repl) g.hand.push(repl);
-    SFX.deal();
-    pushLog(`⇄ Pinch hit: ${card.name} out, ${repl ? repl.name : "(no card)"} in.`, "neutral");
-    STATE.pinchMode = false;
-    renderGame();
-    STATE.busy = false;
-  }
 
   /* ---------------- result animation ---------------- */
   const OUTCOME_LABEL = {
@@ -598,7 +575,6 @@
         <div class="col-left">
           <div class="resources">
             <div class="res"><b id="res-outs">0</b><span>OUTS</span></div>
-            <div class="res"><b id="res-pinch">0</b><span>PINCH</span></div>
             <div class="res"><b id="res-inning">1</b><span>INNING</span></div>
           </div>
           <div class="diamond-wrap">
@@ -627,8 +603,7 @@
       <div class="hand-row">
         <div class="hand" id="hand"></div>
         <div class="hand-actions">
-          <button class="btn btn-pinch" id="btn-pinch">Pinch Hit</button>
-          <div class="hand-hint">Click a card to send the batter up. Keys 1–8.</div>
+          <div class="hand-hint">Tap a batter to send them up, then choose your swing. Keys 1–8.</div>
         </div>
       </div>
     </div>`;
@@ -652,19 +627,12 @@
     const pct = Math.min(100, (g.score / g.target) * 100);
     const pf = $("#sb-progress"); if (pf) pf.style.width = pct + "%";
     setText("res-outs", g.outsRemaining);
-    setText("res-pinch", g.pinchHitsRemaining);
     setText("res-inning", gi + 1);
     setRally(g.rally, false);
     setText("payroll-amt", run.payroll);
     renderDiamond();
     renderHand();
     renderDugout();
-    const pinchBtn = $("#btn-pinch");
-    if (pinchBtn) {
-      pinchBtn.textContent = `Pinch Hit (${g.pinchHitsRemaining})`;
-      pinchBtn.classList.toggle("active", STATE.pinchMode);
-      pinchBtn.disabled = g.pinchHitsRemaining <= 0;
-    }
     refreshAtBat();
   }
 
@@ -734,10 +702,16 @@
     const slots = [];
     for (let i = 0; i < run.dugoutSlots; i++) {
       const c = run.dugout[i];
-      if (c) slots.push(coachChipHTML(c));
-      else slots.push(`<div class="coach-chip empty"><span>empty</span></div>`);
+      if (c) slots.push(coachIconHTML(c));
+      else slots.push(`<div class="coach-icon empty">+</div>`);
     }
     d.innerHTML = slots.join("");
+  }
+  // Compact dugout badge — just the coach's icon; the full rule lives in the tap/hover tooltip.
+  function coachIconHTML(c) {
+    const icon = c.icon || "★";
+    const scale = (c.state && c.state.bonus) ? `<span class="coach-badge">+${c.state.bonus.toFixed(1)}</span>` : "";
+    return `<div class="coach-icon rar-${c.rarity}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}"><span class="ci-glyph">${icon}</span>${scale}</div>`;
   }
   function coachChipHTML(c, opts) {
     opts = opts || {};
@@ -831,7 +805,7 @@
   }
 
   function flashCoachById(id) {
-    const el = $(`.coach-chip[data-coach="${id}"]`);
+    const el = $(`.coach-icon[data-coach="${id}"]`) || $(`.coach-chip[data-coach="${id}"]`);
     if (el) { el.classList.remove("trigger"); void el.offsetWidth; el.classList.add("trigger"); SFX.coach(); }
   }
   function flashCoachByFx(t) {
@@ -1040,14 +1014,14 @@
   }
 
   const HOWTO_SECTIONS = [
-    `<section><h3>① The goal</h3><p>You're running a postseason gauntlet. Each game, pile up <b>Score</b> to beat the opposing pitcher's <b>Target</b> before you run out of <b>Outs</b>. Win all 12 games — Wild Card through the World Series — to take the crown. Lose a single game and the run is over.</p></section>`,
-    `<section><h3>② Each at-bat</h3><p>Your hand is your lineup. <b>Click a card</b> (or press <b>1–8</b>) to send that batter to the plate. The at-bat instantly resolves to one outcome — strikeout, walk, single, homer… — from the batter's stats versus the pitcher. Then you draw back up and pick the next batter. <em>The order you bat them is the puzzle.</em></p></section>`,
+    `<section><h3>① The goal</h3><p>One run is a single <b>9-inning game</b>. Each inning, pile up <b>Score</b> to beat that inning's <b>Target</b> before you make your 3rd <b>Out</b>. Clear all nine innings — the last of every three is a tougher <b>Boss</b> — to win. Fall short in any inning and the game is over.</p></section>`,
+    `<section><h3>② Each at-bat</h3><p>Your hand is your lineup. <b>Tap a card</b> (or press <b>1–8</b>) to send that batter up, then choose an <b>approach</b> for the swing. The at-bat resolves to one outcome — strikeout, walk, single, homer… — from the batter's stats and approach versus the pitcher. Then you draw back up and choose again. <em>Who you bat, and how they swing, is the puzzle.</em></p></section>`,
     `<section class="howto-rally"><h3>③ The Rally — this is the whole game</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value</b> is the event's raw worth: Walk <b>1</b>, Single <b>2</b>, Double <b>3</b>, Triple <b>4</b>, Home Run <b>5</b> — plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> is your multiplier. It starts at <b>×1.0</b> and climbs <b>+0.5</b> every time you reach base safely… but an <b>OUT resets it to ×1.0</b>.</li></ul><p>A three-run homer (bag 8) at <b>×3.0</b> scores <b>24</b> — the same swing leading off at ×1.0 scores just 8. <b>Time your big bats to land while the rally is high.</b></p></section>`,
-    `<section><h3>④ Your resources</h3><ul><li><b>Outs</b> — your budget, 27 per game (some bosses give fewer). Reach zero below the Target and you're eliminated.</li><li><b>Pinch Hit</b> — swap an unwanted card for a fresh draw. Tap <b>Pinch Hit</b> (or press <b>P</b>), then the card to replace it.</li><li><b>Innings</b> — every 3 outs starts a new inning and clears the bases.</li></ul></section>`,
+    `<section><h3>④ Your resources</h3><ul><li><b>Outs</b> — just <b>3 per inning</b> (some bosses give fewer). Make your third out before reaching the Target and the game ends — every out is precious.</li><li><b>The approach</b> — after you pick a batter, choose how they swing: <b>Swing Away</b>, <b>Power Swing</b>, or <b>Work the Count</b>. With runners on you can also <b>Bunt</b> or <b>Send</b> a runner.</li><li><b>Innings</b> — clear an inning's Target to advance. A new inning resets your outs and clears the bases.</li></ul></section>`,
     `<section><h3>⑤ Reading a card</h3><p>Four stats (0–100): <b class="s-c">Contact</b> (singles, fewer strikeouts), <b class="s-p">Power</b> (extra-base hits &amp; homers), <b class="s-e">Eye</b> (walks), <b class="s-s">Speed</b> (steals, extra bases, beating the double play). The <b>L / R / S</b> badge is handedness — a lefty facing a righty pitcher (or vice-versa) gets a <b>platoon</b> boost; switch-hitters never face a disadvantage.</p></section>`,
     `<section><h3>⑥ Runners</h3><p>Hits advance runners around the diamond. A runner on 2nd or 3rd is <b>in scoring position</b> — drive them home for +1 bag value each, and several coaches pay out heavily when runners are aboard.</p></section>`,
     `<section><h3>⑦ Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They sit in dugout slots and trigger passively or in the right situation — flat bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run long. Lean into a synergy.</p></section>`,
-    `<section><h3>⑧ The gauntlet &amp; the shop</h3><p>Four rounds (Wild Card → Division → Championship → World Series), each with two games and a <b>Boss</b>. Boss pitchers carry a nasty rule — it's telegraphed on the map, so shop for it. Between games you spend <b>Payroll ($)</b> on players, coaches, analytics, scouting, upgrades, and packs. <em>You can't win the late rounds with your starting deck — building is the point.</em></p></section>`,
+    `<section><h3>⑧ The innings &amp; the shop</h3><p>Nine innings across three phases — <b>Early</b>, <b>Middle</b>, <b>Late</b> — and the third inning of each is a <b>Boss</b>. Boss pitchers carry a nasty rule, telegraphed ahead of time so you can shop for it. Between innings you spend <b>Payroll ($)</b> on players, coaches, analytics, scouting, upgrades, and packs. <em>You can't clear the late innings with your starting deck — building is the point.</em></p></section>`,
     `<section class="howto-tips"><h3>★ Quick tips</h3><ul><li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same direction beats a pile of random ones.</li></ul></section>`,
   ];
   const HOWTO_PAGES = [[0, 1], [2], [3, 4], [5, 6], [7, 8]];
@@ -1283,7 +1257,6 @@
     const run = STATE.run;
     switch (u.fx) {
       case "dugoutSlot": run.dugoutSlots += 1; break;
-      case "pinchHit": run.pinchHits += 1; break;
       case "handSize": run.handSize += 1; break;
       case "discount": run.discount += 1; break;
       case "shopSlot": run.extraCardSlots += 1; rollShopKeepBought(); break;
@@ -1556,7 +1529,6 @@
       case "reroll": doReroll(); break;
       case "leave-shop": STATE.screen = "map"; saveRun(); render(); break;
       case "to-shop": closeOverlay(); enterShop(); break;
-      case "btn-pinch": break;
       // menu system
       case "open-menu": showMenu(); break;
       case "menu-resume": closeOverlay(); break;
@@ -1617,16 +1589,6 @@
     render();
   }
 
-  // pinch toggle (separate because button has no data-act conflict)
-  document.addEventListener("click", (e) => {
-    const p = e.target.closest("#btn-pinch");
-    if (p && STATE.screen === "game") {
-      if (STATE.game.pinchHitsRemaining <= 0) { SFX.error(); return; }
-      STATE.pinchMode = !STATE.pinchMode;
-      renderGame();
-    }
-  });
-
   // keyboard
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !STATE._pick && !STATE._pack) {
@@ -1639,8 +1601,6 @@
     if (e.key >= "1" && e.key <= "8") {
       const idx = parseInt(e.key, 10) - 1;
       if (idx < STATE.game.hand.length) selectBatter(idx);
-    } else if (e.key === "p" || e.key === "P") {
-      if (STATE.game.pinchHitsRemaining > 0) { STATE.pinchMode = !STATE.pinchMode; renderGame(); }
     }
   });
 
@@ -1709,8 +1669,10 @@
     });
     // tap-to-explain (touch): info elements that have no other tap action
     document.addEventListener("click", (e) => {
-      const el = e.target.closest(".coach-chip, .card-trait, .trait-chip, .streak-chip, .edition, [data-tip]");
+      const el = e.target.closest(".coach-chip, .coach-icon, .card-trait, .trait-chip, .streak-chip, .edition, [data-tip]");
       if (el && !e.target.closest("[data-buy],[data-act],[data-approach],[data-send],[data-sell],.card[data-idx]")) {
+        // tapping the already-open item closes it (toggle), instead of just repositioning
+        if (pinned === el) { hide(); e.stopPropagation(); return; }
         const c = contentOf(el);
         if (c) { pinned = el; tip.innerHTML = c; tip.classList.add("show"); position(e.clientX, e.clientY); e.stopPropagation(); return; }
       }

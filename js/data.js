@@ -15,7 +15,6 @@
     // a budget of 3 outs (every out is precious). Reach the inning's target -> advance.
     outsPerGame: 3,        // outs per INNING (var name kept for minimal churn)
     handSize: 6,
-    pinchHits: 3,          // pinch-hit swaps per inning
     startingRally: 1.0,
 
     // Rally — builds across the whole inning (snowball) and resets at the inning's end,
@@ -230,35 +229,35 @@
   /* -------------------------------------------------------- */
   const COACHES = [
     // Flat boosters
-    { id: "launch_angle", name: "Launch Angle Coordinator", fx: "launchAngle", trigger: "passive", rarity: "common", cost: 4, text: "All home runs gain +2 Bag value." },
-    { id: "contact_instructor", name: "Contact Hitting Instructor", fx: "contactInstructor", trigger: "passive", rarity: "common", cost: 4, text: "All singles gain +1 Bag value." },
-    { id: "gap_coach", name: "Gap-to-Gap Coach", fx: "gapCoach", trigger: "passive", rarity: "common", cost: 4, text: "All doubles & triples gain +2 Bag value." },
-    { id: "patience_guru", name: "Patience Guru", fx: "patienceGuru", trigger: "passive", rarity: "common", cost: 4, text: "Walks & HBP grant +1.0 Rally (instead of +0.5)." },
+    { id: "launch_angle", name: "Launch Angle Coordinator", fx: "launchAngle", icon: "🚀", trigger: "passive", rarity: "common", cost: 4, text: "All home runs gain +2 Bag value." },
+    { id: "contact_instructor", name: "Contact Hitting Instructor", fx: "contactInstructor", icon: "🎯", trigger: "passive", rarity: "common", cost: 4, text: "All singles gain +1 Bag value." },
+    { id: "gap_coach", name: "Gap-to-Gap Coach", fx: "gapCoach", icon: "↔️", trigger: "passive", rarity: "common", cost: 4, text: "All doubles & triples gain +2 Bag value." },
+    { id: "patience_guru", name: "Patience Guru", fx: "patienceGuru", icon: "🧘", trigger: "passive", rarity: "common", cost: 4, text: "Walks & HBP grant +1.0 Rally (instead of +0.5)." },
 
     // Sequence / situational
-    { id: "hit_and_run", name: "Hit-and-Run", fx: "hitAndRun", trigger: "situational", rarity: "common", cost: 5, text: "Playing a Contact card with a runner on first grants +0.5 Rally." },
-    { id: "table_setter", name: "Table-Setter", fx: "tableSetter", trigger: "situational", rarity: "star", cost: 6, text: "If the first batter of an inning reaches base, +0.5 Rally on every safe play for the rest of that inning." },
-    { id: "two_out_magic", name: "Two-Out Magic", fx: "twoOutMagic", trigger: "situational", rarity: "star", cost: 6, text: "Events recorded with two outs score at +1.0 Rally." },
-    { id: "risp_specialist", name: "RISP Specialist", fx: "rispSpecialist", trigger: "situational", rarity: "star", cost: 6, text: "With a runner in scoring position, +1 Bag value per run driven in." },
-    { id: "back_to_back", name: "Back-to-Back", fx: "backToBack", trigger: "situational", rarity: "star", cost: 6, text: "Playing two Slugger cards in a row grants +1.0 Rally on the second." },
-    { id: "small_ball", name: "Small Ball", fx: "smallBall", trigger: "situational", rarity: "star", cost: 6, text: "Productive outs and stolen bases grant +0.5 Rally (and a productive out won't reset your Rally)." },
-    { id: "rally_cap", name: "Rally Caps", fx: "rallyCap", trigger: "situational", rarity: "star", cost: 6, text: "Every 3rd consecutive safe outcome scores with an extra +1.5 Rally." },
+    { id: "hit_and_run", name: "Hit-and-Run", fx: "hitAndRun", icon: "🏃", trigger: "situational", rarity: "common", cost: 5, text: "Playing a Contact card with a runner on first grants +0.5 Rally." },
+    { id: "table_setter", name: "Table-Setter", fx: "tableSetter", icon: "🍽️", trigger: "situational", rarity: "star", cost: 6, text: "If the first batter of an inning reaches base, +0.5 Rally on every safe play for the rest of that inning." },
+    { id: "two_out_magic", name: "Two-Out Magic", fx: "twoOutMagic", icon: "✨", trigger: "situational", rarity: "star", cost: 6, text: "Events recorded with two outs score at +1.0 Rally." },
+    { id: "risp_specialist", name: "RISP Specialist", fx: "rispSpecialist", icon: "🧲", trigger: "situational", rarity: "star", cost: 6, text: "With a runner in scoring position, +1 Bag value per run driven in." },
+    { id: "back_to_back", name: "Back-to-Back", fx: "backToBack", icon: "💥", trigger: "situational", rarity: "star", cost: 6, text: "Playing two Slugger cards in a row grants +1.0 Rally on the second." },
+    { id: "small_ball", name: "Small Ball", fx: "smallBall", icon: "🤏", trigger: "situational", rarity: "star", cost: 6, text: "Productive outs and stolen bases grant +0.5 Rally (and a productive out won't reset your Rally)." },
+    { id: "rally_cap", name: "Rally Caps", fx: "rallyCap", icon: "🧢", trigger: "situational", rarity: "star", cost: 6, text: "Every 3rd consecutive safe outcome scores with an extra +1.5 Rally." },
 
     // Roster-composition (tag readers)
-    { id: "bash_brothers", name: "Bash Brothers", fx: "bashBrothers", trigger: "passive", rarity: "star", cost: 6, text: "While 4+ Sluggers are in your deck, all hits gain +1 Bag value." },
-    { id: "whitey_ball", name: "Whitey Ball", fx: "whiteyBall", trigger: "passive", rarity: "star", cost: 6, text: "While 3+ Speedsters are in your deck, all runners gain +18 Speed." },
-    { id: "platoon_manager", name: "Platoon Manager", fx: "platoonManager", trigger: "passive", rarity: "common", cost: 5, text: "Your platoon advantage bonus is doubled." },
-    { id: "sabermetrician", name: "Sabermetrician", fx: "sabermetrician", trigger: "passive", rarity: "star", cost: 6, text: "Walks count as singles for Bag value (Bag 2)." },
+    { id: "bash_brothers", name: "Bash Brothers", fx: "bashBrothers", icon: "💪", trigger: "passive", rarity: "star", cost: 6, text: "While 4+ Sluggers are in your deck, all hits gain +1 Bag value." },
+    { id: "whitey_ball", name: "Whitey Ball", fx: "whiteyBall", icon: "💨", trigger: "passive", rarity: "star", cost: 6, text: "While 3+ Speedsters are in your deck, all runners gain +18 Speed." },
+    { id: "platoon_manager", name: "Platoon Manager", fx: "platoonManager", icon: "🔀", trigger: "passive", rarity: "common", cost: 5, text: "Your platoon advantage bonus is doubled." },
+    { id: "sabermetrician", name: "Sabermetrician", fx: "sabermetrician", icon: "📊", trigger: "passive", rarity: "star", cost: 6, text: "Walks count as singles for Bag value (Bag 2)." },
 
     // Scaling
-    { id: "prospect_pipeline", name: "Prospect Pipeline", fx: "prospectPipeline", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.2 Rally (applied to every event) each time a Rookie records a hit.", state: { bonus: 0 } },
-    { id: "hot_streak", name: "Hot Streak", fx: "hotStreak", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.5 Rally per game in which you hit a home run. Resets after a game with no homer.", state: { bonus: 0, homerThisGame: false } },
-    { id: "veteran_presence", name: "Veteran Presence", fx: "veteranPresence", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.1 Rally (applied to every event) each time a Veteran records a hit.", state: { bonus: 0 } },
+    { id: "prospect_pipeline", name: "Prospect Pipeline", fx: "prospectPipeline", icon: "🌱", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.2 Rally (applied to every event) each time a Rookie records a hit.", state: { bonus: 0 } },
+    { id: "hot_streak", name: "Hot Streak", fx: "hotStreak", icon: "🔥", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.5 Rally per game in which you hit a home run. Resets after a game with no homer.", state: { bonus: 0, homerThisGame: false } },
+    { id: "veteran_presence", name: "Veteran Presence", fx: "veteranPresence", icon: "🎖️", trigger: "scaling", rarity: "star", cost: 6, text: "Gains +0.1 Rally (applied to every event) each time a Veteran records a hit.", state: { bonus: 0 } },
 
     // Economy
-    { id: "frugal_fo", name: "Frugal Front Office", fx: "frugalFO", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll per leftover out when you win a game." },
-    { id: "sign_stealer", name: "Sign Stealer", fx: "signStealer", trigger: "economy", rarity: "common", cost: 5, text: "Your first shop reroll each visit is free." },
-    { id: "gold_glove_agent", name: "Gold Glove Agent", fx: "goldGloveAgent", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll every time you hit a home run." },
+    { id: "frugal_fo", name: "Frugal Front Office", fx: "frugalFO", icon: "💰", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll per leftover out when you win a game." },
+    { id: "sign_stealer", name: "Sign Stealer", fx: "signStealer", icon: "🕵️", trigger: "economy", rarity: "common", cost: 5, text: "Your first shop reroll each visit is free." },
+    { id: "gold_glove_agent", name: "Gold Glove Agent", fx: "goldGloveAgent", icon: "🧤", trigger: "economy", rarity: "common", cost: 5, text: "Earn +1 Payroll every time you hit a home run." },
   ];
 
   function getCoach(id) {
@@ -313,7 +312,6 @@
   /* -------------------------------------------------------- */
   const UPGRADES = [
     { id: "up_dugout", name: "Expanded Dugout", fx: "dugoutSlot", rarity: "star", cost: 8, text: "+1 dugout slot (more coaches)." },
-    { id: "up_pinch", name: "Deep Bench", fx: "pinchHit", rarity: "common", cost: 6, text: "+1 pinch hit per game." },
     { id: "up_hand", name: "Bigger Lineup Card", fx: "handSize", rarity: "common", cost: 6, text: "+1 hand size." },
     { id: "up_discount", name: "Analytics Department", fx: "discount", rarity: "star", cost: 7, text: "Shop prices reduced by $1 (min $1)." },
     { id: "up_shopslot", name: "Scouting Network", fx: "shopSlot", rarity: "star", cost: 7, text: "+1 card slot in the shop." },

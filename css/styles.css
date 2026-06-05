@@ -122,7 +122,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 @media(max-width:1080px){.game-body{grid-template-columns:1fr; }}
 
 .col-left{display:flex; flex-direction:column; gap:12px}
-.resources{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.resources{display:grid; grid-template-columns:repeat(2,1fr); gap:8px}
 .res{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; text-align:center}
 .res b{display:block; font-size:1.5rem; font-weight:900; font-variant-numeric:tabular-nums}
 .res span{font-size:.62rem; letter-spacing:2px; color:var(--ink-faint)}
@@ -130,24 +130,26 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .diamond-wrap{background:
    radial-gradient(120% 90% at 50% 20%, #133a22 0%, #0c2417 60%, #0a1a12 100%);
    border:1px solid var(--line); border-radius:14px; padding:14px; display:flex; justify-content:center}
-.diamond{position:relative; width:236px; height:208px}
-.diamond::before{
-  content:""; position:absolute; left:50%; top:46%; width:150px; height:150px;
+/* Square field. Infield is a 45°-rotated square; its four corners sit at 16%/84%
+   along each axis, and every base is centered on a corner — so they always align. */
+.diamond{position:relative; width:236px; height:236px}
+.diamond::before{ /* infield grass */
+  content:""; position:absolute; left:50%; top:50%; width:48%; height:48%;
   transform:translate(-50%,-50%) rotate(45deg);
   background:linear-gradient(135deg,#3a9f57,#2c7a43); border:3px solid #d9b88f;
   border-radius:8px; box-shadow:inset 0 0 30px rgba(0,0,0,.25);
 }
-.diamond::after{
-  content:""; position:absolute; left:50%; top:46%; width:64px; height:64px;
+.diamond::after{ /* pitcher's mound / base-path dirt */
+  content:""; position:absolute; left:50%; top:50%; width:21%; height:21%;
   transform:translate(-50%,-50%) rotate(45deg); background:#a9663b; border-radius:6px; opacity:.7;
 }
 .base{position:absolute; width:26px; height:26px; background:#e9e2d0; border:2px solid #b9a47a; border-radius:5px;
-  transform:rotate(45deg); display:flex; align-items:center; justify-content:center; z-index:2; transition:box-shadow .2s, background .2s}
+  transform:translate(-50%,-50%) rotate(45deg); display:flex; align-items:center; justify-content:center; z-index:2; transition:box-shadow .2s, background .2s}
 .base.occupied{background:#fff; box-shadow:0 0 16px rgba(255,203,71,.8)}
-.base-home{left:50%; bottom:2px; transform:translateX(-50%) rotate(45deg); background:#f4f0e4; width:22px; height:22px}
-.base-1{right:8px; top:42%; transform:translateY(-50%) rotate(45deg)}
-.base-2{left:50%; top:2px; transform:translateX(-50%) rotate(45deg)}
-.base-3{left:8px; top:42%; transform:translateY(-50%) rotate(45deg)}
+.base-2{left:50%; top:16%}
+.base-1{left:84%; top:50%}
+.base-3{left:16%; top:50%}
+.base-home{left:50%; top:84%; background:#f4f0e4}
 .runner{width:14px; height:14px; border-radius:50%; transform:rotate(-45deg); animation:runnerIn .3s ease; box-shadow:0 1px 4px rgba(0,0,0,.5)}
 .runner.spd-fast{background:radial-gradient(circle at 35% 30%,#fff,var(--speed))}
 .runner.spd-mid{background:radial-gradient(circle at 35% 30%,#fff,var(--great))}
@@ -183,7 +185,18 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 
 .col-right{display:flex; flex-direction:column; gap:8px}
 .dugout-title{font-size:.7rem; letter-spacing:3px; color:var(--ink-faint); font-weight:800; padding-left:2px}
-.dugout{display:flex; flex-direction:column; gap:7px}
+.dugout{display:flex; flex-flow:row wrap; gap:8px; align-content:flex-start}
+/* in-game dugout: compact coach icons — the full rule lives in the tap/hover tooltip */
+.coach-icon{position:relative; width:46px; height:46px; border-radius:12px; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,#16273f,#11203455); border:1px solid var(--line); border-bottom:3px solid var(--rar-common);
+  cursor:pointer; transition:transform .12s, box-shadow .2s, border-color .15s}
+.coach-icon .ci-glyph{font-size:1.5rem; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))}
+.coach-icon.rar-star{border-bottom-color:var(--rar-star)} .coach-icon.rar-allstar{border-bottom-color:var(--rar-allstar)} .coach-icon.rar-legend{border-bottom-color:var(--rar-legend)}
+.coach-icon:hover{transform:translateY(-2px); border-color:var(--gold-2); box-shadow:0 8px 18px rgba(0,0,0,.45)}
+.coach-icon.trigger{animation:coachTrig .6s ease; box-shadow:0 0 0 2px var(--gold), 0 0 22px rgba(255,203,71,.6)}
+.coach-icon.empty{border-style:dashed; color:var(--ink-faint); opacity:.4; font-size:1.2rem; font-weight:700; cursor:default}
+.coach-badge{position:absolute; bottom:-6px; right:-6px; background:var(--gold); color:#2a1c00; font-size:.6rem; font-weight:800; padding:1px 5px; border-radius:8px; font-variant-numeric:tabular-nums; box-shadow:0 2px 6px rgba(0,0,0,.45)}
 .coach-chip{background:linear-gradient(180deg,#16273f,#11203455); border:1px solid var(--line); border-left:4px solid var(--rar-common);
   border-radius:10px; padding:7px 9px; position:relative; transition:transform .12s, box-shadow .2s}
 .coach-chip.rar-star{border-left-color:var(--rar-star)} .coach-chip.rar-allstar{border-left-color:var(--rar-allstar)} .coach-chip.rar-legend{border-left-color:var(--rar-legend)}
@@ -203,7 +216,6 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .hand{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; min-height:172px; perspective:900px}
 .hand-actions{display:flex; align-items:center; justify-content:center; gap:14px}
 .hand-hint{color:var(--ink-faint); font-size:.78rem}
-.btn-pinch.active{background:linear-gradient(180deg,var(--gold),var(--gold-2)); color:#2a1c00; border-color:var(--gold-deep)}
 
 /* card */
 .card{
@@ -472,17 +484,18 @@ body{ position:fixed; inset:0; margin:0; }
 /* ---------------- SHOP (compact, fills the stage) ---------------- */
 .shop-screen{ padding:16px 32px 18px; gap:10px; }
 .shop-head{ flex:0 0 auto; margin-bottom:2px; padding-right:112px; }
-.shop-grid{ flex:1 1 auto; min-height:0; display:grid; grid-template-columns:1fr 1fr; column-gap:32px; row-gap:14px; align-content:space-evenly; overflow:hidden; }
+.shop-grid{ flex:1 1 auto; min-height:0; display:grid; grid-template-columns:auto auto auto; justify-content:center; align-content:center; column-gap:40px; row-gap:26px; overflow:hidden; }
 .shop-section{ margin-bottom:0; align-self:start; }
-.shop-section h3{ margin-bottom:6px; font-size:.74rem; }
-.shop-row{ gap:9px; }
-.shop-item{ width:138px; padding:7px; gap:6px; }
+.shop-section h3{ margin-bottom:9px; font-size:.8rem; text-align:center; }
+.shop-row{ gap:12px; justify-content:center; }
+.shop-item{ width:166px; padding:10px; gap:8px; }
 .shop-item .card{ min-height:0; padding:7px; }
 .shop-item .card .card-tags{ display:none; }
-.shop-item .card .card-stats{ gap:3px; margin-bottom:4px; }
-.shop-item .card .card-top{ margin-bottom:5px; }
-.shop-coach,.shop-misc{ min-height:104px; }
-.buy-btn{ padding:7px; }
+.shop-item .card .card-stats{ gap:4px; margin-bottom:5px; }
+.shop-item .card .card-top{ margin-bottom:6px; }
+.shop-coach,.shop-misc{ min-height:126px; }
+.sc-text,.sm-text{ font-size:.76rem; line-height:1.34; }
+.buy-btn{ padding:8px; }
 
 /* ---------------- portrait gate ---------------- */
 #rotate-hint{
@@ -558,7 +571,6 @@ body.portrait #toast{ display:none !important; }
 /* ---- hand cards: bigger & cleaner ---- */
 .hand{ gap:14px; align-items:stretch; justify-content:center; flex-wrap:nowrap; }
 .hand-actions{ gap:18px; }
-.btn-pinch{ font-size:1.05rem; padding:13px 26px; }
 .hand-hint{ font-size:.92rem; }
 /* cards flex to fill the full hand width (no wasted side space), capped so they don't get huge */
 .card{ flex:1 1 0; min-width:0; max-width:248px; min-height:200px; padding:14px 13px; border-top-width:5px; border-radius:16px; display:flex; flex-direction:column; }
@@ -632,12 +644,8 @@ body.portrait #toast{ display:none !important; }
 .col-left{ min-height:0; }
 .resources{ flex:0 0 auto; }
 .res{ padding:9px 8px; } .res b{ font-size:1.75rem; }
-.diamond-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:8px; }
-.diamond{ width:auto; height:100%; max-height:300px; aspect-ratio:248 / 212; max-width:100%; margin:0; }
-.diamond::before{ width:61%; height:72%; top:46%; }
-.diamond::after{ width:26%; height:30%; top:46%; }
-.diamond .base-1{ right:3.5%; } .diamond .base-3{ left:3.5%; }
-.diamond .base-2{ top:1.5%; } .diamond .base-home{ bottom:1.5%; }
+.diamond-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:6px; }
+.diamond{ width:auto; height:100%; max-height:360px; aspect-ratio:1; max-width:100%; margin:0; }
 .readout{ flex:0 0 auto; min-height:0; }
 
 /* ===== At-bat: batter steps up & you choose an approach ===== */
@@ -728,4 +736,32 @@ body.portrait #toast{ display:none !important; }
   .howto h3{ font-size:.95rem; margin-bottom:3px; }
   .howto p,.howto li{ font-size:.82rem; line-height:1.4; }
   .howto-rally,.howto-tips{ padding:9px 11px; }
+}
+
+/* On short (phone-landscape) viewports the hand cards eat most of the height and
+   starve the field. Reclaim it: shrink the hand a touch so the diamond grows big. */
+@media (max-height: 470px){
+  .game-screen{ padding:10px 26px 12px; gap:8px; }
+  .hand{ gap:10px; }
+  .card{ min-height:150px; padding:10px 11px; border-radius:13px; }
+  .card-top{ margin-bottom:7px; }
+  .card-stats{ gap:6px; margin-bottom:6px; }
+  .sbar-track{ height:9px; }
+  .hand-hint{ display:none; }                 /* recover a full line for the field */
+  .resources .res{ padding:6px 8px; }
+  .resources .res b{ font-size:1.55rem; }
+  .diamond-wrap{ padding:4px; }
+  .diamond{ max-height:none; }                /* fill the space the hand gave back */
+  .readout{ padding:9px 10px; }
+  /* keep the at-bat panel compact so the field holds its size while picking a swing */
+  .approach-btn{ padding:6px 4px; gap:2px; }
+  .approach-btn .ap-icon{ font-size:1.15rem; }
+  .approach-btn .ap-name{ font-size:.68rem; }
+  .atbat-up{ font-size:.96rem; }
+  .atbat-q{ font-size:.78rem; margin:1px 0 5px; }
+  .tactics-row{ margin-top:5px; gap:6px; }
+  .tactic-btn{ padding:6px 10px; font-size:.76rem; }
+  .atbat-cancel{ margin-top:5px; font-size:.76rem; }
+  .coach-icon{ width:42px; height:42px; }
+  .coach-icon .ci-glyph{ font-size:1.35rem; }
 }
