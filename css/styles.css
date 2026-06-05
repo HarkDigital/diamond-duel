@@ -428,8 +428,8 @@ body{ position:fixed; inset:0; margin:0; }
   touch-action:pan-y; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 /* allow text selection inside the seed input */
 .seed-input{ -webkit-user-select:text; user-select:text; }
-#app{ width:1600px; height:900px; min-height:0; overflow:hidden; position:relative; }
-.screen{ width:1600px; height:900px; max-width:none; margin:0; padding:24px 34px; overflow:hidden; display:flex; flex-direction:column; }
+#app{ width:100%; height:100%; min-height:0; overflow:hidden; position:relative; }
+.screen{ width:100%; height:100%; max-width:none; margin:0; padding:24px 34px; overflow:hidden; display:flex; flex-direction:column; }
 
 /* Menu button stays viewport-fixed in the TOP-RIGHT, clear of notches */
 #menu-btn{ z-index:45; top:calc(12px + env(safe-area-inset-top,0px)); right:calc(12px + env(safe-area-inset-right,0px)); bottom:auto; left:auto; }
@@ -472,9 +472,9 @@ body{ position:fixed; inset:0; margin:0; }
 /* ---------------- SHOP (compact, fills the stage) ---------------- */
 .shop-screen{ padding:16px 32px 18px; gap:10px; }
 .shop-head{ flex:0 0 auto; margin-bottom:2px; padding-right:112px; }
-.shop-grid{ flex:1 1 auto; min-height:0; display:block; column-count:2; column-gap:28px; overflow:hidden; }
-.shop-section{ break-inside:avoid; -webkit-column-break-inside:avoid; margin-bottom:14px; }
-.shop-section h3{ margin-bottom:5px; font-size:.74rem; }
+.shop-grid{ flex:1 1 auto; min-height:0; display:grid; grid-template-columns:1fr 1fr; column-gap:32px; row-gap:14px; align-content:space-evenly; overflow:hidden; }
+.shop-section{ margin-bottom:0; align-self:start; }
+.shop-section h3{ margin-bottom:6px; font-size:.74rem; }
 .shop-row{ gap:9px; }
 .shop-item{ width:138px; padding:7px; gap:6px; }
 .shop-item .card{ min-height:0; padding:7px; }
@@ -556,12 +556,14 @@ body.portrait #toast{ display:none !important; }
 .payroll-chip{ font-size:1.1rem; padding:9px 17px; border-radius:13px; }
 
 /* ---- hand cards: bigger & cleaner ---- */
-.hand{ gap:13px; }
+.hand{ gap:14px; align-items:stretch; justify-content:center; flex-wrap:nowrap; }
 .hand-actions{ gap:18px; }
 .btn-pinch{ font-size:1.05rem; padding:13px 26px; }
 .hand-hint{ font-size:.92rem; }
-.card{ width:170px; min-height:228px; padding:13px 12px; border-top-width:5px; border-radius:16px; }
-.card:hover{ transform:translateY(-10px) scale(1.04); }
+/* cards flex to fill the full hand width (no wasted side space), capped so they don't get huge */
+.card{ flex:1 1 0; min-width:0; max-width:248px; min-height:200px; padding:14px 13px; border-top-width:5px; border-radius:16px; display:flex; flex-direction:column; }
+.card:hover{ transform:translateY(-10px) scale(1.03); }
+.card-stats{ flex:1 1 auto; justify-content:center; }
 .card-top{ margin-bottom:10px; gap:8px; }
 .bats{ width:28px; height:28px; font-size:1rem; border-radius:8px; }
 .card-name{ font-size:1.08rem; }
@@ -624,6 +626,19 @@ body.portrait #toast{ display:none !important; }
 
 /* picker / pack / deck grids a touch bigger */
 .picker .picker-grid,.deck-view .deck-grid,.pack-grid{ gap:12px; }
+
+/* ===== Field column: responsive diamond that scales to its space, so the readout
+   always shows on short (phone) stages and the diamond grows on taller (tablet) stages ===== */
+.col-left{ min-height:0; }
+.resources{ flex:0 0 auto; }
+.res{ padding:9px 8px; } .res b{ font-size:1.75rem; }
+.diamond-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:8px; }
+.diamond{ width:auto; height:100%; max-height:300px; aspect-ratio:248 / 212; max-width:100%; margin:0; }
+.diamond::before{ width:61%; height:72%; top:46%; }
+.diamond::after{ width:26%; height:30%; top:46%; }
+.diamond .base-1{ right:3.5%; } .diamond .base-3{ left:3.5%; }
+.diamond .base-2{ top:1.5%; } .diamond .base-home{ bottom:1.5%; }
+.readout{ flex:0 0 auto; min-height:0; }
 
 /* On short (phone-landscape) viewports, compact the viewport-level overlays so
    they fit the limited height with no scroll. Tablets/desktops stay roomy. */

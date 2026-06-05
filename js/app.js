@@ -1552,7 +1552,7 @@
      BOOT
      ============================================================ */
   // Scale the fixed 1600x900 stage to fit the viewport (landscape, no scroll).
-  const STAGE_W = 1600, STAGE_H = 900;
+  const STAGE_W = 1600;
   let _lastFit = "";
   function fitStage() {
     const stage = document.getElementById("stage");
@@ -1566,8 +1566,14 @@
     const key = Math.round(w) + "x" + Math.round(h) + "+" + Math.round(ox) + "+" + Math.round(oy);
     if (key === _lastFit) return; // cheap no-op when nothing changed
     _lastFit = key;
-    const s = Math.min(w / STAGE_W, h / STAGE_H);
-    // center the stage in the visible area and scale to fit
+    // Adaptive aspect: lock the design WIDTH and derive the height from the viewport's
+    // aspect ratio, so the stage fills the screen edge-to-edge on any landscape device
+    // (no letterbox bands) and the layout uses the full width.
+    const aspect = w / Math.max(1, h);
+    const stageH = Math.max(660, Math.min(1180, Math.round(STAGE_W / aspect)));
+    const s = Math.min(w / STAGE_W, h / stageH);
+    stage.style.width = STAGE_W + "px";
+    stage.style.height = stageH + "px";
     stage.style.left = (ox + w / 2) + "px";
     stage.style.top = (oy + h / 2) + "px";
     stage.style.transform = "translate(-50%,-50%) scale(" + s + ")";
