@@ -1014,11 +1014,11 @@ body.portrait #toast{ display:none !important; }
 .atbat-bar .ap-desc{ font-size:.78rem; color:var(--ink-faint); line-height:1.3; font-weight:500; white-space:normal; max-width:170px; }
 .atbat-bar .tactics-row{ display:flex; flex-direction:column; gap:8px; justify-content:center; margin:0; flex:0 0 auto; }
 .atbat-bar .tactic-btn{ font-size:.92rem; padding:9px 16px; }
-.ab-cancel{ flex:0 0 auto; align-self:center; width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center;
-  border-radius:11px; background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--ink-dim); cursor:pointer;
-  transition:color .12s, border-color .12s; }
-.ab-cancel .ico{ width:20px; height:20px; }
-.ab-cancel:hover{ color:var(--bad); border-color:var(--bad); }
+/* Cancel sits with the tactics (under Bunt / Send) — muted so it reads as "back out". */
+.atbat-bar .tactic-btn.ab-cancel-btn{ color:var(--ink-dim); border-color:rgba(255,255,255,.16);
+  background:linear-gradient(180deg,#222a36,#171d27); margin-top:2px; }
+.atbat-bar .tactic-btn.ab-cancel-btn:hover{ color:var(--bad); border-color:var(--bad);
+  background:linear-gradient(180deg,#3a2330,#241016); }
 
 /* the play summary is shorter now to make room for the bar */
 .col-center{ min-height:0; }
@@ -1042,8 +1042,10 @@ body.portrait #toast{ display:none !important; }
 .col-field{ grid-area:field; min-height:0; display:flex; flex-direction:column; gap:9px; overflow:hidden;
   background:radial-gradient(120% 78% at 50% 16%, #1d5d30 0%, #103a1c 60%, #0c2913 100%);
   border:1px solid var(--line); border-radius:16px; padding:12px; }
-.col-field .diamond-wrap{ flex:1 1 auto; min-height:0; background:none; border:none; padding:0; display:flex; align-items:center; justify-content:center; }
-.col-field .diamond{ width:auto; height:100%; aspect-ratio:1; max-width:100%; max-height:none; margin:0; }
+.col-field .diamond-wrap{ flex:1 1 auto; min-height:0; background:none; border:none; padding:0; display:flex; align-items:center; justify-content:center; container-type:size; }
+/* Largest square that fits the column (cqmin = smaller of wrap width/height), so the
+   infield and the percentage-positioned bases always line up no matter the column shape. */
+.col-field .diamond{ width:100cqmin; height:100cqmin; aspect-ratio:1; max-width:100%; max-height:100%; margin:0; }
 .field-situation{ flex:0 0 auto; display:grid; grid-template-columns:1fr auto; gap:9px; }
 .field-situation .sit-cell{ background:rgba(7,20,12,.5); border:1px solid rgba(255,255,255,.1); border-radius:12px;
   padding:8px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }

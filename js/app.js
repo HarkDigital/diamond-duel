@@ -264,8 +264,6 @@
   function atBatControlsHTML(card) {
     const aps = CONFIG.approaches;
     const g = STATE.game;
-    const plat = Engine.platoonState(card, g.pitcher, STATE.run);
-    const platTag = plat.state === "adv" ? `<span class="plat plat-adv">platoon +</span>` : plat.state === "dis" ? `<span class="plat plat-dis">platoon −</span>` : "";
     const tr = getTrait(card.trait);
     const traitTag = tr ? `<span class="trait-chip" data-tip="<b>${tr.name}</b><br>${tr.desc}">${icon(tr.icon)}</span>` : "";
     const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</span>` : "";
@@ -274,13 +272,14 @@
     const buntBtn = runnersOn ? `<button class="tactic-btn ap-bunt" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt</button>` : "";
     let sends = "";
     [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
-    const tactics = (buntBtn || sends) ? `<div class="tactics-row">${buntBtn}${sends}</div>` : "";
+    // Cancel lives with the tactics (under Bunt / Send) instead of a corner X.
+    const cancelBtn = `<button class="tactic-btn ab-cancel-btn" data-act="cancel-atbat" title="Put this batter back and pick someone else">${icon("close")} Cancel</button>`;
+    const tactics = `<div class="tactics-row">${buntBtn}${sends}${cancelBtn}</div>`;
     return `<div class="ab-active">
-        <div class="ab-head"><b>${shortName(card.name)}</b> steps up ${platTag} ${traitTag} ${streak}<span class="ab-q"> — how do you swing?</span></div>
+        <div class="ab-head"><b>${shortName(card.name)}</b> steps up ${traitTag} ${streak}</div>
         <div class="ab-controls">
           <div class="approach-row">${btn(aps.swing)}${btn(aps.power)}${btn(aps.contact)}</div>
           ${tactics}
-          <button class="ab-cancel" data-act="cancel-atbat" aria-label="Cancel" title="Pick someone else">${icon("close")}</button>
         </div>
       </div>`;
   }
