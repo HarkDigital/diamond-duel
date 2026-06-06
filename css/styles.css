@@ -98,7 +98,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
    ============================================================ */
 .game-screen{max-width:1240px}
 .scoreboard{
-  display:grid; grid-template-columns:1.3fr 1.6fr 1fr; gap:14px; align-items:center;
+  display:grid; grid-template-columns:1.3fr 1.6fr 1.3fr; gap:14px; align-items:center;
   background:linear-gradient(180deg,#0f2034,#0b1726); border:1px solid var(--line);
   border-radius:16px; padding:14px 18px; position:relative; box-shadow:var(--shadow);
 }
@@ -1175,7 +1175,7 @@ body.portrait #toast{ display:none !important; }
 .shop-item .card .card-name{ font-size:.96rem; }
 
 /* ---- scoreboard: payroll chip next to Rally ---- */
-.scoreboard{ grid-template-columns:1.3fr 1.6fr auto; }
+.scoreboard{ grid-template-columns:1.3fr 1.6fr 1.3fr; }   /* symmetric sides keep the score centered */
 .sb-right{ display:flex; align-items:center; justify-content:flex-end; gap:16px; }
 .sb-pay{ margin:0; align-self:center; font-size:1.15rem; padding:8px 15px; }
 
