@@ -1,5 +1,5 @@
 /* ============================================================
-   Diamond Duel — App: state, screens, loop, shop, bracket
+   Diamond Duel - App: state, screens, loop, shop, bracket
    ============================================================ */
 (function (global) {
   "use strict";
@@ -30,6 +30,7 @@
       career: { homers: 0, hits: 0, walks: 0, steals: 0, bossWins: 0, seedsUsed: 0, bestRally: 1, bestInningScore: 0 },
       franchisesPlayed: {},    // ids ever played
       franchisesWon: {},       // ids whose full run was won
+      discovered: {},          // ids of coaches / seeds / front-office vouchers ever acquired (Collection)
     };
   }
   function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(META)); } catch (e) {} }
@@ -39,7 +40,20 @@
     if (!META.career) META.career = { homers: 0, hits: 0, walks: 0, steals: 0, bossWins: 0, seedsUsed: 0, bestRally: 1, bestInningScore: 0 };
     if (!META.franchisesPlayed) META.franchisesPlayed = {};
     if (!META.franchisesWon) META.franchisesWon = {};
+    if (!META.discovered) META.discovered = {};
   })();
+  // Collection: an item (coach / Sunflower Seed / front-office voucher) is "discovered"
+  // the first time you actually acquire it. Until then it shows locked in the Collection
+  // and carries an "Undiscovered" tag in the shop.
+  function isDiscovered(id) { return !!(META.discovered && META.discovered[id]); }
+  function discover(id) {
+    if (!id) return false;
+    if (!META.discovered) META.discovered = {};
+    if (META.discovered[id]) return false;
+    META.discovered[id] = true;
+    saveMeta();
+    return true;
+  }
 
   /* ---------------- top-level state ---------------- */
   const STATE = {
@@ -48,7 +62,7 @@
     game: null,
     rng: null,       // current game's rng
     busy: false,
-    atBat: null,     // { card } — the batter who has stepped up, awaiting an approach
+    atBat: null,     // { card } - the batter who has stepped up, awaiting an approach
     shop: null,
     overlay: null,
   };
@@ -72,7 +86,7 @@
 
   /* ---------------- run setup ---------------- */
   // a fuller roster: the franchise's signature 12, padded out to the full roster size
-  // by cloning copies (depth chart) so you draw your bombs less often — thinning matters.
+  // by cloning copies (depth chart) so you draw your bombs less often - thinning matters.
   function buildStartingDeck(fr) {
     const ids = fr.deck.slice();
     const target = CONFIG.startingDeckSize || ids.length;
@@ -106,7 +120,7 @@
       shopBuys: 0,
       stat: { gamesWon: 0, homers: 0, bestInning: 0, bestScore: 0 },
     };
-    if (fr.signatureCoach) run.dugout.push(cloneCoach(getCoach(fr.signatureCoach)));
+    if (fr.signatureCoach) { run.dugout.push(cloneCoach(getCoach(fr.signatureCoach))); discover(fr.signatureCoach); }
     // pre-roll all four boss rules so telegraphs match
     for (let r = 0; r < ROUNDS.length; r++) run.bosses.push(pickBoss(run, r));
     META.runs += 1;
@@ -216,7 +230,7 @@
     STATE.screen = "game";
     render();
     // little intro flash
-    pushLog(`${icon("chevronR")} ${roundName(gi)} · ${gameLabel(gi)} — facing ${pitcher.name}. Target ${target}.`, "neutral");
+    pushLog(`${icon("chevronR")} ${roundName(gi)} · ${gameLabel(gi)} - facing ${pitcher.name}. Target ${target}.`, "neutral");
     saveGame();
   }
 
@@ -240,7 +254,7 @@
   }
 
   /* ---------------- the at-bat loop ---------------- */
-  // Step 1 — drag a batter into the box (or press 1–8): they "step up" and the swing
+  // Step 1 - drag a batter into the box (or press 1-8): they "step up" and the swing
   // buttons appear inline in the at-bat bar (no popup).
   function selectBatter(handIndex) {
     if (STATE.busy || !STATE.game || STATE.game.ended) return;
@@ -269,9 +283,9 @@
     const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</span>` : "";
     const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${icon(a.icon)}</span><span class="ap-name">${a.name}</span><span class="ap-desc">${a.desc}</span></button>`;
     const runnersOn = g.bases.some(Boolean);
-    const buntBtn = runnersOn ? `<button class="tactic-btn ap-bunt" data-approach="bunt" title="Sacrifice — trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt</button>` : "";
+    const buntBtn = runnersOn ? `<button class="tactic-btn ap-bunt" data-approach="bunt" title="Sacrifice - trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt</button>` : "";
     let sends = "";
-    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} — caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
+    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} - caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
     // Cancel lives with the tactics (under Bunt / Send) instead of a corner X.
     const cancelBtn = `<button class="tactic-btn ab-cancel-btn" data-act="cancel-atbat" title="Put this batter back and pick someone else">${icon("close")} Cancel</button>`;
     const tactics = `<div class="tactics-row">${buntBtn}${sends}${cancelBtn}</div>`;
@@ -305,7 +319,7 @@
     }
   }
 
-  // ACTIVE steal — the player Sends a runner. Caught = an out (precious!).
+  // ACTIVE steal - the player Sends a runner. Caught = an out (precious!).
   async function sendRunner(fromBase) {
     if (STATE.busy || !STATE.game || STATE.game.ended) return;
     const g = STATE.game, run = STATE.run;
@@ -316,7 +330,7 @@
       renderDiamond();
       if (res.caught) {
         SFX.out();
-        pushLog(`${icon("out")} Caught stealing — ${res.runner.name} is out!`, "bad");
+        pushLog(`${icon("out")} Caught stealing - ${res.runner.name} is out!`, "bad");
         setReadout("CAUGHT STEALING", "bad", { batterName: res.runner.name, platoon: "neutral" }, "Out on the basepaths.");
       } else {
         const to = res.to === 1 ? "2nd" : res.to === 2 ? "3rd" : "home";
@@ -356,7 +370,7 @@
     renderAtBatBar();
   }
 
-  // Step 2 — choose an approach: resolve the plate appearance with that swing profile.
+  // Step 2 - choose an approach: resolve the plate appearance with that swing profile.
   async function commitAtBat(approach) {
     if (STATE.busy || !STATE.atBat || !STATE.game || STATE.game.ended) return;
     const g = STATE.game, run = STATE.run;
@@ -451,11 +465,11 @@
     if (ev.isSafe && ev.bagValue > 0) {
       math = `Bag ${trim(ev.bagValue)} × Rally ${ev.rallyUsed.toFixed(1)} = <b>+${ev.scoreGained}</b>`;
     } else if (ev.productiveOut && ev.runsOnPlay > 0) {
-      math = `Productive out — ${ev.runsOnPlay} run scored`;
+      math = `Productive out - ${ev.runsOnPlay} run scored`;
     } else if (ev.doublePlay) {
-      math = `Double play — two outs!`;
+      math = `Double play - two outs!`;
     } else {
-      math = ev.isSafe ? "" : (g.rally > g.startRally + 0.01 ? `Out — rally holds at ×${g.rally.toFixed(1)}` : "Out.");
+      math = ev.isSafe ? "" : (g.rally > g.startRally + 0.01 ? `Out - rally holds at ×${g.rally.toFixed(1)}` : "Out.");
     }
     setReadout(OUTCOME_LABEL[o] || o, cls, ev, math);
 
@@ -601,7 +615,7 @@
       </div>
       ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
       <h2 class="pick-h">Choose your franchise</h2>
-      ${STATE._replaySeed ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code> — pick a franchise to begin</div>` : `<div class="seed-hint">Pick a franchise. You can set an optional seed on the next screen.</div>`}
+      ${STATE._replaySeed ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code> - pick a franchise to begin</div>` : `<div class="seed-hint">Pick a franchise. You can set an optional seed on the next screen.</div>`}
       <div class="franchise-grid">${fr}</div>
       <div class="title-foot">
         <div class="foot-btns">
@@ -636,7 +650,7 @@
           ${miniStat("EYE", mini(totals.e))}
           ${miniStat("SPD", mini(totals.s))}
         </div>
-        <div class="fr-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "—"}</div>
+        <div class="fr-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "-"}</div>
         <div class="fr-sub">${f.bonusText}</div>
       </button>`;
   }
@@ -812,7 +826,7 @@
     $$(".rtok", layer).forEach((tok) => {
       const rid = tok.getAttribute("data-rid");
       if (!want[rid] && !tok.classList.contains("leaving")) {
-        tok.classList.add("leaving"); // scored — round the remaining bases to home, then fade
+        tok.classList.add("leaving"); // scored - round the remaining bases to home, then fade
         animateTokenTo(tok, 4, () => {
           tok.classList.add("crossed");
           setTimeout(() => { if (tok.parentNode) tok.parentNode.removeChild(tok); }, 260);
@@ -873,13 +887,13 @@
   // the rich explainer shown when a player card is tapped/hovered (task: explain stats)
   function cardTip(c) {
     const tr = (typeof getTrait === "function") ? getTrait(c.trait) : null;
-    const hand = c.bats === "S" ? "switch-hitter — never platoon-disadvantaged" : (c.bats === "L" ? "bats left" : "bats right");
+    const hand = c.bats === "S" ? "switch-hitter - never platoon-disadvantaged" : (c.bats === "L" ? "bats left" : "bats right");
     return `<b>${c.name}</b> · ${hand}`
-      + `<br><b class='t-c'>Contact ${Math.round(c.contact)}</b> · ${statWord(c.contact)} — singles &amp; avoids strikeouts`
-      + `<br><b class='t-p'>Power ${Math.round(c.power)}</b> · ${statWord(c.power)} — extra-base hits &amp; home runs`
-      + `<br><b class='t-e'>Eye ${Math.round(c.eye)}</b> · ${statWord(c.eye)} — draws walks`
-      + `<br><b class='t-s'>Speed ${Math.round(c.speed)}</b> · ${statWord(c.speed)} — steals &amp; extra bases`
-      + (tr ? `<br><span class='tip-trait'>${tr.name} — ${tr.desc}</span>` : "");
+      + `<br><b class='t-c'>Contact ${Math.round(c.contact)}</b> · ${statWord(c.contact)} - singles &amp; avoids strikeouts`
+      + `<br><b class='t-p'>Power ${Math.round(c.power)}</b> · ${statWord(c.power)} - extra-base hits &amp; home runs`
+      + `<br><b class='t-e'>Eye ${Math.round(c.eye)}</b> · ${statWord(c.eye)} - draws walks`
+      + `<br><b class='t-s'>Speed ${Math.round(c.speed)}</b> · ${statWord(c.speed)} - steals &amp; extra bases`
+      + (tr ? `<br><span class='tip-trait'>${tr.name} - ${tr.desc}</span>` : "");
   }
   // uniform compact name across the whole UI: "First-initial. Lastname" (e.g. R. Ruiz, N. Reyburn)
   function shortName(n) { const p = n.split(" "); return p.length > 1 ? p[0][0] + ". " + p[p.length - 1] : n; }
@@ -897,7 +911,7 @@
     }
     d.innerHTML = slots.join("");
   }
-  // Compact dugout badge — just the coach's icon; the full rule lives in the tap/hover tooltip.
+  // Compact dugout badge - just the coach's icon; the full rule lives in the tap/hover tooltip.
   function coachIconHTML(c) {
     const glyph = c.icon ? icon(c.icon) : icon("star");
     const scale = (c.state && c.state.bonus) ? `<span class="coach-badge">+${c.state.bonus.toFixed(1)}</span>` : "";
@@ -929,15 +943,16 @@
     el.innerHTML = slots.join("");
   }
   function charmBadgeHTML(c, i) {
-    const tgt = c.target === "player" ? "on a player" : c.target === "coach" ? "on a coach" : "now";
-    return `<div class="charm-badge rar-${c.rarity}" data-charm="${i}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>Tap to use — ${tgt}</span>"><span class="cb-glyph">${icon(c.icon)}</span></div>`;
+    const how = c.target === "player" ? "Drag onto a player" : c.target === "coach" ? "Drag onto a coach" : "Tap to use";
+    return `<div class="charm-badge rar-${c.rarity}" data-charm="${i}" data-charmtarget="${c.target}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>${how}</span>"><span class="cb-glyph">${icon(c.icon)}</span></div>`;
   }
   // give a charm to the run (from the shop or an achievement). false if the pouch is full.
   function grantCharm(id, announce) {
     const run = STATE.run;
     if (!run) return false;
-    if (run.charms.length >= run.charmSlots) { if (announce) toast("Charm pouch is full — use one first."); return false; }
+    if (run.charms.length >= run.charmSlots) { if (announce) toast("Charm pouch is full - use one first."); return false; }
     run.charms.push(id);
+    discover(id);
     saveRun();
     if (STATE.screen === "game") renderPowerups();
     return true;
@@ -972,13 +987,13 @@
     if (c.op === "rally") {
       g.rally = +(g.rally + c.amt).toFixed(2);
       setRally(g.rally, true); SFX.rally(g.rally);
-      pushLog(`${icon(c.icon)} ${c.name} — Rally +${c.amt}`, "steal");
+      pushLog(`${icon(c.icon)} ${c.name} - Rally +${c.amt}`, "steal");
       return true;
     }
     if (c.op === "extraout") {
       g.outsRemaining += 1; g.outsMax = (g.outsMax || g.outsRemaining) + 1;
       renderOutPips(g);
-      pushLog(`${icon(c.icon)} ${c.name} — one extra out this inning`, "ok");
+      pushLog(`${icon(c.icon)} ${c.name} - one extra out this inning`, "ok");
       return true;
     }
     if (c.op === "freewalk") {
@@ -993,7 +1008,7 @@
       g.rally = +(g.rally + (CONFIG.rallyIncrement || 0.5)).toFixed(2);
       setRally(g.rally, true);
       renderDiamond();
-      pushLog(`${icon(c.icon)} Intentional walk — a free runner takes first`, "ok");
+      pushLog(`${icon(c.icon)} Intentional walk - a free runner takes first`, "ok");
       return true;
     }
     return false;
@@ -1009,7 +1024,7 @@
     overlay(`
       <div class="ov-card picker charm-picker">
         <h2><span class="h2-ico">${icon(c.icon)}</span> ${c.name}</h2>
-        <div class="ov-sub">${c.text} — choose ${c.target === "coach" ? "a coach" : "a player"}.</div>
+        <div class="ov-sub">${c.text} - choose ${c.target === "coach" ? "a coach" : "a player"}.</div>
         <div class="picker-grid">${items}</div>
         <button class="btn btn-ghost" data-act="cancel-charm">Cancel</button>
       </div>`);
@@ -1029,8 +1044,11 @@
       toast(`${c.name} applied to ${shortName(card.name)}.`);
     } else if (c.target === "coach") {
       if (c.op === "copycoach") {
-        if (run.dugout.length >= run.dugoutSlots) { toast("Dugout is full — sell a coach first."); ok = false; }
+        if (run.dugout.length >= run.dugoutSlots) { toast("Dugout is full - sell a coach first."); ok = false; }
         else { const coach = run.dugout[targetIndex]; if (coach && getCoach(coach.id)) { run.dugout.push(cloneCoach(getCoach(coach.id))); toast(`Copied ${coach.name}.`); } else ok = false; }
+      } else if (c.op === "aura") {
+        const coach = run.dugout[targetIndex];
+        if (coach) { coach.aura = +(((coach.aura || 0) + c.amt).toFixed(2)); toast(`${coach.name} mentored: +${c.amt} Rally aura.`); } else ok = false;
       }
     }
     if (ok) {
@@ -1067,7 +1085,7 @@
     const granted = grantCharm(charmId, false);
     if (SFX && SFX.coin) SFX.coin();
     const cn = getCharm(charmId);
-    if (granted && cn) toast(`Feat: ${ach.name} — earned the ${cn.name} seed!`);
+    if (granted && cn) toast(`Feat: ${ach.name} - earned the ${cn.name} seed!`);
     saveRun();
   }
   // career-stat milestone checks (call after bumping META.career.*)
@@ -1130,7 +1148,7 @@
   function setReadout(label, cls, ev, math) {
     const r = $("#field-result");
     if (!r) return;
-    const plat = ev.platoon === "adv" ? `<span class="plat plat-adv">platoon +</span>` : ev.platoon === "dis" ? `<span class="plat plat-dis">platoon −</span>` : "";
+    const plat = ev.platoon === "adv" ? `<span class="plat plat-adv">platoon +</span>` : ev.platoon === "dis" ? `<span class="plat plat-dis">platoon -</span>` : "";
     r.innerHTML = `
       <div class="ro-card ro-${cls}">
         <div class="ro-label">${label}</div>
@@ -1165,7 +1183,7 @@
       setRally(g.rally, true);
       SFX.rally(g.rally);
     } else {
-      setRally(g.rally, false); // no change (an out) — sync without a pulse
+      setRally(g.rally, false); // no change (an out) - sync without a pulse
     }
   }
   function setRally(v, grow) {
@@ -1231,7 +1249,7 @@
   function logEvent(ev) {
     const o = ev.outcome;
     let cls = OUTCOME_CLASS[o] || "neutral";
-    let txt = `<b>${OUTCOME_LABEL[o] || o}</b> — ${ev.batterName}`;
+    let txt = `<b>${OUTCOME_LABEL[o] || o}</b> - ${ev.batterName}`;
     if (ev.isSafe && ev.scoreGained > 0) txt += ` <span class="lg-pts">+${ev.scoreGained}</span>`;
     if (ev.runsOnPlay > 0) txt += ` <span class="lg-run">${ev.runsOnPlay}R</span>`;
     pushLog(txt, cls);
@@ -1246,7 +1264,7 @@
       <div class="ov-card win-ov">
         <div class="ov-burst">${icon("sparkle")}</div>
         <h2>${gameLabel(g.gameIndex).toUpperCase()} CLEARED</h2>
-        <div class="ov-sub">You beat ${g.pitcher.name} — <b>${g.score}</b> vs ${g.target}.</div>
+        <div class="ov-sub">You beat ${g.pitcher.name} - <b>${g.score}</b> vs ${g.target}.</div>
         <div class="brk">${rows}<div class="brk-row brk-total"><span>Total earned</span><b>+$${total}</b></div></div>
         <div class="ov-pay">Payroll: <b>$${STATE.run.payroll}</b></div>
         <button class="btn btn-big btn-gold" data-act="to-shop">Visit the Shop ${icon("chevronR")}</button>
@@ -1254,13 +1272,44 @@
   }
 
   function showGameOver(g) {
+    SFX.lose && SFX.lose();
+    const run = STATE.run;
+    const fr = FRANCHISES.find((f) => f.id === run.franchiseId);
+    const total = ROUNDS.length * GAMES_PER_ROUND;          // 9 innings
+    const cleared = Math.max(0, Math.min(total, run.stat.gamesWon != null ? run.stat.gamesWon : g.gameIndex));
+    // a linescore strip: every inning, cleared / lost / still ahead, bosses marked
+    let strip = "";
+    for (let i = 0; i < total; i++) {
+      const boss = isBossInning(i);
+      const cls = i < cleared ? "done" : (i === g.gameIndex ? "lost" : "future");
+      strip += `<span class="pm-pip ${cls}${boss ? " boss" : ""}" title="${gameLabel(i)}">${boss ? icon("diamond") : (i + 1)}</span>`;
+    }
+    const flavor = cleared >= 8 ? "One inning from the ring. Agonizing."
+      : cleared >= 6 ? "Deep into the late innings. So close."
+      : cleared >= 3 ? "A real run, cut short."
+      : cleared >= 1 ? "The makings of something here."
+      : "Every dynasty starts with a loss.";
+    const pct = Math.min(100, Math.round((g.score / g.target) * 100));
     overlay(`
-      <div class="ov-card lose-ov">
+      <div class="ov-card lose-ov postmortem">
+        <div class="pm-burst">${icon("close")}</div>
         <h2>GAME OVER</h2>
-        <div class="ov-sub">You came up short against ${g.pitcher.name}.<br>Eliminated in the <b>${ordinal(g.gameIndex + 1)} inning</b> — ${g.score} / ${g.target}.</div>
-        <div class="ov-stat">Best game score this run: ${STATE.run.stat.bestScore || g.score}</div>
+        <div class="ov-sub">${fr ? fr.name : "Your club"} fell to <b>${g.pitcher.name}</b> in the <b>${ordinal(g.gameIndex + 1)} inning</b>.<br><span class="pm-flavor">${flavor}</span></div>
+        <div class="pm-final">
+          <div class="pm-final-top"><span>Final line</span><b>${g.score} <i>/</i> ${g.target}</b></div>
+          <div class="pm-bar"><div class="pm-bar-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="pm-strip">${strip}</div>
+        <div class="pm-grid">
+          ${statCell("Innings cleared", cleared + " / " + total)}
+          ${statCell("Best inning", run.stat.bestScore || g.score)}
+          ${statCell("Coaches", run.dugout.length)}
+          ${statCell("Deck size", run.deck.length + " cards")}
+          ${statCell("Payroll banked", "$" + run.payroll)}
+          ${statCell("Seed", seedChip(run.seed))}
+        </div>
         <div class="ov-actions">
-          <button class="btn btn-big btn-gold" data-act="replay-seed">${icon("replay")} Replay Seed</button>
+          <button class="btn btn-big btn-gold" data-act="replay-seed">${icon("replay")} Replay this seed</button>
           <button class="btn btn-secondary" data-act="retry-run">New Run</button>
           <button class="btn btn-ghost" data-act="to-title">Main Menu</button>
         </div>
@@ -1324,7 +1373,7 @@
     const m = META;
     const furthest = (m.bestGame != null && m.bestGame >= 0)
       ? `${ROUNDS[Math.floor(m.bestGame / GAMES_PER_ROUND)].name} · ${gameLabel(m.bestGame)}`
-      : "—";
+      : "-";
     let runHTML = "";
     if (STATE.run) {
       const r = STATE.run;
@@ -1332,14 +1381,14 @@
       runHTML = `
         <h3>Current run</h3>
         <div class="stat-grid">
-          ${statCell("Franchise", fr ? fr.name : "—")}
+          ${statCell("Franchise", fr ? fr.name : "-")}
           ${statCell("Now playing", `${roundName(r.gameIndex)} · ${gameLabel(r.gameIndex)}`)}
           ${statCell("Games won", r.stat.gamesWon)}
           ${statCell("Payroll", "$" + r.payroll)}
           ${statCell("Deck size", r.deck.length + " cards")}
           ${statCell("Dugout", r.dugout.length + " / " + r.dugoutSlots)}
           ${statCell("Best game (run)", r.stat.bestScore || 0)}
-          ${statCell("Seed", seedChip(r.seed))}
+          ${statCell("Seed", `<span class="seed-hidden">hidden until the run ends</span>`)}
         </div>`;
     }
     overlay(`
@@ -1397,7 +1446,51 @@
           ${statCell("Best Rally", "×" + (c.bestRally || 1).toFixed(1))}
         </div>
         <div class="ach-board">${grid}</div>
-        <button class="btn btn-gold" data-act="close-ov">Close</button>
+        <div class="ov-actions">
+          <button class="btn btn-secondary" data-act="open-collection">${icon("book")} Collection</button>
+          <button class="btn btn-gold" data-act="close-ov">Close</button>
+        </div>
+      </div>`);
+  }
+
+  /* ---------- collection: every coach / seed / voucher, locked until discovered ---------- */
+  function showCollection() {
+    if (SFX && SFX.click) SFX.click();
+    const groups = [
+      { title: "Coaches", items: COACHES },
+      { title: "Sunflower Seeds", items: CHARMS },
+      { title: "Front Office", items: UPGRADES },
+    ];
+    let allN = 0, gotN = 0;
+    const board = groups.map((g) => {
+      const gGot = g.items.filter((it) => isDiscovered(it.id)).length;
+      allN += g.items.length; gotN += gGot;
+      const cells = g.items.map((it) => {
+        if (isDiscovered(it.id)) {
+          return `<div class="col-cell got rar-${it.rarity || "common"}" data-tip="<b>${it.name}</b><br>${it.text}">
+              <div class="col-ic">${icon(it.icon || "trophy")}</div>
+              <div class="col-nm">${it.name}</div>
+            </div>`;
+        }
+        return `<div class="col-cell locked" data-tip="<b>Undiscovered</b><br>Acquire this in a run to add it to your Collection.">
+            <div class="col-ic">${icon("lock")}</div>
+            <div class="col-nm">???</div>
+          </div>`;
+      }).join("");
+      return `<div class="col-group">
+          <div class="col-group-h">${g.title} <span class="col-count">${gGot} / ${g.items.length}</span></div>
+          <div class="col-grid">${cells}</div>
+        </div>`;
+    }).join("");
+    overlay(`
+      <div class="ov-card collection-card">
+        <h2><span class="h2-ico">${icon("book")}</span> Collection <span class="col-total">${gotN} / ${allN}</span></h2>
+        <div class="ov-sub">Coaches, Sunflower Seeds, and Front Office vouchers. Locked items reveal once you acquire them in a run.</div>
+        <div class="col-board">${board}</div>
+        <div class="ov-actions">
+          <button class="btn btn-secondary" data-act="open-profile">${icon("chevronL")} Back</button>
+          <button class="btn btn-gold" data-act="close-ov">Close</button>
+        </div>
       </div>`);
   }
 
@@ -1405,7 +1498,7 @@
   function escAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   function seedChip(seed) { return `<code class="seed-copy" data-seed="${escAttr(seed)}" title="Click to copy this seed">${seed} ${icon("copy", "ico-sm")}</code>`; }
   function copySeed(seed) {
-    const done = () => { toast("Seed copied — " + seed); if (SFX && SFX.coin) SFX.coin(); };
+    const done = () => { toast("Seed copied - " + seed); if (SFX && SFX.coin) SFX.coin(); };
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(seed).then(done, () => fallbackCopy(seed, done));
       else fallbackCopy(seed, done);
@@ -1418,7 +1511,7 @@
       document.body.appendChild(ta); ta.focus(); ta.select();
       document.execCommand("copy"); document.body.removeChild(ta);
       if (cb) cb();
-    } catch (e) { toast("Couldn't copy — seed is " + text); }
+    } catch (e) { toast("Couldn't copy - seed is " + text); }
   }
   function replaySeed(seed, franchiseId) {
     STATE._replaySeed = seed || null;
@@ -1464,7 +1557,7 @@
         <div class="fr-stats fp-stats">
           ${miniStat("CON", mini(totals.c))}${miniStat("POW", mini(totals.p))}${miniStat("EYE", mini(totals.e))}${miniStat("SPD", mini(totals.s))}
         </div>
-        <div class="fr-bonus fp-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "—"}</div>
+        <div class="fr-bonus fp-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "-"}</div>
         <div class="fr-sub fp-sub">${f.bonusText}</div>
         <div class="fp-seed">
           <label>Seed <span>(optional)</span></label>
@@ -1480,20 +1573,21 @@
   }
 
   const HOWTO_SECTIONS = [
-    `<section><h3>The goal</h3><p>A run is one <b>9-inning game</b>. Each inning, pile up <b>Score</b> to beat that inning's <b>Target</b> before you make your <b>3rd out</b>. Clear all nine innings to win — the third inning of every three is a tougher <b>Boss</b>. Come up short in any inning and the run is over.</p></section>`,
-    `<section><h3>Sending a batter up</h3><p>Your hand is your lineup. <b>Drag a card into the "Drop batter here" box</b> (or press <b>1–8</b>) to send that batter to the plate. The box highlights as you drag over it. Once they step up, the swing buttons appear in the bar above the box. You draw back up after every at-bat.</p></section>`,
-    `<section><h3>Choosing a swing</h3><ul><li><b>Swing Away</b> — balanced; your natural swing.</li><li><b>Power Swing</b> — more homers &amp; extra-base hits, but more strikeouts.</li><li><b>Work the Count</b> — lots of walks, few strikeouts, little power.</li></ul><p>With runners on, you can also <b>Bunt</b> or <b>Send</b> a runner from the same bar.</p></section>`,
-    `<section class="howto-rally"><h3>The Rally — the heart of it</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value:</b> Walk 1, Single 2, Double 3, Triple 4, Home Run 5 — plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> starts at <b>×1.0</b> and climbs <b>+0.5</b> each time you reach base safely — but an <b>out resets it to ×1.0</b>.</li></ul><p>Land your big bats while the rally is high.</p></section>`,
-    `<section><h3>Reading a card</h3><p>Four stats (0–100): <b class='s-c'>Contact</b> (singles, fewer strikeouts), <b class='s-p'>Power</b> (extra-base hits &amp; homers), <b class='s-e'>Eye</b> (walks), <b class='s-s'>Speed</b> (steals &amp; extra bases). The <b>L / R / S</b> badge is handedness — opposite hands earn a <b>platoon</b> boost; switch-hitters never lose it. Tap the <b>?</b> on any card for a full readout.</p></section>`,
-    `<section><h3>Baserunning</h3><p>Hits move runners around the diamond, and a runner on 2nd or 3rd is <b>in scoring position</b> (each drives in +1 bag value). When the path is clear you can <b>Send</b> a runner to steal the next base — but getting caught costs a precious out. A <b>Bunt</b> trades an out to push your runners up.</p></section>`,
-    `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> — the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
-    `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot — bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
-    `<section><h3>Innings &amp; bosses</h3><p>Nine innings across three phases — <b>Early</b>, <b>Middle</b>, <b>Late</b> — and the third of each is a <b>Boss</b> with a nasty rule, telegraphed on the linescore so you can prepare for it. Beat the boss to move on to the next phase.</p></section>`,
-    `<section><h3>Sunflower Seeds</h3><p>Seeds are one-shot <b>powerups</b> in your pouch (the panel beside the play log). Tap one to use it — some boost a player's stats or grant a trait, some duplicate a coach, and others fire instantly: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Buy them in the shop, or earn them by pulling off <b>feats</b> — a grand slam, a perfect inning, back-to-back homers, and more.</p></section>`,
-    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> on <b>Players</b> and <b>Coaches</b>, on <b>Sunflower Seeds</b> and <b>Analytics &amp; Scouting</b>, on <b>Booster Packs</b>, and on <b>Front Office</b> vouchers. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck — building is the point.</em></p></section>`,
-    `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off — hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
+    `<section><h3>The goal</h3><p>A run is one <b>9-inning game</b>. Each inning, pile up <b>Score</b> to beat that inning's <b>Target</b> before you make your <b>3rd out</b>. Clear all nine innings to win - the third inning of every three is a tougher <b>Boss</b>. Come up short in any inning and the run is over.</p></section>`,
+    `<section><h3>Sending a batter up</h3><p>Your hand is your lineup. <b>Drag a card into the "Drop batter here" box</b> (or press <b>1-8</b>) to send that batter to the plate. The box highlights as you drag over it. Once they step up, the swing buttons appear in the bar above the box, and you can hit <b>Cancel</b> there to put the batter back. You draw a fresh card after every at-bat.</p></section>`,
+    `<section><h3>Choosing a swing</h3><ul><li><b>Swing Away</b> - balanced; your natural swing.</li><li><b>Power Swing</b> - more homers &amp; extra-base hits, but more strikeouts.</li><li><b>Work the Count</b> - lots of walks, few strikeouts, little power.</li></ul><p>With runners on, you can also <b>Bunt</b> or <b>Send</b> a runner from the same bar.</p></section>`,
+    `<section class="howto-rally"><h3>The Rally - the heart of it</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value:</b> Walk 1, Single 2, Double 3, Triple 4, Home Run 5 - plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> starts at <b>×1.0</b> and climbs <b>+0.5</b> each time you reach base safely - but an <b>out resets it to ×1.0</b>.</li></ul><p>Land your big bats while the rally is high.</p></section>`,
+    `<section><h3>Reading a card</h3><p>Four stats (0-100): <b class='s-c'>Contact</b> (singles, fewer strikeouts), <b class='s-p'>Power</b> (extra-base hits &amp; homers), <b class='s-e'>Eye</b> (walks), <b class='s-s'>Speed</b> (steals &amp; extra bases). The <b>L / R / S</b> badge is handedness - opposite hands earn a <b>platoon</b> boost; switch-hitters never lose it. Tap the <b>?</b> on any card for a full readout.</p></section>`,
+    `<section><h3>Baserunning</h3><p>Hits move runners around the diamond, and a runner on 2nd or 3rd is <b>in scoring position</b> (each drives in +1 bag value). When the path is clear you can <b>Send</b> a runner to steal the next base - but getting caught costs a precious out. A <b>Bunt</b> trades an out to push your runners up.</p></section>`,
+    `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> - the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
+    `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot - bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
+    `<section><h3>Innings &amp; bosses</h3><p>Nine innings across three phases - <b>Early</b>, <b>Middle</b>, <b>Late</b> - and the third of each is a <b>Boss</b> with a nasty rule, telegraphed on the linescore so you can prepare for it. Beat the boss to move on to the next phase.</p></section>`,
+    `<section><h3>Sunflower Seeds</h3><p>Seeds are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a seed onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few seeds fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Buy seeds in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
+    `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Sunflower Seed</b>, and <b>Front Office</b> voucher: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
+    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> on <b>Players</b> and <b>Coaches</b>, on <b>Sunflower Seeds</b> and <b>Analytics &amp; Scouting</b>, on <b>Booster Packs</b>, and on <b>Front Office</b> vouchers. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck - building is the point.</em></p></section>`,
+    `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
-  const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11]];
+  const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]];
   function showHowTo(page) {
     if (SFX && SFX.click) SFX.click();
     const np = HOWTO_PAGES.length;
@@ -1555,13 +1649,13 @@
     const target = Math.round((CONFIG.targets[gi] || 0) * pitcher.targetMultiplier);
     const telegraph = isBoss
       ? `<div class="boss-telegraph"><div class="bt-tag">BOSS PITCHER</div><h3>${pitcher.name}</h3><p>${pitcher.boss.text}</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`
-      : `<div class="match-telegraph"><h3>${pitcher.name}</h3><p>Ordinary starter — ${pitcher.bats}HP.</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`;
+      : `<div class="match-telegraph"><h3>${pitcher.name}</h3><p>Ordinary starter - ${pitcher.bats}HP.</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`;
 
     return `
     <div class="screen map-screen">
       <div class="map-head">
         <h2>The Linescore</h2>
-        <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b> · Seed ${seedChip(run.seed)}</div>
+        <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b></div>
       </div>
       <div class="bracket">${rounds}</div>
       <div class="map-next">
@@ -1639,8 +1733,12 @@
       else if (slot.kind === "coach") body = `<div class="shop-coach">${it.icon ? `<span class="sc-ico">${icon(it.icon)}</span>` : ""}<div class="sc-name">${it.name}</div><div class="sc-text">${it.text}</div></div>`;
       else if (slot.kind === "charm") body = `<div class="shop-misc shop-charm">${it.icon ? `<span class="sc-ico charm-ico">${icon(it.icon)}</span>` : ""}<div class="sm-name">${it.name}</div><div class="sm-text">${it.text}</div></div>`;
       else body = `<div class="shop-misc shop-${slot.kind}"><div class="sm-name">${it.name}</div><div class="sm-text">${it.text}</div></div>`;
+      // a coach / seed / voucher you've never acquired before is flagged for the Collection
+      const collectible = group === "coach" || group === "charm" || group === "up";
+      const undisc = collectible && it.id && !isDiscovered(it.id);
       return `
         <div class="shop-item ${owned ? "sold" : ""} ${aff ? "" : "cant"}" data-group="${group}" data-i="${i}">
+          ${undisc ? `<span class="undisc-tag" data-tip="<b>Undiscovered</b><br>New to your Collection. Buy it to add it.">${icon("book")} Undiscovered</span>` : ""}
           <div class="shop-item-body">${body}</div>
           <button class="btn buy-btn ${aff ? "" : "disabled"}" data-buy="${group}:${i}" ${owned ? "disabled" : ""}>${owned ? "Sold" : "$" + slot.cost}</button>
         </div>`;
@@ -1682,7 +1780,7 @@
       </div>
     </div>`;
   }
-  function emptyRow() { return `<div class="shop-empty">— sold out —</div>`; }
+  function emptyRow() { return `<div class="shop-empty">- sold out -</div>`; }
   function cloneCardPreview(tpl) { const c = cloneCard(tpl); return c; }
 
   /* ---------- buying ---------- */
@@ -1701,12 +1799,14 @@
     if (run.payroll < slot.cost) { SFX.error(); shake(`.shop-item[data-group="${group}"][data-i="${i}"]`); return; }
 
     if (group === "coach") {
-      if (run.dugout.length >= run.dugoutSlots) { SFX.error(); toast("Dugout is full — sell a coach first."); return; }
+      if (run.dugout.length >= run.dugoutSlots) { SFX.error(); toast("Dugout is full - sell a coach first."); return; }
       run.dugout.push(cloneCoach(slot.item));
+      discover(slot.item.id);
       finishBuy(slot, key); render();
     } else if (group === "charm") {
-      if (run.charms.length >= run.charmSlots) { SFX.error(); toast("Charm pouch is full — use one first."); return; }
+      if (run.charms.length >= run.charmSlots) { SFX.error(); toast("Charm pouch is full - use one first."); return; }
       run.charms.push(slot.item.id);
+      discover(slot.item.id);
       finishBuy(slot, key); toast(`${slot.item.name} added to your charms.`); render();
     } else if (group === "card") {
       run.deck.push(cloneCard(slot.item));
@@ -1714,6 +1814,7 @@
     } else if (group === "up") {
       applyUpgrade(slot.item);
       run.upgradesOwned.push(slot.item.fx);
+      discover(slot.item.id);
       finishBuy(slot, key); render();
     } else if (group === "cons") {
       const it = slot.item;
@@ -1721,7 +1822,7 @@
         run.analytics[it.key] = (run.analytics[it.key] || 0) + 1;
         finishBuy(slot, key); toast(`${it.name} applied.`); render();
       } else {
-        // scouting — needs a target (except none?) open picker
+        // scouting - needs a target (except none?) open picker
         openScoutingPicker(it, () => { finishBuy(slot, key); render(); });
       }
     } else if (group === "pack") {
@@ -1864,10 +1965,11 @@
     const run = STATE.run;
     if (o.kind === "card") run.deck.push(cloneCard(o.item));
     else if (o.kind === "coach") {
-      if (run.dugout.length >= run.dugoutSlots) { toast("Dugout full — can't take this coach."); return; }
+      if (run.dugout.length >= run.dugoutSlots) { toast("Dugout full - can't take this coach."); return; }
       run.dugout.push(cloneCoach(o.item));
+      discover(o.item.id);
     } else if (o.kind === "scouting") {
-      // immediate apply via picker after closing pack — simpler: add as if a bump on random? Instead apply directly with picker
+      // immediate apply via picker after closing pack - simpler: add as if a bump on random? Instead apply directly with picker
       // For simplicity in packs, scouting reports auto-apply to a chosen card after pack closes:
       STATE._pendingScout = STATE._pendingScout || [];
       STATE._pendingScout.push(o.item);
@@ -1900,7 +2002,7 @@
   function openDeckView(page) {
     const run = STATE.run;
     const sorted = run.deck.slice().sort((a, b) => (RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity]) || (b.power - a.power));
-    const PER = 18;                                  // 9 per row × 2 rows — fits with no scroll
+    const PER = 18;                                  // 9 per row × 2 rows - fits with no scroll
     const pages = Math.max(1, Math.ceil(sorted.length / PER));
     let p = (page == null) ? 0 : page;
     p = Math.max(0, Math.min(pages - 1, p));
@@ -2011,7 +2113,7 @@
     if (!root) return;
 
     root.onclick = (e) => {
-      // explainer tooltips (info button + coach/trait badges) — pin on tap, toggle off
+      // explainer tooltips (info button + coach/trait badges) - pin on tap, toggle off
       const tipEl = tipTargetOf(e);
       if (tipEl) { if (TIP) TIP.toggle(tipEl, e.clientX, e.clientY); return; }
       if (TIP) TIP.hide();
@@ -2019,7 +2121,10 @@
       const seedEl = e.target.closest("[data-seed]");
       if (seedEl) { copySeed(seedEl.getAttribute("data-seed")); return; }
       const charmEl = e.target.closest("[data-charm]");
-      if (charmEl && !charmEl.classList.contains("empty")) { useCharm(parseInt(charmEl.getAttribute("data-charm"), 10)); return; }
+      if (charmEl && !charmEl.classList.contains("empty")) {
+        if (_suppressCharmClick) { _suppressCharmClick = false; return; }   // a drag already handled it
+        useCharm(parseInt(charmEl.getAttribute("data-charm"), 10)); return;
+      }
       const act = e.target.closest("[data-act]");
       const fr = e.target.closest("[data-franchise]");
       const buyEl = e.target.closest("[data-buy]");
@@ -2061,6 +2166,7 @@
       case "back-to-menu": showMenu(); break;
       case "open-stats": showStats(); break;
       case "open-profile": showProfile(); break;
+      case "open-collection": showCollection(); break;
       case "howto": showHowTo(0); break;
       case "howto-next": showHowTo((STATE._howtoPage || 0) + 1); break;
       case "howto-prev": showHowTo((STATE._howtoPage || 0) - 1); break;
@@ -2207,7 +2313,7 @@
       const c = contentOf(el); if (!c) { hide(); return; }
       pinned = el; tip.innerHTML = c; tip.classList.add("show"); position(x, y);
     }
-    // a touch fires emulated mouseover/mousemove afterwards — suppress hover tips briefly
+    // a touch fires emulated mouseover/mousemove afterwards - suppress hover tips briefly
     // so tapping a card doesn't make its tooltip flash (touch shows tips only via tap-to-pin)
     let touchUntil = 0;
     document.addEventListener("pointerdown", (e) => {
@@ -2234,7 +2340,7 @@
   }
 
   /* ============================================================
-     DRAG-TO-BAT — tap a card, or drag it onto the field diamond, to send the
+     DRAG-TO-BAT - tap a card, or drag it onto the field diamond, to send the
      batter up (Balatro-style). Pointer events unify mouse + touch.
      ============================================================ */
   let _drag = null;
@@ -2282,9 +2388,9 @@
     d.cardEl.style.transform = "";
     const app = $("#app"); if (app) app.classList.remove("is-dragging");
     const bz = $("#bat-zone"); if (bz) bz.classList.remove("drop-active");
-    if (d.over) { selectBatter(d.idx); return; }   // dropped in the box — step up
+    if (d.over) { selectBatter(d.idx); return; }   // dropped in the box - step up
     if (!d.moved) { hintDrag(d.cardEl); }          // a plain tap isn't enough; nudge them to drag
-    // otherwise: released in open space — snap back (transform already cleared)
+    // otherwise: released in open space - snap back (transform already cleared)
   }
   // a tap on a card just reminds the player to drag it into the box
   function hintDrag(cardEl) {
@@ -2293,11 +2399,115 @@
     if (bz) { bz.classList.remove("pulse"); void bz.offsetWidth; bz.classList.add("pulse"); }
     if (SFX && SFX.click) SFX.click();
   }
+
+  /* ---------- charm drag-and-drop: drop a Sunflower Seed onto a player or coach ---------- */
+  let _cdrag = null, _suppressCharmClick = false;
+  function charmZoneSelector(kind) { return kind === "coach" ? "#dugout .coach-icon[data-uid]" : "#hand .card[data-uid]"; }
+  function markCharmZones(kind, on) { $$(charmZoneSelector(kind)).forEach((el) => el.classList.toggle("charm-zone", on)); }
+  function charmTargetAt(x, y, kind) {
+    const els = $$(charmZoneSelector(kind));
+    for (let i = 0; i < els.length; i++) {
+      const r = els[i].getBoundingClientRect();
+      if (x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8) return els[i];
+    }
+    return null;
+  }
+  function onCharmPointerDown(e) {
+    _suppressCharmClick = false;
+    if (STATE.screen !== "game" || STATE.busy) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const badge = e.target.closest("#powerups .charm-badge[data-charm]");
+    if (!badge || badge.classList.contains("empty")) return;
+    const idx = parseInt(badge.getAttribute("data-charm"), 10);
+    const c = getCharm(STATE.run.charms[idx]);
+    if (!c || c.target === "immediate") return;     // immediate seeds: a tap uses them (click handler)
+    _cdrag = { idx, charm: c, badge, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, target: null };
+    try { badge.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+  function onCharmPointerMove(e) {
+    if (!_cdrag) return;
+    const dx = e.clientX - _cdrag.x0, dy = e.clientY - _cdrag.y0;
+    if (!_cdrag.moved && Math.hypot(dx, dy) > 6) {
+      _cdrag.moved = true;
+      const g = document.createElement("div");
+      g.className = "charm-ghost rar-" + _cdrag.charm.rarity;
+      g.innerHTML = `<span class="cb-glyph">${icon(_cdrag.charm.icon)}</span>`;
+      document.body.appendChild(g);
+      _cdrag.ghost = g;
+      _cdrag.badge.classList.add("charm-dragging");
+      const app = $("#app"); if (app) app.classList.add("is-charmdrag");
+      markCharmZones(_cdrag.charm.target, true);
+    }
+    if (_cdrag.moved) {
+      _cdrag.ghost.style.left = e.clientX + "px";
+      _cdrag.ghost.style.top = e.clientY + "px";
+      const t = charmTargetAt(e.clientX, e.clientY, _cdrag.charm.target);
+      if (t !== _cdrag.target) {
+        if (_cdrag.target) _cdrag.target.classList.remove("charm-hover");
+        if (t) t.classList.add("charm-hover");
+        _cdrag.target = t;
+      }
+    }
+  }
+  function onCharmPointerUp() {
+    if (!_cdrag) return;
+    const d = _cdrag; _cdrag = null;
+    if (d.ghost) d.ghost.remove();
+    d.badge.classList.remove("charm-dragging");
+    const app = $("#app"); if (app) app.classList.remove("is-charmdrag");
+    markCharmZones(d.charm.target, false);
+    if (d.target) d.target.classList.remove("charm-hover");
+    if (d.moved) {
+      _suppressCharmClick = true;                   // a drag must not also fire the tap handler
+      if (d.target) applyCharmToTarget(d.charm, d.idx, d.target);
+      else if (SFX && SFX.click) SFX.click();       // released in open space: snaps back
+    }
+    // a plain tap (no movement) falls through to the click handler -> useCharm()
+  }
+  function applyCharmToTarget(c, idx, el) {
+    const run = STATE.run;
+    const uid = el.getAttribute("data-uid");
+    let ok = true, who = "";
+    if (c.target === "player") {
+      const card = run.deck.find((k) => k.uid === uid) || (STATE.game && STATE.game.hand.find((k) => k.uid === uid));
+      if (!card) ok = false;
+      else {
+        who = shortName(card.name);
+        if (c.op === "bump") card[c.arg] = Math.min(140, card[c.arg] + c.amt);
+        else if (c.op === "allup") ["contact", "power", "eye", "speed"].forEach((k) => { card[k] = Math.min(140, card[k] + c.amt); });
+        else if (c.op === "trait") card.trait = c.arg;
+        else ok = false;
+      }
+    } else if (c.target === "coach") {
+      const coach = run.dugout.find((k) => k.uid === uid);
+      if (!coach) ok = false;
+      else {
+        who = coach.name;
+        if (c.op === "copycoach") {
+          if (run.dugout.length >= run.dugoutSlots) { toast("Dugout is full. Sell a coach first."); ok = false; }
+          else { const base = getCoach(coach.id); if (base) run.dugout.push(cloneCoach(base)); else ok = false; }
+        } else if (c.op === "aura") {
+          coach.aura = +(((coach.aura || 0) + c.amt).toFixed(2));
+        } else ok = false;
+      }
+    }
+    if (ok) {
+      if (SFX && SFX.coin) SFX.coin();
+      toast(`${c.name} applied to ${who}.`);
+      consumeCharm(idx);
+      if (STATE.screen === "game") renderGame();
+    } else if (SFX && SFX.error) { SFX.error(); }
+  }
+
   function setupDrag() {
     document.addEventListener("pointerdown", onCardPointerDown);
     document.addEventListener("pointermove", onCardPointerMove);
     document.addEventListener("pointerup", onCardPointerUp);
     document.addEventListener("pointercancel", onCardPointerUp);
+    document.addEventListener("pointerdown", onCharmPointerDown);
+    document.addEventListener("pointermove", onCharmPointerMove);
+    document.addEventListener("pointerup", onCharmPointerUp);
+    document.addEventListener("pointercancel", onCharmPointerUp);
   }
 
   function boot() {
@@ -2332,7 +2542,7 @@
     if (rh) rh.innerHTML = icon("phone");
     initTooltips();
     setupDrag();
-    // animated splash — auto-dismiss after the intro, or tap to skip
+    // animated splash - auto-dismiss after the intro, or tap to skip
     (function () {
       const sp = document.getElementById("splash");
       if (!sp) return;

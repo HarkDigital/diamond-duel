@@ -1,5 +1,5 @@
 /* ============================================================
-   Diamond Duel — At-bat engine
+   Diamond Duel - At-bat engine
    resolveAtBat() is the single, heavily-testable resolver.
    It mutates game state (bases/rally/score/outs) and returns a
    rich event object for animation + the play log.
@@ -191,7 +191,7 @@
     if (SFX) SFX.steal();
   }
 
-  // ACTIVE steal — the player chooses to Send a runner. Real risk: caught = an out.
+  // ACTIVE steal - the player chooses to Send a runner. Real risk: caught = an out.
   function attemptSteal(game, run, rng, fromBase) {
     const b = game.bases;
     const runner = b[fromBase];
@@ -259,18 +259,18 @@
     let newBases = game.bases.slice();
     const batterRunner = { name: batter.name, nick: batter.nick, speed: es.speed, card: batter };
 
-    // BUNT approach — a sacrifice that overrides the rolled outcome.
+    // BUNT approach - a sacrifice that overrides the rolled outcome.
     if (approach === "bunt") {
       ev.bunt = true;
       ev.buntSafe = rng.chance(clamp((CONFIG.buntSafeBase || 0.06) + (es.speed - 60) * 0.005, 0.02, 0.45));
     }
 
     if (ev.bunt && ev.buntSafe) {
-      // beaten out for a bunt single — batter safe at first, runners advance one
+      // beaten out for a bunt single - batter safe at first, runners advance one
       const r = runnersAdvance(game.bases, [1, 1, 1], 0, batterRunner);
       newBases = r.newBases; runsOnPlay = r.runs; outsAdded = 0; finalOutcome = "1B";
     } else if (ev.bunt) {
-      // sacrifice — batter out, the lead runner advances one (no double play)
+      // sacrifice - batter out, the lead runner advances one (no double play)
       newBases = game.bases.slice();
       if (newBases[2]) { runsOnPlay++; newBases[2] = null; }
       else if (newBases[1]) { newBases[2] = newBases[1]; newBases[1] = null; }
@@ -403,6 +403,8 @@
       if (run.analytics && run.analytics.rally) bonus += run.analytics.rally * 0.1;
       if (run.analytics && run.analytics.patience && (finalOutcome === "BB" || finalOutcome === "HBP")) bonus += run.analytics.patience * 0.25;
       if (game.sparkBonus) bonus += game.sparkBonus; // Sparkplug trait active this inning
+      // Coaching Clinic seed: each mentored coach adds a flat Rally aura to every scoring play
+      for (let _ci = 0; _ci < run.dugout.length; _ci++) { const _co = run.dugout[_ci]; if (_co && _co.aura) { bonus += _co.aura; ev.triggers.push("charm:mentor"); } }
 
       let total = inc + bonus;
       if (pitcher.rule === "workhorse") { total *= 0.5; ev.triggers.push("boss:workhorse"); }
@@ -417,7 +419,7 @@
         game.rally = game.startRally;
         rallyDelta = -999; // sentinel: reset (legacy hot-hand mode)
       } else {
-        rallyDelta = 0; // rally persists across outs — only the inning's end resets it
+        rallyDelta = 0; // rally persists across outs - only the inning's end resets it
       }
     }
 

@@ -1,5 +1,5 @@
 /* ============================================================
-   Diamond Duel — Config + Content
+   Diamond Duel - Config + Content
    All tuning lives in CONFIG so balancing is a data edit.
    All randomness elsewhere is seeded; this file is static data.
    ============================================================ */
@@ -7,7 +7,7 @@
   "use strict";
 
   /* -------------------------------------------------------- */
-  /* CONFIG — every tuning lever in one place                 */
+  /* CONFIG - every tuning lever in one place                 */
   /* -------------------------------------------------------- */
   const CONFIG = {
     // Resources per game
@@ -17,7 +17,7 @@
     handSize: 6,
     startingRally: 1.0,
 
-    // Rally — builds across the whole inning (snowball) and resets at the inning's end,
+    // Rally - builds across the whole inning (snowball) and resets at the inning's end,
     // NOT on every out. Your 3 outs are the limited resource; the rally is your multiplier.
     rallyResetsOnOut: false,
     rallyIncrement: 0.5, // per safe outcome
@@ -79,19 +79,19 @@
     // Ace boss target multiplier
     aceTargetMult: 1.25,
 
-    // Hot/cold streaks — consecutive hits/outs shift a player's effective hitting stats.
+    // Hot/cold streaks - consecutive hits/outs shift a player's effective hitting stats.
     streak: { hotAt: 2, coldAt: 2, perLevel: 7, maxLevel: 3 },
 
     // Active baserunning
     stealCaughtBase: 0.18, // base caught-stealing risk when you Send a runner (reduced by Speed/Burner)
     buntSafeBase: 0.06,    // base chance a bunt is beaten out for a single (raised by Speed)
 
-    // At-bat APPROACHES — the per-plate-appearance decision. Each scales outcome weights.
+    // At-bat APPROACHES - the per-plate-appearance decision. Each scales outcome weights.
     approaches: {
-      swing:  { id: "swing",  name: "Swing Away",     icon: "bat", desc: "Balanced — your natural swing.", w: {} },
+      swing:  { id: "swing",  name: "Swing Away",     icon: "bat", desc: "Balanced - your natural swing.", w: {} },
       power:  { id: "power",  name: "Power Swing",    icon: "muscle", desc: "Sell out for the big fly. More HR & extra-base hits, but more strikeouts.",
         w: { HR: 1.65, "2B": 1.45, "3B": 1.4, "1B": 0.7, BB: 0.55, K: 1.3, OUT: 1.0 } },
-      contact:{ id: "contact",name: "Work the Count", icon: "eye", desc: "Patient & protective. Many more walks, far fewer strikeouts — but little power.",
+      contact:{ id: "contact",name: "Work the Count", icon: "eye", desc: "Patient & protective. Many more walks, far fewer strikeouts - but little power.",
         w: { BB: 2.1, HBP: 1.3, K: 0.5, "1B": 1.2, "2B": 0.7, "3B": 0.6, HR: 0.5, OUT: 0.95 } },
     },
 
@@ -136,7 +136,7 @@
   };
 
   /* -------------------------------------------------------- */
-  /* PLAYERS — fictional roster (avoids licensing).           */
+  /* PLAYERS - fictional roster (avoids licensing).           */
   /* P(id,name,bats,contact,power,eye,speed,tags,rarity,cost) */
   /* -------------------------------------------------------- */
   function P(id, name, bats, c, p, e, s, tags, rarity, cost, nick) {
@@ -232,10 +232,10 @@
   ];
 
   /* -------------------------------------------------------- */
-  /* TRAITS — signature player abilities (read by the engine)  */
+  /* TRAITS - signature player abilities (read by the engine)  */
   /* -------------------------------------------------------- */
   const TRAITS = {
-    launch:      { id: "launch",      name: "Launch",      icon: "launch",    desc: "Power Swing never adds strikeouts for this hitter — sell out risk-free." },
+    launch:      { id: "launch",      name: "Launch",      icon: "launch",    desc: "Power Swing never adds strikeouts for this hitter - sell out risk-free." },
     eagle:       { id: "eagle",       name: "Eagle Eye",   icon: "eagle",     desc: "Work the Count draws even more walks and never strikes out." },
     burner:      { id: "burner",      name: "Burner",      icon: "burner",    desc: "Steals almost always succeed and takes the extra base far more often." },
     clutch:      { id: "clutch",      name: "Clutch",      icon: "clutch",    desc: "With 2 outs or a runner in scoring position, this at-bat scores at +1.0 Rally." },
@@ -243,7 +243,7 @@
     acekiller:   { id: "acekiller",   name: "Ace Killer",  icon: "acekiller", desc: "+1.0 Rally and +1 Bag value against Boss pitchers." },
     sparkplug:   { id: "sparkplug",   name: "Sparkplug",   icon: "sparkplug", desc: "If this hitter leads off an inning and reaches base, +0.5 Rally for the rest of the inning." },
     streaky:     { id: "streaky",     name: "Streaky",     icon: "streaky",   desc: "Hot and cold streaks hit twice as hard." },
-    ice:         { id: "ice",         name: "Ice Veins",   icon: "ice",       desc: "Never goes cold — immune to slumps." },
+    ice:         { id: "ice",         name: "Ice Veins",   icon: "ice",       desc: "Never goes cold - immune to slumps." },
   };
   // assign signature traits to key players (others have none)
   const TRAIT_ASSIGN = {
@@ -321,7 +321,7 @@
     { id: "junkballer", name: "The Junkballer", rule: "junkballer", text: "The first batter of every inning is debuffed (-22 all stats).", tier: 2 },
     { id: "workhorse", name: "The Workhorse", rule: "workhorse", text: "Your Rally increment is reduced by half.", tier: 2 },
     { id: "closer", name: "The Closer", rule: "closer", text: "You get only 18 outs (six innings). A race.", tier: 2 },
-    { id: "ace", name: "The Ace", rule: "ace", text: "Target is increased by 50%. No other rule — a raw check.", tier: 2 },
+    { id: "ace", name: "The Ace", rule: "ace", text: "Target is increased by 50%. No other rule - a raw check.", tier: 2 },
   ];
 
   function getBoss(id) {
@@ -329,7 +329,7 @@
   }
 
   /* -------------------------------------------------------- */
-  /* CONSUMABLES — analytics (planets) + scouting (tarots)    */
+  /* CONSUMABLES - analytics (planets) + scouting (tarots)    */
   /* -------------------------------------------------------- */
   const ANALYTICS = [
     { id: "an_power", name: "Power Analytics", kind: "analytics", key: "power", rarity: "common", cost: 4, text: "Permanently: home runs +1 Bag, doubles +0.5 Bag (this run)." },
@@ -354,7 +354,7 @@
   ];
 
   /* -------------------------------------------------------- */
-  /* CHARMS — consumable powerups (Balatro's Arcana, baseball  */
+  /* CHARMS - consumable powerups (Balatro's Arcana, baseball  */
   /* superstitions). Held in your charm pouch, used any time   */
   /* during a game. target: player | coach | immediate.        */
   /* -------------------------------------------------------- */
@@ -365,20 +365,21 @@
     { id: "ch_eyeblack", name: "Eye Black", icon: "eye", kind: "charm", target: "player", op: "bump", arg: "eye", amt: 24, rarity: "common", cost: 4, text: "Smear on +24 Eye for one of your players." },
     { id: "ch_spikes", name: "Track Spikes", icon: "wind", kind: "charm", target: "player", op: "bump", arg: "speed", amt: 24, rarity: "common", cost: 4, text: "Lace up +24 Speed for one of your players." },
     { id: "ch_allstar", name: "All-Star Nod", icon: "star", kind: "charm", target: "player", op: "allup", amt: 9, rarity: "star", cost: 6, text: "+9 to all four stats of one of your players." },
-    { id: "ch_clutch", name: "Clutch Gene", icon: "sparkle", kind: "charm", target: "player", op: "trait", arg: "clutch", rarity: "star", cost: 6, text: "Give a player the Clutch trait — scores at +1.0 Rally with 2 outs or a runner in scoring position." },
-    { id: "ch_burner", name: "Lead-off Legs", icon: "burner", kind: "charm", target: "player", op: "trait", arg: "burner", rarity: "star", cost: 6, text: "Give a player the Burner trait — steals almost always succeed." },
+    { id: "ch_clutch", name: "Clutch Gene", icon: "sparkle", kind: "charm", target: "player", op: "trait", arg: "clutch", rarity: "star", cost: 6, text: "Give a player the Clutch trait - scores at +1.0 Rally with 2 outs or a runner in scoring position." },
+    { id: "ch_burner", name: "Lead-off Legs", icon: "burner", kind: "charm", target: "player", op: "trait", arg: "burner", rarity: "star", cost: 6, text: "Give a player the Burner trait - steals almost always succeed." },
     // --- applied to a coach badge ---
     { id: "ch_copy", name: "Carbon Copy", icon: "copy", kind: "charm", target: "coach", op: "copycoach", rarity: "allstar", cost: 8, text: "Duplicate one of your coaches into an open dugout slot." },
+    { id: "ch_mentor", name: "Coaching Clinic", icon: "medal", kind: "charm", target: "coach", op: "aura", amt: 0.3, rarity: "star", cost: 6, text: "Mentor a coach. That coach adds +0.3 Rally to every scoring play for the rest of the run." },
     // --- immediate, affect the current at-bat / inning ---
-    { id: "ch_ibb", name: "Intentional Walk", icon: "arrowUpRight", kind: "charm", target: "immediate", op: "freewalk", rarity: "common", cost: 5, text: "Take a free base — put a runner on first (forces runners up) and bump your Rally. No out used." },
+    { id: "ch_ibb", name: "Intentional Walk", icon: "arrowUpRight", kind: "charm", target: "immediate", op: "freewalk", rarity: "common", cost: 5, text: "Take a free base - put a runner on first (forces runners up) and bump your Rally. No out used." },
     { id: "ch_momentum", name: "Momentum Shift", icon: "zap", kind: "charm", target: "immediate", op: "rally", amt: 1.5, rarity: "star", cost: 6, text: "Swing the game your way: +1.5 Rally right now." },
-    { id: "ch_secondwind", name: "Second Wind", icon: "shield", kind: "charm", target: "immediate", op: "extraout", rarity: "star", cost: 7, text: "Catch your breath — gain one extra out this inning." },
+    { id: "ch_secondwind", name: "Second Wind", icon: "shield", kind: "charm", target: "immediate", op: "extraout", rarity: "star", cost: 7, text: "Catch your breath - gain one extra out this inning." },
   ];
 
   function getCharm(id) { return CHARMS.find((c) => c.id === id); }
 
   /* -------------------------------------------------------- */
-  /* ACHIEVEMENTS — 49 feats & milestones. `seed:true` ones    */
+  /* ACHIEVEMENTS - 49 feats & milestones. `seed:true` ones    */
   /* also gift a Sunflower Seed the moment you pull them off.   */
   /* -------------------------------------------------------- */
   const ACHIEVEMENTS = [
@@ -450,13 +451,13 @@
   /* FRONT OFFICE UPGRADES (vouchers)                          */
   /* -------------------------------------------------------- */
   const UPGRADES = [
-    { id: "up_dugout", name: "Expanded Dugout", fx: "dugoutSlot", rarity: "star", cost: 8, text: "+1 dugout slot (more coaches)." },
-    { id: "up_hand", name: "Bigger Lineup Card", fx: "handSize", rarity: "common", cost: 6, text: "+1 hand size." },
-    { id: "up_discount", name: "Analytics Department", fx: "discount", rarity: "star", cost: 7, text: "Shop prices reduced by $1 (min $1)." },
-    { id: "up_shopslot", name: "Scouting Network", fx: "shopSlot", rarity: "star", cost: 7, text: "+1 card slot in the shop." },
-    { id: "up_reroll", name: "Front Office Interns", fx: "rerollCheap", rarity: "common", cost: 6, text: "Rerolls cost $1 less." },
-    { id: "up_startrally", name: "Home Field Advantage", fx: "startRally", rarity: "allstar", cost: 9, text: "Start every game at x1.5 Rally instead of x1.0." },
-    { id: "up_interest", name: "Smart Investments", fx: "interest", rarity: "star", cost: 7, text: "Interest cap raised to $8." },
+    { id: "up_dugout", name: "Expanded Dugout", fx: "dugoutSlot", icon: "home", rarity: "star", cost: 8, text: "+1 dugout slot (more coaches)." },
+    { id: "up_hand", name: "Bigger Lineup Card", fx: "handSize", icon: "layers", rarity: "common", cost: 6, text: "+1 hand size." },
+    { id: "up_discount", name: "Analytics Department", fx: "discount", icon: "barChart", rarity: "star", cost: 7, text: "Shop prices reduced by $1 (min $1)." },
+    { id: "up_shopslot", name: "Scouting Network", fx: "shopSlot", icon: "eye", rarity: "star", cost: 7, text: "+1 card slot in the shop." },
+    { id: "up_reroll", name: "Front Office Interns", fx: "rerollCheap", icon: "shuffle", rarity: "common", cost: 6, text: "Rerolls cost $1 less." },
+    { id: "up_startrally", name: "Home Field Advantage", fx: "startRally", icon: "zap", rarity: "allstar", cost: 9, text: "Start every game at x1.5 Rally instead of x1.0." },
+    { id: "up_interest", name: "Smart Investments", fx: "interest", icon: "coin", rarity: "star", cost: 7, text: "Interest cap raised to $8." },
   ];
 
   /* -------------------------------------------------------- */
@@ -478,7 +479,7 @@
       name: "The Sandlot",
       tagline: "Balanced. The friendly place to learn.",
       signatureCoach: null,
-      bonusText: "No signature coach — a clean, balanced start.",
+      bonusText: "No signature coach - a clean, balanced start.",
       deck: ["nico_reyburn", "joey_marsh", "vic_castellano", "chip_donnelly", "gil_hatcher",
         "hank_delgado", "eddie_lux", "rusty_blanco", "benny_alvarez", "gabe_whitfield",
         "marty_soto", "milo_fenn"],
@@ -529,7 +530,7 @@
       name: "The Old Guard",
       tagline: "Grizzled veterans who never fold.",
       signatureCoach: "veteran_presence",
-      bonusText: "Starts with Veteran Presence — vets get stronger all run.",
+      bonusText: "Starts with Veteran Presence - vets get stronger all run.",
       deck: ["marty_soto", "walt_pemberton", "bruno_vargas", "buster_kray", "hank_delgado",
         "dusty_quintero", "punch_lavoie", "el_toro_mendez", "lionel_frye", "vic_castellano",
         "gabe_whitfield", "rusty_blanco"],
@@ -539,7 +540,7 @@
       name: "The Young Guns",
       tagline: "Raw rookies with sky-high ceilings.",
       signatureCoach: "prospect_pipeline",
-      bonusText: "Starts with Prospect Pipeline and +$3 — rookies grow your Rally.",
+      bonusText: "Starts with Prospect Pipeline and +$3 - rookies grow your Rally.",
       startBonusPayroll: 3,
       deck: ["sunny_okada", "tank_mercer", "crusher_voss", "chip_donnelly", "flash_tomlin",
         "scooter_pace", "milo_fenn", "gunnar_polk", "desmond_pratt", "blast_jennings",
@@ -550,7 +551,7 @@
       name: "The Wild Cards",
       tagline: "Switch-hitters and do-it-all utility men.",
       signatureCoach: "platoon_manager",
-      bonusText: "Starts with Platoon Manager — your platoon edge is doubled.",
+      bonusText: "Starts with Platoon Manager - your platoon edge is doubled.",
       deck: ["ozzie_klein", "pete_almonte", "nico_reyburn", "rudy_falk", "andre_delacroix",
         "benny_alvarez", "comet_reyes", "kid_zamora", "jackrabbit_jones", "spray_okafor",
         "joey_marsh", "eddie_lux"],

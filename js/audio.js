@@ -1,5 +1,5 @@
 /* ============================================================
-   Diamond Duel — Tiny synth SFX (no audio files needed)
+   Diamond Duel - Tiny synth SFX (no audio files needed)
    WebAudio blips for hits, the rally tick, coach flashes, etc.
    ============================================================ */
 (function (global) {

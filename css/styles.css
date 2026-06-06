@@ -1,5 +1,5 @@
 /* ============================================================
-   Diamond Duel — styles
+   Diamond Duel - styles
    ============================================================ */
 :root{
   --bg0:#0a0f1c; --bg1:#0d1828; --bg2:#102338;
@@ -143,7 +143,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
    radial-gradient(120% 90% at 50% 20%, #133a22 0%, #0c2417 60%, #0a1a12 100%);
    border:1px solid var(--line); border-radius:14px; padding:14px; display:flex; justify-content:center}
 /* Square field. Infield is a 45°-rotated square; its four corners sit at 16%/84%
-   along each axis, and every base is centered on a corner — so they always align. */
+   along each axis, and every base is centered on a corner - so they always align. */
 .diamond{position:relative; width:236px; height:236px}
 .diamond::before{ /* infield grass */
   content:""; position:absolute; left:50%; top:50%; width:48%; height:48%;
@@ -198,7 +198,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .col-right{display:flex; flex-direction:column; gap:8px}
 .dugout-title{font-size:.7rem; letter-spacing:3px; color:var(--ink-faint); font-weight:800; padding-left:2px}
 .dugout{display:flex; flex-flow:row wrap; gap:8px; align-content:flex-start}
-/* in-game dugout: compact coach icons — the full rule lives in the tap/hover tooltip */
+/* in-game dugout: compact coach icons - the full rule lives in the tap/hover tooltip */
 .coach-icon{position:relative; width:46px; height:46px; border-radius:12px; flex:none;
   display:flex; align-items:center; justify-content:center;
   background:linear-gradient(180deg,#16273f,#11203455); border:1px solid var(--line); border-bottom:3px solid var(--rar-common);
@@ -344,6 +344,75 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .ov-stat{color:var(--ink-faint); font-size:.85rem; margin-bottom:14px}
 .ov-actions{display:flex; gap:10px; justify-content:center}
 
+/* ===== post-mortem (Game Over) recap ===== */
+.postmortem{ max-width:560px; }
+.postmortem .pm-burst{ font-size:2.2rem; color:var(--bad); animation:burst .6s ease; line-height:1; }
+.postmortem .pm-burst .ico{ width:1em; height:1em; }
+.pm-flavor{ color:var(--ink-dim); font-style:italic; }
+.pm-final{ margin:14px auto 6px; max-width:340px; }
+.pm-final-top{ display:flex; align-items:baseline; justify-content:space-between; font-size:.74rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-faint); font-weight:800; }
+.pm-final-top b{ font-size:1.5rem; color:var(--ink); letter-spacing:0; }
+.pm-final-top b i{ color:var(--ink-faint); font-style:normal; font-weight:600; margin:0 2px; }
+.pm-bar{ height:8px; border-radius:6px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:5px; }
+.pm-bar-fill{ height:100%; border-radius:6px; background:linear-gradient(90deg,var(--bad),var(--gold)); }
+.pm-strip{ display:flex; gap:6px; justify-content:center; margin:14px 0; flex-wrap:wrap; }
+.pm-pip{ width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.82rem;
+  background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--ink-faint); }
+.pm-pip .ico{ width:14px; height:14px; }
+.pm-pip.done{ background:linear-gradient(180deg,rgba(90,209,122,.25),rgba(90,209,122,.1)); border-color:var(--good); color:var(--good); }
+.pm-pip.lost{ background:linear-gradient(180deg,rgba(255,107,107,.3),rgba(255,107,107,.12)); border-color:var(--bad); color:#ffd9d9; box-shadow:0 0 14px rgba(255,107,107,.5); }
+.pm-pip.boss{ border-width:2px; }
+.pm-pip.boss.future{ color:var(--gold-2); border-color:var(--gold-deep); }
+.pm-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin:14px 0 18px; }
+.pm-grid .stat-cell{ text-align:center; }
+.seed-hidden{ color:var(--ink-faint); font-style:italic; font-size:.8rem; }
+
+/* ===== Collection (Balatro-style compendium) ===== */
+.collection-card{ max-width:820px; width:min(820px,94vw); text-align:left; }
+.collection-card h2{ text-align:center; }
+.col-total{ color:var(--gold); font-weight:900; margin-left:6px; }
+.collection-card .ov-sub{ text-align:center; }
+.col-board{ max-height:60vh; overflow:auto; padding:4px 4px 2px; margin:6px 0 14px; }
+.col-group{ margin-bottom:16px; }
+.col-group-h{ font-size:.74rem; letter-spacing:2px; text-transform:uppercase; color:#cfe6d4; font-weight:800; margin:0 2px 8px; display:flex; align-items:center; gap:8px; }
+.col-count{ color:var(--ink-faint); font-weight:700; letter-spacing:0; }
+.col-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(104px,1fr)); gap:8px; }
+.col-cell{ background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:11px; padding:11px 8px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:6px; min-height:78px; justify-content:center; transition:transform .1s, border-color .12s; }
+.col-cell.got{ cursor:help; }
+.col-cell.got:hover{ transform:translateY(-3px); border-color:var(--good); }
+.col-ic{ width:26px; height:26px; color:var(--ink); display:flex; align-items:center; justify-content:center; }
+.col-ic .ico{ width:24px; height:24px; }
+.col-nm{ font-size:.7rem; font-weight:700; line-height:1.15; color:var(--ink-dim); }
+.col-cell.got .col-nm{ color:var(--ink); }
+.col-cell.locked{ opacity:.6; }
+.col-cell.locked .col-ic{ color:var(--ink-faint); }
+.col-cell.got.rar-star{ border-color:rgba(96,165,250,.5); }
+.col-cell.got.rar-allstar{ border-color:rgba(167,139,250,.55); }
+.col-cell.got.rar-star .col-ic{ color:#8fbaff; }
+.col-cell.got.rar-allstar .col-ic{ color:#c4b5fd; }
+
+/* "Undiscovered" flag on a shop item */
+.shop-item{ position:relative; }
+.undisc-tag{ position:absolute; top:-7px; left:50%; transform:translateX(-50%); z-index:3; white-space:nowrap;
+  background:linear-gradient(180deg,#3a2d5e,#271d44); color:#d9ccff; border:1px solid #6b54b0; border-radius:999px;
+  font-size:.6rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; padding:2px 9px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+.undisc-tag .ico{ width:.85em; height:.85em; vertical-align:-0.12em; margin-right:3px; }
+
+/* ===== drag a Sunflower Seed onto a player / coach ===== */
+.charm-badge{ touch-action:none; }
+.charm-badge.charm-dragging{ opacity:.35; }
+.charm-ghost{ position:fixed; left:0; top:0; z-index:1200; pointer-events:none; width:48px; height:48px; border-radius:13px;
+  display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%) scale(1.12) rotate(-6deg);
+  background:linear-gradient(180deg,#2c2152,#191232); border:2px solid var(--gold);
+  box-shadow:0 12px 28px rgba(0,0,0,.55), 0 0 22px rgba(255,203,71,.4); color:var(--gold); }
+.charm-ghost .ico{ width:25px; height:25px; }
+body.is-charmdrag, .is-charmdrag *{ cursor:grabbing !important; }
+/* valid drop targets glow while a seed is in hand */
+.charm-zone{ outline:2px dashed rgba(255,203,71,.55); outline-offset:3px; border-radius:13px; }
+.card.charm-zone{ border-radius:14px; }
+.charm-hover{ outline:3px solid var(--gold) !important; outline-offset:3px; box-shadow:0 0 24px rgba(255,203,71,.65) !important; }
+
 .picker .picker-grid,.deck-view .deck-grid,.pack-grid{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:14px 0; max-height:54vh; overflow:auto; padding:4px}
 .pick-card,.pack-opt,.deck-card{cursor:pointer; border-radius:12px; transition:transform .12s; position:relative}
 .pick-card:hover,.pack-opt:hover{transform:translateY(-6px) scale(1.04)}
@@ -360,7 +429,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(30px); background:#1b2c46; border:1px solid var(--line); color:var(--ink); padding:11px 18px; border-radius:12px; opacity:0; pointer-events:none; transition:all .3s; z-index:80; box-shadow:var(--shadow); font-weight:600}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
-/* Menu button — icon-only square, flush in the very top-right corner */
+/* Menu button - icon-only square, flush in the very top-right corner */
 #menu-btn{
   position:fixed; z-index:45; width:40px; height:40px; padding:0; display:flex; align-items:center; justify-content:center;
   background:rgba(19,35,58,.85); border:1px solid var(--line); color:var(--ink-dim); border-radius:11px;
@@ -432,7 +501,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 ::-webkit-scrollbar-track{background:transparent}
 
 /* ===================================================================
-   FIXED-VIEWPORT LAYOUT — landscape, no page scroll (Balatro-style).
+   FIXED-VIEWPORT LAYOUT - landscape, no page scroll (Balatro-style).
    The whole UI lives in a 1600x900 stage scaled to fit the screen.
    =================================================================== */
 html,body{ height:100%; width:100%; margin:0; padding:0; overflow:hidden;
@@ -540,7 +609,7 @@ body.portrait #toast{ display:none !important; }
 .rh-sub{ font-size:3.8vw; color:var(--ink-dim); max-width:84vw; line-height:1.55; }
 
 /* ===================================================================
-   READABILITY + POLISH PASS — bigger text/elements within the canvas
+   READABILITY + POLISH PASS - bigger text/elements within the canvas
    so everything stays legible once the stage scales down on phones.
    =================================================================== */
 
@@ -621,7 +690,7 @@ body.portrait #toast{ display:none !important; }
 .ov-card h2{ font-size:2.1rem; }
 .ov-sub{ font-size:1.04rem; margin:10px 0 16px; }
 
-/* MENU as a compact horizontal tile grid — fits any landscape height, no scroll */
+/* MENU as a compact horizontal tile grid - fits any landscape height, no scroll */
 .menu-card{ max-width:740px; }
 .menu-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:18px 0 4px; }
 .menu-tile{ display:flex; flex-direction:row; align-items:center; gap:13px; text-align:left;
@@ -636,7 +705,7 @@ body.portrait #toast{ display:none !important; }
 .menu-tile.tile-danger{ background:linear-gradient(180deg,#7a2f2f,#5f1d1d); border-color:#5a1414; color:#ffe3e3; }
 .menu-tile.tile-danger .menu-note{ color:#e6a3a3; }
 
-/* STATS — bigger text, wide 4-col grid so it stays short (fits any landscape) */
+/* STATS - bigger text, wide 4-col grid so it stays short (fits any landscape) */
 .stats-card{ width:min(760px,94vw); max-width:760px; }
 .stats-card h3{ font-size:.86rem; margin:12px 0 7px; }
 .stats-card h3:first-of-type{ margin-top:2px; }
@@ -680,7 +749,7 @@ body.portrait #toast{ display:none !important; }
 .rtok.spd-fast{ box-shadow:0 2px 8px rgba(0,0,0,.5), 0 0 16px rgba(90,170,255,.8); }
 .rtok.crossed{ opacity:0; transform:translate(-50%,-50%) scale(.3); }
 
-/* ===== dugout column: coaches, then Outs/Inning, then money — all stacked at the top ===== */
+/* ===== dugout column: coaches, then Outs/Inning, then money - all stacked at the top ===== */
 .col-right{ display:flex; flex-direction:column; gap:10px; justify-content:flex-start; }
 .dugout{ flex:0 0 auto; }
 .situation{ margin-top:2px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:stretch; }
@@ -712,7 +781,7 @@ body.portrait #toast{ display:none !important; }
 .approach-btn.ap-contact:hover{ border-color:var(--eye); }
 .atbat-cancel{ margin-top:9px; background:none; border:none; color:var(--ink-faint); font:inherit; font-size:.82rem; cursor:pointer; }
 .atbat-cancel:hover{ color:var(--ink); }
-/* hand "picking a swing" state — selected batter lifts & glows, others dim */
+/* hand "picking a swing" state - selected batter lifts & glows, others dim */
 .hand.picking .card{ opacity:.45; }
 .hand.picking .card:hover{ opacity:.8; transform:translateY(-6px); }
 .hand.picking .card.selected{ opacity:1; transform:translateY(-14px) scale(1.06);
@@ -744,7 +813,7 @@ body.portrait #toast{ display:none !important; }
 #tooltip.show{ opacity:1; transform:translateY(0); }
 #tooltip b{ color:var(--gold); }
 
-/* ===== At-bat popup — floats over the play area; field never shrinks ===== */
+/* ===== At-bat popup - floats over the play area; field never shrinks ===== */
 .atbat-pop{ position:absolute; left:50%; top:46%; z-index:30; width:min(860px,92%);
   opacity:0; pointer-events:none; transform:translate(-50%,-50%) scale(.92);
   transition:opacity .14s ease, transform .16s cubic-bezier(.2,1.4,.3,1); }
@@ -828,7 +897,7 @@ body.portrait #toast{ display:none !important; }
   .stat-cell{ padding:6px 9px; }
   .stat-val{ font-size:1rem; }
   .stat-label{ font-size:.64rem; }
-  /* how to play — keep one section per page comfortably on-screen, no scroll */
+  /* how to play - keep one section per page comfortably on-screen, no scroll */
   .howto-sub{ font-size:1.05rem; }
   .howto-body{ margin:8px 0 10px; min-height:120px; }
   .howto section{ margin-bottom:0; }
@@ -923,7 +992,7 @@ body.portrait #toast{ display:none !important; }
 #tooltip .tip-trait{ display:block; margin-top:5px; color:var(--gold); font-size:.9em; }
 
 /* ============================================================
-   DECK & DUGOUT inspector views — compact so they fit with no scroll
+   DECK & DUGOUT inspector views - compact so they fit with no scroll
    ============================================================ */
 .deck-view{ width:min(1160px,97vw); max-width:1160px; }
 .deck-view .deck-grid{ max-height:78vh; gap:8px; align-content:flex-start; }
@@ -950,7 +1019,7 @@ body.portrait #toast{ display:none !important; }
 @media (max-width:1100px){ .dugout-view .dug-list{ grid-template-columns:repeat(3,1fr); } }
 
 /* ============================================================
-   READABILITY ON THE GREEN FIELD — text that sits directly on the
+   READABILITY ON THE GREEN FIELD - text that sits directly on the
    grass (not inside a dark panel) is white with a soft shadow.
    ============================================================ */
 .tagline,
@@ -975,7 +1044,7 @@ body.portrait #toast{ display:none !important; }
 .seed-hint.replay,.seed-hint.replay code{ color:var(--gold); }
 
 /* ============================================================
-   AT-BAT BAR — between the (shorter) play summary and the hand.
+   AT-BAT BAR - between the (shorter) play summary and the hand.
    Idle: a drop box on the right you drag a batter into.
    Active: the swing buttons appear inline (no popup).
    ============================================================ */
@@ -1014,7 +1083,7 @@ body.portrait #toast{ display:none !important; }
 .atbat-bar .ap-desc{ font-size:.78rem; color:var(--ink-faint); line-height:1.3; font-weight:500; white-space:normal; max-width:170px; }
 .atbat-bar .tactics-row{ display:flex; flex-direction:column; gap:8px; justify-content:center; margin:0; flex:0 0 auto; }
 .atbat-bar .tactic-btn{ font-size:.92rem; padding:9px 16px; }
-/* Cancel sits with the tactics (under Bunt / Send) — muted so it reads as "back out". */
+/* Cancel sits with the tactics (under Bunt / Send) - muted so it reads as "back out". */
 .atbat-bar .tactic-btn.ab-cancel-btn{ color:var(--ink-dim); border-color:rgba(255,255,255,.16);
   background:linear-gradient(180deg,#222a36,#171d27); margin-top:2px; }
 .atbat-bar .tactic-btn.ab-cancel-btn:hover{ color:var(--bad); border-color:var(--bad);
@@ -1024,7 +1093,7 @@ body.portrait #toast{ display:none !important; }
 .col-center{ min-height:0; }
 
 /* ============================================================
-   GAME LAYOUT v2 — field box (full height, with Outs/Inning) |
+   GAME LAYOUT v2 - field box (full height, with Outs/Inning) |
    skinnier summary | Charms | dugout, with the at-bat bar aligned
    under the summary.
    ============================================================ */

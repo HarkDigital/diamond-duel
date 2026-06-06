@@ -1,5 +1,5 @@
 /* ============================================================
-   Diamond Duel — Seeded RNG
+   Diamond Duel - Seeded RNG
    All randomness in the game flows through one seeded generator
    so runs are reproducible and bugs are repeatable.
    xmur3 (seed hashing) -> mulberry32 (generator).

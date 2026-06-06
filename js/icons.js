@@ -1,5 +1,5 @@
 /* ============================================================
-   Diamond Duel — custom inline-SVG icon set (no emoji anywhere)
+   Diamond Duel - custom inline-SVG icon set (no emoji anywhere)
    icon(name) -> an <svg> string that inherits currentColor.
    Line icons are Feather/Lucide-style; a few are filled glyphs.
    ============================================================ */
@@ -11,6 +11,8 @@
     /* ---- core UI ---- */
     menu:      { d: '<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>' },
     close:     { d: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' },
+    lock:      { d: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' },
+    book:      { d: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>' },
     check:     { d: '<polyline points="20 6 9 17 4 12"/>' },
     help:      { d: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
     stats:     { d: '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>' },
