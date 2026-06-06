@@ -673,7 +673,7 @@
         <div class="sb-score">
           <div class="sb-score-num"><span id="sb-score">0</span><span class="sb-slash">/</span><span id="sb-target">0</span></div>
           <div class="sb-progress"><div class="sb-progress-fill" id="sb-progress"></div></div>
-          <div class="sb-runs">Runs this game: <b id="sb-runs">0</b></div>
+          <div class="sb-runs">Runs this inning: <b id="sb-runs">0</b></div>
         </div>
         <div class="sb-right">
           <div class="payroll-chip sb-pay" id="payroll-chip">$<span id="payroll-amt">0</span></div>

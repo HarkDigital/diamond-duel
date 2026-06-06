@@ -18,8 +18,8 @@ GitHub Pages.
   URL and compare `shasum` of changed files to local.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=9`,
-`js/app.js?v=9`. **Bump every `?v=N` in `index.html` on each deploy** so returning
+`index.html` loads assets with a version query, e.g. `css/styles.css?v=10`,
+`js/app.js?v=10`. **Bump every `?v=N` in `index.html` on each deploy** so returning
 players' browsers fetch fresh CSS/JS instead of stale cached copies. (A stale CSS cache
 is what made the field-diagram fix appear "not to work" once.)
 
