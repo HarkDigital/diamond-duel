@@ -124,6 +124,7 @@
     stake = Math.max(1, Math.min(STAKES.length, stake || 1));
     const run = {
       seed: seed || randomSeed(),
+      seeded: !!seed,        // a custom/replayed seed was supplied: this run earns NO achievements/progression
       franchiseId: fr.id,
       stake: stake,
       gameIndex: 0,
@@ -171,9 +172,11 @@
     run.handSize = Math.max(1, run.handSize + stakeMods(stake).handDelta);
     // pre-roll the 8 boss rules so telegraphs match
     for (let r = 0; r < ROUNDS.length; r++) run.bosses.push(pickBoss(run, r));
-    META.runs += 1;
-    META.franchisesPlayed[fr.id] = true;
-    saveMeta(); checkCareerAch();
+    if (!seed) {   // seeded runs don't count toward lifetime stats / "play every franchise"
+      META.runs += 1;
+      META.franchisesPlayed[fr.id] = true;
+      saveMeta(); checkCareerAch();
+    }
     return run;
   }
 
@@ -398,7 +401,7 @@
         pushLog(`${icon("arrowUpRight")} ${res.runner.name} steals ${to}!`, "steal");
         if (res.rallyBonus) animateRally({ rallyDelta: res.rallyBonus });
         (res.triggers || []).forEach(flashCoachByFx);
-        g.steals = (g.steals || 0) + 1; META.career.steals++;
+        g.steals = (g.steals || 0) + 1; if (!runIsSeeded()) META.career.steals++;
         if (g.steals >= 3) awardAchievement("thief");
         if (res.to === 3) awardAchievement("steal_home");
         saveMeta(); checkCareerAch();
@@ -503,24 +506,25 @@
 
     // ---- achievements & career stats ----
     const isHit = (o === "1B" || o === "2B" || o === "3B" || o === "HR");
+    const seeded = runIsSeeded();   // seeded runs accrue no lifetime/career stats
     if (isHit) {
-      g.hits = (g.hits || 0) + 1; META.career.hits++;
+      g.hits = (g.hits || 0) + 1; if (!seeded) META.career.hits++;
       g.inningTypes = g.inningTypes || {}; g.inningTypes[o] = true;
       if (g.hits >= 5) awardAchievement("five_hits");
       if (g.inningTypes["1B"] && g.inningTypes["2B"] && g.inningTypes["3B"] && g.inningTypes["HR"]) awardAchievement("the_cycle");
     }
     if (o === "HR") {
-      g.homers = (g.homers || 0) + 1; META.career.homers++;
+      g.homers = (g.homers || 0) + 1; if (!seeded) META.career.homers++;
       if (ev.runsOnPlay >= 4) awardAchievement("grand_slam");
       if (g.homers >= 2) awardAchievement("long_ball");
       if (g.homers >= 3) awardAchievement("three_hr");
     } else if (o === "BB") {
-      g.walks = (g.walks || 0) + 1; META.career.walks++;
+      g.walks = (g.walks || 0) + 1; if (!seeded) META.career.walks++;
       if (g.walks >= 3) awardAchievement("patient_eye");
     }
     if (ev.scoreGained >= 15 * (CONFIG.scoreScale || 1)) awardAchievement("big_swing");
     if (g.rally > (META.career.bestRally || 1)) META.career.bestRally = g.rally;
-    if (g.score > (META.career.bestInningScore || 0)) META.career.bestInningScore = g.score;
+    if (!runIsSeeded() && g.score > (META.career.bestInningScore || 0)) META.career.bestInningScore = g.score;
     saveMeta(); checkCareerAch();
 
     // readout
@@ -658,7 +662,7 @@
     if (g.outsRemaining <= 1) awardAchievement("comeback");                   // won on the final out
     if (g.lastOutcome === "HR") awardAchievement("walkoff");                  // walk-off homer
     if (g.isBoss) {
-      META.career.bossWins++;
+      if (!runIsSeeded()) META.career.bossWins++;
       run.bossWins = (run.bossWins || 0) + 1;
       if (run.bossWins >= 3) awardAchievement("boss_sweep");
     }
@@ -693,12 +697,14 @@
     const total = base + interest + frugal + bossTagBonus;
     run.payroll += total;
 
-    // stats
+    // stats (per-run always; career/lifetime records skip seeded runs)
     run.stat.gamesWon += 1;
     if (g.score > (run.stat.bestScore || 0)) run.stat.bestScore = g.score;
-    if (g.score > (META.bestScore || 0)) META.bestScore = g.score;
-    META.bestGame = Math.max(META.bestGame || 0, g.gameIndex);
-    saveMeta();
+    if (!runIsSeeded()) {
+      if (g.score > (META.bestScore || 0)) META.bestScore = g.score;
+      META.bestGame = Math.max(META.bestGame || 0, g.gameIndex);
+      saveMeta();
+    }
 
     // advance the bracket
     run.gameIndex += 1;
@@ -708,13 +714,17 @@
     // beat inning 8's Boss for the first time -> World Series; then you may push into Extra Innings
     if (run.gameIndex === ROUNDS.length * GAMES_PER_ROUND && !run.wonWS) {
       run.wonWS = true;
-      META.wins += 1;
-      META.franchisesWon[run.franchiseId] = true;
-      // record the best stake won with this lineup, and unlock the next stake
-      const st = run.stake || 1;
-      if (st > (META.lineupWins[run.franchiseId] || 0)) META.lineupWins[run.franchiseId] = st;
-      if (st >= (META.maxStake || 1)) META.maxStake = Math.min(STAKES.length, st + 1);
-      saveMeta(); checkCareerAch(); saveRun();
+      // seeded runs still get the victory screen + Extra Innings, but no career win / stake unlock
+      if (!runIsSeeded()) {
+        META.wins += 1;
+        META.franchisesWon[run.franchiseId] = true;
+        // record the best stake won with this lineup, and unlock the next stake
+        const st = run.stake || 1;
+        if (st > (META.lineupWins[run.franchiseId] || 0)) META.lineupWins[run.franchiseId] = st;
+        if (st >= (META.maxStake || 1)) META.maxStake = Math.min(STAKES.length, st + 1);
+        saveMeta(); checkCareerAch();
+      }
+      saveRun();
       return showVictory();
     }
     showWinOverlay(g, breakdown, total);
@@ -1189,8 +1199,9 @@
     el.innerHTML = slots.join("");
   }
   function charmBadgeHTML(c, i) {
-    const how = c.target === "player" ? "Drag onto a player" : c.target === "coach" ? "Drag onto a coach" : "Tap to use";
-    return `<div class="charm-badge rar-${c.rarity}" data-charm="${i}" data-charmtarget="${c.target}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>${how}</span>"><span class="cb-glyph">${icon(c.icon)}</span></div>`;
+    const how = c.target === "immediate" ? "Tap to use" : (c.target === "coach" ? "Drag onto a coach" : "Drag onto a player");
+    const refund = charmRefund(c);
+    return `<div class="charm-badge rar-${c.rarity}" data-charm="${i}" data-charmtarget="${c.target}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>${how} &middot; sell +$${refund}</span>"><span class="cb-glyph">${icon(c.icon)}</span><button class="cb-sell" data-charmsell="${i}" data-tip="Sell ${c.name} for +$${refund}" aria-label="Sell ${c.name}">${icon("sell")}</button></div>`;
   }
   // give a charm to the run (from the shop or an achievement). false if the pouch is full.
   function grantCharm(id, announce) {
@@ -1206,10 +1217,58 @@
   function consumeCharm(index) {
     STATE.run.charms.splice(index, 1);
     SFX.coin();
-    META.career.seedsUsed = (META.career.seedsUsed || 0) + 1;
+    if (!runIsSeeded()) META.career.seedsUsed = (META.career.seedsUsed || 0) + 1;
     saveMeta(); checkCareerAch();
     saveRun();
     if (STATE.screen === "game") renderPowerups();
+  }
+  function charmRefund(c) { return Math.max(1, Math.floor((c.cost || 4) / 2)); }
+  // sell a Salami Card for half its cost - available at ALL times (panel button, make-room)
+  function sellCharm(index, ctx) {
+    const run = STATE.run;
+    const id = run.charms[index];
+    const c = id ? getCharm(id) : null;
+    if (!c) return;
+    const refund = charmRefund(c);
+    run.payroll += refund;
+    run.charms.splice(index, 1);
+    if (SFX && SFX.coin) SFX.coin();
+    toast(`Sold ${c.name} for $${refund}.`);
+    saveRun();
+    if (STATE.screen === "game") { renderPowerups(); setText("payroll-amt", run.payroll); }
+    if (STATE.screen === "shop") render();
+  }
+  // when a pack pick can't fit (pouch/dugout full), let the player SELL to make room instead of
+  // being forced to skip the card they wanted (Balatro-style). `retry` re-runs the blocked pick.
+  function openMakeRoom(kind, retry) {
+    const run = STATE.run;
+    let items = "";
+    if (kind === "charm") {
+      items = run.charms.map((id, i) => { const c = getCharm(id); return c ? `<div class="mr-item rar-${c.rarity}"><span class="mr-ico">${icon(c.icon)}</span><div class="mr-txt"><b>${c.name}</b><span>${c.text}</span></div><button class="btn btn-sell" data-mrsell="charm:${i}">Sell +$${charmRefund(c)}</button></div>` : ""; }).join("");
+    } else {
+      items = run.dugout.map((co, i) => `<div class="mr-item rar-${co.rarity || "common"}"><span class="mr-ico">${icon(co.icon || "star")}</span><div class="mr-txt"><b>${co.name}</b><span>${co.text}</span></div><button class="btn btn-sell" data-mrsell="coach:${i}">Sell +$${Math.max(1, Math.floor((co.cost || 5) / 2))}</button></div>`).join("");
+    }
+    STATE._makeRoom = { kind, retry };
+    overlay(`
+      <div class="ov-card make-room">
+        <h2><span class="h2-ico">${icon("sell")}</span> ${kind === "coach" ? "Dugout" : "Salami pouch"} is full</h2>
+        <div class="ov-sub">Sell one to make room, then take the card you wanted.</div>
+        <div class="mr-list">${items}</div>
+        <button class="btn btn-ghost" data-act="cancel-makeroom">Cancel</button>
+      </div>`);
+  }
+  function makeRoomSell(spec) {
+    const ctx = STATE._makeRoom; if (!ctx) return;
+    const parts = spec.split(":"), i = parseInt(parts[1], 10);
+    if (parts[0] === "charm") sellCharm(i, "makeroom"); else sellCoach(i, "makeroom");
+    const retry = ctx.retry;
+    STATE._makeRoom = null;
+    if (retry) retry();                 // re-run the pick (room now exists) -> re-renders the pack
+    else if (STATE._pack) renderPackOverlay();
+  }
+  function closeMakeRoom() {
+    STATE._makeRoom = null;
+    if (STATE._pack) renderPackOverlay(); else closeOverlay();
   }
   function useCharm(index) {
     if (STATE.busy) return;
@@ -1224,7 +1283,11 @@
         <div class="ov-actions"><button class="btn btn-gold" data-act="charm-confirm">Use it</button><button class="btn btn-ghost" data-act="cancel-charm">Cancel</button></div></div>`);
       STATE._charm = { charm: c, index };
     } else {
-      openCharmPicker(c, index);
+      // targeted Salami cards are drag-only (Balatro-style): no picker, drag onto the target
+      const where = c.target === "coach" ? "a coach in the dugout" : "a player in your hand";
+      toast(`Drag ${c.name} onto ${where} to use it.`);
+      const badge = $(`.charm-badge[data-charm="${index}"]`);
+      if (badge) { badge.classList.remove("nudge"); void badge.offsetWidth; badge.classList.add("nudge"); }
     }
   }
   function applyImmediateCharm(c) {
@@ -1307,7 +1370,10 @@
 
   /* ---------- achievements: feats that gift a Charm ---------- */
   // unlock an achievement in the career profile (once ever) + a banner
+  // a run started from a typed/replayed seed earns no unlocks (anti-cheese, Balatro-style)
+  function runIsSeeded() { return !!(STATE.run && STATE.run.seeded); }
   function unlockAchievement(id) {
+    if (runIsSeeded()) return false;          // seeded runs never unlock achievements
     if (!META.ach) META.ach = {};
     if (META.ach[id]) return false;
     META.ach[id] = Date.now ? Date.now() : 1;
@@ -1657,7 +1723,7 @@
           ${statCell("Deck size", r.deck.length + " cards")}
           ${statCell("Dugout", r.dugout.length + " / " + r.dugoutSlots)}
           ${statCell("Best game (run)", r.stat.bestScore || 0)}
-          ${statCell("Seed", `<span class="seed-hidden">hidden until the run ends</span>`)}
+          ${statCell("Seed", r.seeded ? `<span class="seed-hidden">hidden - seeded run, no unlocks</span>` : `<span class="seed-hidden">hidden until the run ends</span>`)}
         </div>`;
     }
     overlay(`
@@ -2105,9 +2171,12 @@
       return `
         <div class="shop-pack kind-${it.kind} ${size ? "sz-" + size : ""} ${owned ? "opened" : ""} ${aff ? "" : "cant"}" data-packslot="${i}" data-tip="<b>${it.name}</b><br>${it.text}">
           <div class="pk-wrap kind-${it.kind}">
-            <div class="pk-art"><span class="pk-ico">${icon(packIcon(it.kind))}</span><span class="pk-shine"></span></div>
+            <span class="pk-crimp pk-crimp-top"></span>
+            <span class="pk-foil"></span>
+            <div class="pk-art"><span class="pk-ico">${icon(packIcon(it.kind))}</span></div>
+            <div class="pk-band"><span class="pk-band-name">${packLabel(it.kind)}</span><span class="pk-band-sub">PACK</span></div>
+            <span class="pk-crimp pk-crimp-bot"></span>
             ${size ? `<span class="pk-size">${size === "mega" ? "MEGA" : "JUMBO"}</span>` : ""}
-            <div class="pk-band"><span class="pk-band-name">${packLabel(it.kind)}</span><span class="pk-band-sub">${choose}</span></div>
           </div>
           <div class="pk-cost">${owned ? "Opened" : "$" + slot.cost}</div>
         </div>`;
@@ -2380,7 +2449,7 @@
     const run = STATE.run;
     if (o.kind === "card") { const c = cloneCard(o.item); if (o.deluxe) c.deluxe = o.deluxe; run.deck.push(c); }
     else if (o.kind === "coach") {
-      if (dugoutUsed(run) >= run.dugoutSlots) { toast("Dugout full - can't take this coach."); return; }
+      if (dugoutUsed(run) >= run.dugoutSlots) { openMakeRoom("coach", () => packPick(i)); return; }
       const c = cloneCoach(o.item); if (o.deluxe) applyDeluxeToCoach(c, o.deluxe);
       run.dugout.push(c);
       discover(o.item.id);
@@ -2391,7 +2460,7 @@
       STATE._pendingScout = STATE._pendingScout || [];
       STATE._pendingScout.push(o.item);
     } else if (o.kind === "charm") {
-      if (run.charms.length >= run.charmSlots) { toast("Salami pouch is full. Use one first."); return; }
+      if (run.charms.length >= run.charmSlots) { openMakeRoom("charm", () => packPick(i)); return; }
       run.charms.push(o.item.id);
       discover(o.item.id);
     } else if (o.kind === "analytics") {
@@ -2466,16 +2535,19 @@
         <button class="btn btn-gold" data-act="close-ov">Close</button>
       </div>`);
   }
-  function sellCoach(i) {
+  function sellCoach(i, ctx) {
     const run = STATE.run;
     const c = run.dugout[i];
     if (!c) return;
-    run.payroll += Math.max(1, Math.floor(c.cost / 2));
+    const refund = Math.max(1, Math.floor(c.cost / 2));
+    run.payroll += refund;
     run.dugout.splice(i, 1);
     SFX.coin();
+    toast(`Sold ${c.name} for $${refund}.`);
     saveRun();
-    openDugoutView();
+    if (ctx !== "makeroom") openDugoutView();   // make-room handles its own re-render
     if (STATE.screen === "shop") render();
+    if (STATE.screen === "game") { renderDugout(); setText("payroll-amt", run.payroll); }
   }
 
   /* ============================================================
@@ -2559,6 +2631,9 @@
     if (!root) return;
 
     root.onclick = (e) => {
+      // selling a Salami card takes precedence over its tooltip (sell at all times)
+      const charmSellEl = e.target.closest("[data-charmsell]");
+      if (charmSellEl) { if (TIP) TIP.hide(); sellCharm(parseInt(charmSellEl.getAttribute("data-charmsell"), 10)); return; }
       // explainer tooltips (info button + coach/trait badges) - pin on tap, toggle off
       const tipEl = tipTargetOf(e);
       if (tipEl) { if (TIP) TIP.toggle(tipEl, e.clientX, e.clientY); return; }
@@ -2659,15 +2734,18 @@
       const charmpick = e.target.closest("[data-charmpick]");
       const packpick = e.target.closest("[data-packpick]");
       const sellEl = e.target.closest("[data-sell]");
+      const mrsellEl = e.target.closest("[data-mrsell]");
       const speedEl = e.target.closest("[data-speed]");
       if (pick) { applyScouting(parseInt(pick.getAttribute("data-pick"), 10)); return; }
       if (charmpick) { applyCharmTo(parseInt(charmpick.getAttribute("data-charmpick"), 10)); return; }
       if (packpick) { packPick(parseInt(packpick.getAttribute("data-packpick"), 10)); return; }
+      if (mrsellEl) { makeRoomSell(mrsellEl.getAttribute("data-mrsell")); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
       if (speedEl) { setSpeed(parseInt(speedEl.getAttribute("data-speed"), 10)); return; }
       if (!act) return;
       const v = act.getAttribute("data-act");
       if (v === "cancel-pick") { closeOverlay(); STATE._pick = null; return; }
+      if (v === "cancel-makeroom") { closeMakeRoom(); return; }
       if (v === "pack-done") { packDone(); return; }
       handleAct(v);
     };
@@ -2883,6 +2961,7 @@
     _suppressCharmClick = false;
     if (STATE.screen !== "game" || STATE.busy) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (e.target.closest(".cb-sell")) return;   // the sell button is a tap, not a drag
     const badge = e.target.closest("#powerups .charm-badge[data-charm]");
     if (!badge || badge.classList.contains("empty")) return;
     const idx = parseInt(badge.getAttribute("data-charm"), 10);

@@ -212,3 +212,13 @@ via a CSS `left/top` transition.
   typography fixed: dropped `-webkit-text-stroke` (it distorted glyphs under scale) for a clean
   drop-shadow. **Selected batter card** no longer lifts (`translateY` removed) into the swing
   buttons; differentiation is now full-opacity + gold ring + glow + subtle scale vs dimmed others.
+- **Foil packs, sell-anytime, drag-only, seed gating:** pack art (`.pk-wrap`) redesigned into a real
+  foil bag with crimped/serrated **tearable top+bottom edges** (`clip-path` zigzag + ribbed
+  `.pk-crimp` seals + `.pk-foil` grid/sheen + NAME/"PACK" wordmark); the tear-open halves match.
+  **Sell at all times:** `sellCharm()` (corner `.cb-sell` button on every pouch badge) + `sellCoach`
+  refund half-cost; when a pack pick can't fit, `openMakeRoom()` lets you **sell a held item to take
+  the card** instead of being forced to skip (`packPick` -> make-room -> retry). **Targeted Salami
+  cards are drag-only** now (tap just nudges/hints; `openCharmPicker` no longer called). **Seeded
+  runs earn nothing:** `run.seeded` (a typed/replayed seed) gates `unlockAchievement`, all
+  `META.career`/`wins`/`runs`/`bestScore` accrual, and stake/lineup progression; the seed stays
+  hidden in-run (stats note "seeded run, no unlocks") and only shows on the run-end screens.

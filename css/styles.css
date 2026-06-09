@@ -374,38 +374,51 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .pack-open-slot.slot-pop{ animation:slotPop .4s ease; }
 @keyframes slotPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.12); box-shadow:0 0 40px rgba(255,203,71,.7); } 100%{ transform:scale(1); } }
 
-/* ===== sealed packs: tall card packs you drag into the slot to open ===== */
+/* ===== sealed packs: real foil card-packs with crimped, tearable top/bottom edges ===== */
 .shop-pack{ width:128px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:grab; touch-action:none; user-select:none; transition:transform .12s; }
 .shop-pack.cant, .shop-pack.opened{ opacity:.45; cursor:default; }
 .shop-pack:not(.cant):not(.opened):hover{ transform:translateY(-6px) rotate(-1deg); }
 .shop-pack.pack-dragging{ opacity:.28; }
-/* the pack itself: art window up top, bold label band near the bottom (Balatro-style) */
-.pk-wrap{ position:relative; width:120px; height:170px; border-radius:13px; overflow:hidden;
-  border:2px solid rgba(0,0,0,.55); box-shadow:0 11px 22px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.05);
-  background:linear-gradient(165deg,#23344f,#0d1827); }
-.pk-wrap::after{ content:""; position:absolute; inset:0; pointer-events:none;
-  background:linear-gradient(115deg, transparent 36%, rgba(255,255,255,.13) 48%, transparent 58%); }
-.pk-art{ position:absolute; left:0; right:0; top:0; height:112px; display:flex; align-items:center; justify-content:center;
-  background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.18), transparent 64%); }
-.pk-art .pk-ico .ico{ width:56px; height:56px; color:#fff; filter:drop-shadow(0 3px 7px rgba(0,0,0,.55)); }
-.pk-shine{ position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 8px, transparent 8px 16px); }
-.pk-band{ position:absolute; left:-6px; right:-6px; bottom:15px; transform:rotate(-3deg); padding:5px 6px; text-align:center;
-  border-top:2px solid rgba(255,255,255,.18); border-bottom:2px solid rgba(0,0,0,.5); box-shadow:0 4px 11px rgba(0,0,0,.45); background:#0c1320; }
-.pk-band-name{ display:block; font-size:.82rem; font-weight:900; letter-spacing:1px; color:#fff; line-height:1; text-shadow:0 1px 2px rgba(0,0,0,.6); }
-.pk-band-sub{ display:block; font-size:.52rem; font-weight:800; letter-spacing:1.5px; color:rgba(255,255,255,.7); margin-top:2px; }
-.pk-size{ position:absolute; top:9px; right:-2px; z-index:3; font-size:.55rem; font-weight:900; letter-spacing:1px; color:#1a1206;
+/* the foil bag: serrated (crimped, tearable) top + bottom edges via clip-path. drop-shadow (not
+   box-shadow) so the shadow follows the zigzag. content sits clear of the 7px crimp teeth. */
+.pk-wrap{ position:relative; width:122px; height:172px; overflow:hidden;
+  filter:drop-shadow(0 11px 17px rgba(0,0,0,.5));
+  background:linear-gradient(165deg,#23344f,#0d1827);
+  clip-path:polygon(
+    0% 7px, 6.25% 0, 12.5% 7px, 18.75% 0, 25% 7px, 31.25% 0, 37.5% 7px, 43.75% 0, 50% 7px, 56.25% 0, 62.5% 7px, 68.75% 0, 75% 7px, 81.25% 0, 87.5% 7px, 93.75% 0, 100% 7px,
+    100% calc(100% - 7px),
+    93.75% 100%, 87.5% calc(100% - 7px), 81.25% 100%, 75% calc(100% - 7px), 68.75% 100%, 62.5% calc(100% - 7px), 56.25% 100%, 50% calc(100% - 7px), 43.75% 100%, 37.5% calc(100% - 7px), 31.25% 100%, 25% calc(100% - 7px), 18.75% 100%, 12.5% calc(100% - 7px), 6.25% 100%, 0% calc(100% - 7px)); }
+/* crimped foil seal bands (vertical ribbing) at the top and bottom */
+.pk-crimp{ position:absolute; left:0; right:0; height:20px; z-index:3; pointer-events:none;
+  background:repeating-linear-gradient(90deg, rgba(255,255,255,.32) 0 2px, rgba(0,0,0,.18) 2px 4px); }
+.pk-crimp-top{ top:0; box-shadow:inset 0 -4px 6px rgba(0,0,0,.4); }
+.pk-crimp-bot{ bottom:0; box-shadow:inset 0 4px 6px rgba(0,0,0,.4); }
+/* foil overlay: faint card-grid + a diagonal sheen sweep */
+.pk-foil{ position:absolute; inset:0; z-index:1; pointer-events:none;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 15px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 15px),
+    linear-gradient(115deg, transparent 34%, rgba(255,255,255,.20) 47%, transparent 60%); }
+.pk-art{ position:absolute; left:0; right:0; top:26px; height:92px; z-index:2; display:flex; align-items:center; justify-content:center; }
+.pk-art .pk-ico .ico{ width:54px; height:54px; color:#fff; filter:drop-shadow(0 3px 7px rgba(0,0,0,.6)); }
+/* big STANDARD-PACK style wordmark near the bottom */
+.pk-band{ position:absolute; left:5px; right:5px; bottom:25px; z-index:2; text-align:center; }
+.pk-band-name{ display:block; font-size:1rem; font-weight:900; letter-spacing:1.5px; color:#fff; line-height:.95; text-shadow:0 2px 0 rgba(0,0,0,.4), 0 3px 8px rgba(0,0,0,.55); }
+.pk-band-sub{ display:block; font-size:.64rem; font-weight:900; letter-spacing:3px; color:rgba(255,255,255,.85); margin-top:3px; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.pk-size{ position:absolute; top:23px; right:-1px; z-index:4; font-size:.55rem; font-weight:900; letter-spacing:1px; color:#1a1206;
   background:linear-gradient(180deg,#ffd24a,#e8a92a); padding:2px 8px; border-radius:4px 0 0 4px; box-shadow:0 2px 6px rgba(0,0,0,.5); }
 .shop-pack.sz-mega .pk-size, .pack-burst.sz-mega .pk-size{ background:linear-gradient(180deg,#ff9d5c,#e8632a); color:#fff; }
 .pk-cost{ font-size:.92rem; font-weight:900; color:var(--gold); }
 .shop-pack.opened .pk-cost{ color:var(--ink-faint); }
-/* per-kind tints (apply to the shop pack AND the dragged ghost, which clones .pk-wrap) */
-.pk-wrap.kind-player{ background:linear-gradient(165deg,#1d4060,#0c1d2c); } .pk-wrap.kind-player .pk-ico .ico{ color:#9bd8ff; } .pk-wrap.kind-player .pk-band{ background:linear-gradient(180deg,#1f6f99,#103f5a); }
-.pk-wrap.kind-charm{ background:linear-gradient(165deg,#332663,#161030); } .pk-wrap.kind-charm .pk-ico .ico{ color:#d2c2ff; } .pk-wrap.kind-charm .pk-band{ background:linear-gradient(180deg,#5a44a0,#332463); }
-.pk-wrap.kind-scouting, .pk-wrap.kind-analytics{ background:linear-gradient(165deg,#194b37,#0a1f17); } .pk-wrap.kind-scouting .pk-ico .ico, .pk-wrap.kind-analytics .pk-ico .ico{ color:#92e7b6; } .pk-wrap.kind-scouting .pk-band, .pk-wrap.kind-analytics .pk-band{ background:linear-gradient(180deg,#2f8f5f,#185237); }
-.pk-wrap.kind-coach{ background:linear-gradient(165deg,#4a3018,#21130b); } .pk-wrap.kind-coach .pk-ico .ico{ color:#f3bd86; } .pk-wrap.kind-coach .pk-band{ background:linear-gradient(180deg,#a5632f,#6a3c1b); }
+/* per-kind vibrant foil tints (apply to the shop pack AND the dragged ghost, which clones .pk-wrap) */
+.pk-wrap.kind-player{ background:linear-gradient(165deg,#2f7ec0,#0c2236); } .pk-wrap.kind-player .pk-ico .ico{ color:#d6efff; }
+.pk-wrap.kind-charm{ background:linear-gradient(165deg,#a14fd0,#2a1145); } .pk-wrap.kind-charm .pk-ico .ico{ color:#f0e2ff; }
+.pk-wrap.kind-scouting, .pk-wrap.kind-analytics{ background:linear-gradient(165deg,#2faa6f,#0b2a1d); } .pk-wrap.kind-scouting .pk-ico .ico, .pk-wrap.kind-analytics .pk-ico .ico{ color:#cdf7df; }
+.pk-wrap.kind-coach{ background:linear-gradient(165deg,#cf7e34,#2a1810); } .pk-wrap.kind-coach .pk-ico .ico{ color:#ffe6c8; }
+.pk-wrap.kind-action{ background:linear-gradient(165deg,#d4ac3e,#2c2208); } .pk-wrap.kind-action .pk-ico .ico{ color:#fff2cc; }
 
 .pack-ghost{ position:fixed; left:0; top:0; z-index:1200; pointer-events:none; transform:translate(-50%,-50%) scale(1.06) rotate(-5deg);
-  box-shadow:0 16px 34px rgba(0,0,0,.6), 0 0 26px rgba(255,203,71,.4); }
+  filter:drop-shadow(0 16px 28px rgba(0,0,0,.6)); }
 .pack-ghost .pk-size{ display:none; }
 
 /* ===== pack opening: the pack rips in half, then the cards deal out ===== */
@@ -416,11 +429,15 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .pkb-bot{ bottom:0; border-radius:0 0 12px 12px; border-top:none; transform-origin:top center; animation:pkbBot .58s cubic-bezier(.3,.9,.3,1) forwards; }
 .pkb-top .pk-ico .ico{ width:46px; height:46px; }
 .pkb-bot .pk-label{ font-size:.6rem; font-weight:900; letter-spacing:2px; color:rgba(255,255,255,.72); }
-.pack-burst.kind-player .pkb-half{ background:linear-gradient(165deg,#1d4060,#0c1d2c); }   .pack-burst.kind-player .pk-ico .ico{ color:#9bd8ff; }
-.pack-burst.kind-charm .pkb-half{ background:linear-gradient(165deg,#332663,#161030); }    .pack-burst.kind-charm .pk-ico .ico{ color:#d2c2ff; }
-.pack-burst.kind-scouting .pkb-half{ background:linear-gradient(165deg,#194b37,#0a1f17); } .pack-burst.kind-scouting .pk-ico .ico{ color:#92e7b6; }
-.pack-burst.kind-coach .pkb-half{ background:linear-gradient(165deg,#4a3018,#21130b); }    .pack-burst.kind-coach .pk-ico .ico{ color:#f3bd86; }
-.pack-burst.kind-action .pkb-half{ background:linear-gradient(165deg,#3a2f12,#1c1608); }   .pack-burst.kind-action .pk-ico .ico{ color:#ffd98a; }
+.pack-burst.kind-player .pkb-half{ background:linear-gradient(165deg,#2f7ec0,#0c2236); }   .pack-burst.kind-player .pk-ico .ico{ color:#d6efff; }
+.pack-burst.kind-charm .pkb-half{ background:linear-gradient(165deg,#a14fd0,#2a1145); }    .pack-burst.kind-charm .pk-ico .ico{ color:#f0e2ff; }
+.pack-burst.kind-scouting .pkb-half{ background:linear-gradient(165deg,#2faa6f,#0b2a1d); } .pack-burst.kind-scouting .pk-ico .ico{ color:#cdf7df; }
+.pack-burst.kind-coach .pkb-half{ background:linear-gradient(165deg,#cf7e34,#2a1810); }    .pack-burst.kind-coach .pk-ico .ico{ color:#ffe6c8; }
+.pack-burst.kind-action .pkb-half{ background:linear-gradient(165deg,#d4ac3e,#2c2208); }   .pack-burst.kind-action .pk-ico .ico{ color:#fff2cc; }
+/* crimped foil seal on the torn pack's outer edges */
+.pkb-top::before, .pkb-bot::after{ content:""; position:absolute; left:0; right:0; height:16px; z-index:2; pointer-events:none;
+  background:repeating-linear-gradient(90deg, rgba(255,255,255,.30) 0 2px, rgba(0,0,0,.16) 2px 4px); }
+.pkb-top::before{ top:0; } .pkb-bot::after{ bottom:0; }
 /* the jagged rip line that flashes along the seam */
 .pkb-rip{ position:absolute; left:-7px; right:-7px; top:50%; height:16px; margin-top:-8px; z-index:7;
   background:linear-gradient(90deg,transparent,#fff 18%,#fff 82%,transparent);
@@ -1597,3 +1614,30 @@ body.portrait #toast{ display:none !important; }
 /* pack opening tear + deal */
 .pack-deal .pack-opt{ animation-duration: calc(.4s * var(--gs,1)); }
 .pkb-top,.pkb-bot,.pkb-rip,.pkb-flash{ animation-duration: calc(.58s * var(--gs,1)); }
+
+/* ---------- sell a Salami card anytime (corner button on the pouch badge) ---------- */
+.charm-badge{ position:relative; }
+.cb-sell{ position:absolute; top:-6px; right:-6px; z-index:5; width:19px; height:19px; padding:0; border-radius:50%;
+  border:1px solid rgba(0,0,0,.45); background:linear-gradient(180deg,#ffd24a,#e8a92a); color:#2a1c00; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.45);
+  opacity:0; transform:scale(.6); transition:opacity .12s, transform .12s; }
+.charm-badge:hover .cb-sell, .charm-badge:focus-within .cb-sell{ opacity:1; transform:scale(1); }
+.cb-sell svg{ width:11px; height:11px; }
+.cb-sell:hover{ filter:brightness(1.12); transform:scale(1.12); }
+@media (hover:none){ .cb-sell{ opacity:1; transform:scale(1); } }   /* touch: always show the sell button */
+.charm-badge.nudge{ animation:charmNudge .4s ease; }
+@keyframes charmNudge{ 0%,100%{ transform:translateX(0) } 25%{ transform:translateX(-4px) rotate(-5deg) } 75%{ transform:translateX(4px) rotate(5deg) } }
+
+/* ---------- make-room overlay: sell to fit a pack pick (never forced to skip) ---------- */
+.ov-card.make-room{ max-width:440px; }
+.make-room .mr-list{ display:flex; flex-direction:column; gap:8px; margin:14px 0; max-height:52vh; overflow:auto; }
+.mr-item{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:11px; background:rgba(255,255,255,.04); border:1px solid var(--line); }
+.mr-item .mr-ico{ flex:0 0 auto; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:rgba(0,0,0,.28); }
+.mr-item .mr-ico svg{ width:20px; height:20px; }
+.mr-item.rar-star .mr-ico{ box-shadow:inset 0 0 0 1.5px var(--rar-star); }
+.mr-item.rar-allstar .mr-ico{ box-shadow:inset 0 0 0 1.5px var(--rar-allstar); }
+.mr-item.rar-legend .mr-ico, .mr-item.rar-legendary .mr-ico{ box-shadow:inset 0 0 0 1.5px var(--rar-legend); }
+.mr-txt{ flex:1 1 auto; min-width:0; text-align:left; }
+.mr-txt b{ display:block; font-size:.92rem; }
+.mr-txt span{ display:block; font-size:.74rem; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mr-item .btn-sell{ flex:0 0 auto; }
