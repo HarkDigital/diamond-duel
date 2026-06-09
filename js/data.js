@@ -126,6 +126,16 @@
       cardSlots: 3,
       consumableSlots: 2,
       packSlots: 2,
+      // Not every pack family shows in every shop (Balatro-style). Each shop rolls
+      // `packSlots` packs, each an independent weighted pick from these families, so the
+      // offered types vary shop to shop and on reroll. Prospect/Scouting are the most common.
+      packWeights: [
+        { v: "player",   w: 100 }, // Prospect
+        { v: "scouting", w: 80 },  // Scouting
+        { v: "charm",    w: 70 },  // Salami
+        { v: "coach",    w: 65 },  // Coaching
+        { v: "action",   w: 45 },  // Spring Training
+      ],
     },
 
     // Dugout

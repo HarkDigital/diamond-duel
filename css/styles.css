@@ -1554,3 +1554,13 @@ body.portrait #toast{ display:none !important; }
 .linescore{ flex-wrap:nowrap; }
 .linescore .ls-inning{ min-width:0; }
 .linescore .ls-frame{ min-width:0; }
+
+/* --- game speed selector (menu) --- */
+.menu-speed{ display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; margin:14px 0 4px; }
+.menu-speed .ms-label{ font-size:.82rem; font-weight:800; color:var(--ink-dim); display:inline-flex; align-items:center; gap:6px; }
+.menu-speed .ms-label svg{ width:16px; height:16px; }
+.ms-btns{ display:inline-flex; gap:6px; }
+.ms-btn{ min-width:42px; padding:7px 10px; border-radius:10px; border:1px solid var(--line); background:var(--panel-2); color:var(--ink-dim); font-weight:800; cursor:pointer; transition:transform .12s, border-color .15s, color .15s, background .15s; }
+.ms-btn:hover{ transform:translateY(-2px); border-color:var(--gold-2); color:#fff; }
+.ms-btn.sel{ background:linear-gradient(180deg,var(--gold),var(--gold-2)); color:#2a1c00; border-color:var(--gold-deep); box-shadow:0 4px 14px rgba(245,166,35,.3); }
+.menu-speed .ms-hint{ font-size:.72rem; color:var(--ink-faint); width:100%; text-align:center; }

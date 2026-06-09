@@ -195,3 +195,10 @@ via a CSS `left/top` transition.
   (sm/big/huge), `ballFlight` (a ball arcs onto the field, path per outcome + HR flash), rally
   **heat meter** (`--heat` colour + `rally-warm/hot/blaze` glow/flame tiers), stronger `coach-icon
   .trigger` pop + ring, `tickNumber` count-up on the score, and `confettiBurst` on a run win.
+- **Pack variety + speed (Balatro parity):** the shop no longer shows every pack family. `rollShop`
+  rolls `CONFIG.shop.packSlots` (**2**) packs, each an independent weighted pick from
+  `CONFIG.shop.packWeights` (player>scouting>charm>coach>action), so offered types vary shop to
+  shop and on reroll (families can repeat). **Game speed setting** `META.speed` (1..4, default **4**
+  = fastest/the original pacing): `speedScale() = 4/speed` is the delay multiplier applied in
+  `sleep()` (so every gameplay pause scales) and in `tickNumber` (score count-up). The menu has a
+  1x/2x/3x/4x selector (`.menu-speed`/`data-speed` -> `setSpeed`); verified 1x runs ~4x slower.

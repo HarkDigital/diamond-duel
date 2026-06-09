@@ -7,7 +7,11 @@
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
   let TIP = null; // tooltip controller (set up in initTooltips)
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Game-speed setting (1..4). 4 is the fastest (the original pacing); lower is slower.
+  // speedScale() is the delay multiplier: 1.0 at 4x, 2.0 at 2x, 4.0 at 1x. Every gameplay
+  // pause flows through sleep(), so one scale here paces the whole game.
+  function speedScale() { return 4 / ((typeof META !== "undefined" && META && META.speed) ? META.speed : 4); }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms * speedScale()));
   const SAVE_KEY = "diamondduel.run.v1";
   const GAME_KEY = "diamondduel.game.v1";
   const META_KEY = "diamondduel.meta.v1";
@@ -23,7 +27,7 @@
   }
   function defaultMeta() {
     return {
-      sound: true, wins: 0, runs: 0, bestGame: 0, bestScore: 0,
+      sound: true, speed: 4, wins: 0, runs: 0, bestGame: 0, bestScore: 0,
       unlocked: ["sandlot", "bashers", "smallball", "moneyball", "speed"],
       // profile / achievement tracking
       ach: {},                 // unlocked achievement ids
@@ -45,6 +49,7 @@
     if (!META.discovered) META.discovered = {};
     if (!META.maxStake) META.maxStake = 1;
     if (!META.lineupWins) META.lineupWins = {};
+    if (META.speed == null) META.speed = 4;   // animation speed 1..4 (4 = fastest = the old default)
   })();
   // Collection: an item (coach / Salami Card / front-office voucher) is "discovered"
   // the first time you actually acquire it. Until then it shows locked in the Collection
@@ -609,7 +614,7 @@
     to = Math.round(to);
     if (from === to) { el.textContent = to; return; }
     const start = performance.now();
-    dur = dur || 450;
+    dur = (dur || 450) * speedScale();   // slower count-up at lower speeds
     (function step(now) {
       const t = Math.min(1, (now - start) / dur);
       const eased = t * (2 - t); // ease-out
@@ -1598,8 +1603,21 @@
           ${inRun ? tile("to-menu", icon("chevronL"), "Main Menu", "keeps your run") : ""}
           ${inRun ? tile("abandon-run", icon("close"), "Abandon Run", "quit &amp; discard", "tile-danger") : ""}
         </div>
+        <div class="menu-speed">
+          <span class="ms-label">${icon("fastForward")} Game speed</span>
+          <div class="ms-btns">
+            ${[1, 2, 3, 4].map((n) => `<button class="ms-btn ${META.speed === n ? "sel" : ""}" data-speed="${n}">${n}x</button>`).join("")}
+          </div>
+          <span class="ms-hint">4x is fastest</span>
+        </div>
         ${inRun ? "" : `<button class="btn btn-ghost" data-act="close-ov">Close</button>`}
       </div>`);
+  }
+  function setSpeed(n) {
+    if (!(n >= 1 && n <= 4)) return;
+    META.speed = n; saveMeta();
+    if (SFX && SFX.click) SFX.click();
+    showMenu();   // re-render so the selected button updates
   }
 
   function confirmAbandon(cancelAct) {
@@ -2020,7 +2038,12 @@
       const p = PACKS.find((x) => x.kind === k && x.size === size) || PACKS.find((x) => x.kind === k && !x.size);
       return { kind: "pack", item: p, cost: priceOf(p.cost) };
     };
-    sh.packs = ["player", "scouting", "charm", "coach", "action"].map(packFor);
+    // Balatro-style: only a subset of pack families shows per shop. Roll `packSlots` packs,
+    // each an independent weighted pick (families can repeat), re-rolled on every shop reroll.
+    const famPool = CONFIG.shop.packWeights || [{ v: "player", w: 1 }, { v: "scouting", w: 1 }, { v: "charm", w: 1 }, { v: "coach", w: 1 }, { v: "action", w: 1 }];
+    const nPacks = CONFIG.shop.packSlots || 2;
+    sh.packs = [];
+    for (let i = 0; i < nPacks; i++) sh.packs.push(packFor(rng.weighted(famPool)));
 
     // direct card / consumable / charm slots are retired in favor of packs
     sh.cards = []; sh.consumables = []; sh.charms = [];
@@ -2628,10 +2651,12 @@
       const charmpick = e.target.closest("[data-charmpick]");
       const packpick = e.target.closest("[data-packpick]");
       const sellEl = e.target.closest("[data-sell]");
+      const speedEl = e.target.closest("[data-speed]");
       if (pick) { applyScouting(parseInt(pick.getAttribute("data-pick"), 10)); return; }
       if (charmpick) { applyCharmTo(parseInt(charmpick.getAttribute("data-charmpick"), 10)); return; }
       if (packpick) { packPick(parseInt(packpick.getAttribute("data-packpick"), 10)); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
+      if (speedEl) { setSpeed(parseInt(speedEl.getAttribute("data-speed"), 10)); return; }
       if (!act) return;
       const v = act.getAttribute("data-act");
       if (v === "cancel-pick") { closeOverlay(); STATE._pick = null; return; }
