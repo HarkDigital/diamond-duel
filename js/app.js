@@ -134,6 +134,10 @@
       interestCap: CONFIG.economy.interestCap,
       editionBoost: 0,       // Sabermetrics vouchers: extra edition spawn chance
       lastVoucherInning: -1, // a Front Office voucher can be bought once per inning
+      tags: [],              // held skip tags awaiting a shop / boss payout
+      skips: 0,              // frames skipped this run (Speed Tag scales off this)
+      handBonusNext: 0,      // one-frame hand-size buff from a Lineup Tag
+      rallyBonusNext: 0,     // one-frame starting-rally buff from a Rally Tag
       shopBuys: 0,
       actionLevels: { swing: 1, power: 1, contact: 1, bunt: 1, steal: 1 },  // Spring Training
       stat: { gamesWon: 0, homers: 0, bestInning: 0, bestScore: 0 },
@@ -232,13 +236,19 @@
     const deck = run.deck.map((c) => c); // reference copies (prospect growth persists to run.deck)
     rng.shuffle(deck);
 
+    // one-frame buffs from skip tags (Lineup = +hand, Rally = +starting rally), consumed here
+    const handSize = run.handSize + (run.handBonusNext || 0);
+    const startRally = run.startRally + (run.rallyBonusNext || 0);
+    if (run.handBonusNext || run.rallyBonusNext) { run.handBonusNext = 0; run.rallyBonusNext = 0; saveRun(); }
+
     const game = {
       pitcher,
       outsRemaining: outs,
       outsMax: outs,
       outsThisInning: 0,
-      rally: run.startRally,
-      startRally: run.startRally,
+      handSize,
+      rally: startRally,
+      startRally: startRally,
       score: 0,
       target,
       runsScored: 0,
@@ -284,7 +294,7 @@
   }
   function drawToHand() {
     const g = STATE.game;
-    while (g.hand.length < STATE.run.handSize) {
+    while (g.hand.length < (g.handSize || STATE.run.handSize)) {
       const c = drawCard();
       if (!c) break;
       g.hand.push(c);
@@ -591,7 +601,18 @@
       { label: "Interest", amt: interest },
     ];
     if (frugal > 0) breakdown.push({ label: `Frugal FO (${g.outsRemaining} outs left)`, amt: frugal });
-    const total = base + interest + frugal;
+    // held Boss tags (Investment) pay out now that a Boss has been beaten
+    let bossTagBonus = 0;
+    if (g.isBoss && run.tags && run.tags.length) {
+      const keep = [];
+      for (const id of run.tags) {
+        const t = getTag(id);
+        if (t && t.when === "boss") { bossTagBonus += (t.fx.amt || 0); breakdown.push({ label: t.name, amt: t.fx.amt || 0 }); }
+        else keep.push(id);
+      }
+      run.tags = keep;
+    }
+    const total = base + interest + frugal + bossTagBonus;
     run.payroll += total;
 
     // stats
@@ -630,6 +651,53 @@
     saveMeta();
     clearSave();
     showGameOver(g);
+  }
+
+  /* ============================================================
+     SKIP TAGS  (Balatro-style: skip a frame, pocket a tag)
+     ============================================================ */
+  function isSkippable(gi) { return !isBossInning(gi); }   // Top & Middle skippable; a Boss must be played
+  function tagFor(gi) {
+    // deterministic per frame, so the previewed tag is exactly the one you earn
+    return makeRNG(STATE.run.seed + ":tag:" + gi).pick(TAGS);
+  }
+  function skipFrame() {
+    const run = STATE.run, gi = run.gameIndex;
+    if (!isSkippable(gi)) { SFX.error(); toast("You cannot skip a Boss frame."); return; }
+    const tag = tagFor(gi);
+    run.skips = (run.skips || 0) + 1;
+    discover(tag.id);
+    applyTag(tag);
+    run.gameIndex += 1;     // advance past the skipped frame: no win reward, no shop
+    clearGameSave();
+    saveRun();
+    render();               // stay on the map, now showing the next frame
+  }
+  function applyTag(tag) {
+    const run = STATE.run, fx = tag.fx || {};
+    if (tag.when !== "instant") { run.tags.push(tag.id); SFX.coin && SFX.coin(); toast(`${tag.name} earned. ${tag.when === "boss" ? "Pays out after the next Boss." : "Resolves at the next shop."}`); return; }
+    if (fx.kind === "money") run.payroll += fx.amt;
+    else if (fx.kind === "speedMoney") run.payroll += fx.amt * (run.skips || 1);
+    else if (fx.kind === "double") run.payroll += Math.min(fx.cap || 40, run.payroll);
+    else if (fx.kind === "levelAction") { const ks = Object.keys(run.actionLevels); const k = makeRNG(run.seed + ":tagact:" + run.skips).pick(ks); run.actionLevels[k] += (fx.amt || 1); }
+    else if (fx.kind === "handNext") run.handBonusNext = (run.handBonusNext || 0) + (fx.amt || 1);
+    else if (fx.kind === "rallyNext") run.rallyBonusNext = (run.rallyBonusNext || 0) + (fx.amt || 0);
+    else if (fx.kind === "freeCoaches") grantFreeCoaches(fx.amt || 1, "common");
+    SFX.coin && SFX.coin();
+    toast(`${tag.name}: ${tag.text}`);
+  }
+  function grantFreeCoaches(n, rarity) {
+    const run = STATE.run;
+    const rng = makeRNG(run.seed + ":freecoach:" + run.skips);
+    let added = 0;
+    for (let i = 0; i < n; i++) {
+      if (dugoutUsed(run) >= run.dugoutSlots) break;
+      const choices = COACHES.filter((c) => (!rarity || c.rarity === rarity) && !run.dugout.some((d) => d.fx === c.fx));
+      if (!choices.length) break;
+      const c = rng.pick(choices);
+      run.dugout.push(cloneCoach(c)); discover(c.id); added++;
+    }
+    if (added < n) toast("Dugout was too full for every free coach.");
   }
 
   /* ============================================================
@@ -1560,6 +1628,7 @@
       { title: "Coaches", items: COACHES },
       { title: "Salami Cards", items: CHARMS },
       { title: "Front Office", items: UPGRADES },
+      { title: "Skip Tags", items: TAGS },
     ];
     let allN = 0, gotN = 0;
     const board = groups.map((g) => {
@@ -1585,7 +1654,7 @@
     overlay(`
       <div class="ov-card collection-card">
         <h2><span class="h2-ico">${icon("book")}</span> Collection <span class="col-total">${gotN} / ${allN}</span></h2>
-        <div class="ov-sub">Coaches, Salami Cards, and Front Office vouchers. Locked items reveal once you acquire them in a run.</div>
+        <div class="ov-sub">Coaches, Salami Cards, Front Office vouchers, and Skip Tags. Locked items reveal once you acquire them in a run.</div>
         <div class="col-board">${board}</div>
         <div class="ov-actions">
           <button class="btn btn-secondary" data-act="open-profile">${icon("chevronL")} Back</button>
@@ -1761,17 +1830,29 @@
         <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b></div>
       </div>
       <div class="linescore">${cols}</div>
+      ${tagTrayHTML(run)}
       <div class="map-next">
         <div class="mn-left">
           <div class="mn-round">${gameLabel(gi)}</div>
           ${telegraph}
         </div>
         <div class="mn-right">
+          ${isSkippable(gi) ? (() => { const t = tagFor(gi); return `<div class="skip-offer">
+            <div class="skip-cap">Skip and earn</div>
+            <div class="tag-chip rar-${t.rarity || "common"}" data-tip="<b>${t.name}</b><br>${t.text}"><span class="tag-ic">${icon(t.icon)}</span><span class="tag-nm">${t.name}</span></div>
+            <button class="btn btn-secondary skip-btn" data-act="skip-frame" data-tip="Skip this frame (no win reward, no shop) and take the tag instead.">Skip frame ${icon("fastForward")}</button>
+          </div>`; })() : ""}
           <button class="btn btn-secondary" data-act="open-deck">View Deck (${run.deck.length})</button>
           <button class="btn btn-big btn-gold" data-act="play-game">Play Ball ${icon("chevronR")}</button>
         </div>
       </div>
     </div>`;
+  }
+  // chips for tags you are holding (resolve at the next shop / after the next Boss)
+  function tagTrayHTML(run) {
+    if (!run.tags || !run.tags.length) return "";
+    const chips = run.tags.map((id) => { const t = getTag(id); return t ? `<div class="tag-chip held rar-${t.rarity || "common"}" data-tip="<b>${t.name}</b><br>${t.text}"><span class="tag-ic">${icon(t.icon)}</span><span class="tag-nm">${t.name}</span></div>` : ""; }).join("");
+    return `<div class="tags-tray"><span class="tt-label">Tags held</span>${chips}</div>`;
   }
 
   /* ============================================================
@@ -1779,9 +1860,55 @@
      ============================================================ */
   function enterShop() {
     STATE.shop = { reroll: 0, freeUsed: false };
+    consumeTagsIntoShop();   // resolve held shop tags into free coaches/packs/voucher + flags
     rollShop();
     STATE.screen = "shop";
     render();
+  }
+  // Turn the held shop-type tags into concrete free items / flags stored on STATE.shop, so
+  // they survive rerolls. Boss tags (Investment) stay in run.tags for the next Boss payout.
+  function consumeTagsIntoShop() {
+    const run = STATE.run, sh = STATE.shop;
+    const fx = { freeCoaches: [], freePacks: [], voucherItem: null, coupon: false, freeReroll: false };
+    const keep = [];
+    const usedFx = new Set(run.dugout.map((c) => c.fx));
+    let ci = 0;
+    for (const id of run.tags) {
+      const t = getTag(id);
+      if (!t || t.when !== "shop") { keep.push(id); continue; }   // boss tags remain held
+      const f = t.fx;
+      if (f.kind === "freeCoach" || f.kind === "editionCoach") {
+        let pool = COACHES.filter((c) => !usedFx.has(c.fx));
+        if (f.rarity) { const rp = pool.filter((c) => c.rarity === f.rarity); if (rp.length) pool = rp; }
+        if (pool.length) {
+          const c = makeRNG(run.seed + ":tagcoach:" + run.gameIndex + ":" + (ci++)).pick(pool);
+          usedFx.add(c.fx);
+          const item = cloneCoach(c);
+          if (f.ed) applyDeluxeToCoach(item, f.ed);
+          fx.freeCoaches.push({ kind: "coach", item: item, cost: 0, free: true });
+        }
+      } else if (f.kind === "freePack") {
+        const p = PACKS.find((x) => x.kind === f.packKind && x.size === (f.size || "")) || PACKS.find((x) => x.kind === f.packKind && !x.size);
+        if (p) fx.freePacks.push({ kind: "pack", item: p, cost: 0, free: true });
+      } else if (f.kind === "voucher") {
+        const ownedUp = new Set(run.upgradesOwned);
+        const vPool = UPGRADES.filter((u) => !ownedUp.has(u.id) && (!u.requires || ownedUp.has(u.requires)));
+        if (vPool.length) fx.voucherItem = makeRNG(run.seed + ":tagvoucher:" + run.gameIndex).sample(vPool, 1).map((u) => ({ kind: "upgrade", item: u, cost: priceOf(u.cost) }))[0];
+      } else if (f.kind === "coupon") fx.coupon = true;
+      else if (f.kind === "freeReroll") fx.freeReroll = true;
+    }
+    run.tags = keep;
+    sh.tagFx = fx;
+    saveRun();
+  }
+  // Append the resolved free items + apply flags to the freshly rolled shop (runs every roll).
+  function applyTagFxToShop() {
+    const sh = STATE.shop, fx = sh.tagFx;
+    if (!fx) return;
+    if (fx.freeCoaches && fx.freeCoaches.length) sh.coaches = sh.coaches.concat(fx.freeCoaches);
+    if (fx.freePacks && fx.freePacks.length) sh.packs = sh.packs.concat(fx.freePacks);
+    if (fx.voucherItem && (!sh.upgrades || !sh.upgrades.length)) sh.upgrades = [fx.voucherItem];
+    if (fx.coupon) { sh.coaches.forEach((s) => { s.cost = 0; }); (sh.upgrades || []).forEach((s) => { s.cost = 0; }); }
   }
 
   function rollShop() {
@@ -1824,9 +1951,11 @@
     sh.cards = []; sh.consumables = []; sh.charms = [];
 
     sh.bought = sh.bought || {}; // keys of consumed slots
+    applyTagFxToShop();          // fold in free coaches/packs/voucher + coupon from skip tags
   }
   function priceOf(base) { return Math.max(1, base - (STATE.run.discount || 0) + stakeMods(STATE.run.stake).priceBump); }
   function rerollCost() {
+    if (STATE.shop.tagFx && STATE.shop.tagFx.freeReroll) return 0;   // Discount Tag: free rerolls this shop
     const eco = CONFIG.economy;
     return Math.max(1, eco.rerollBase + eco.rerollStep * STATE.shop.reroll - (STATE.run.rerollDiscount || 0));
   }
@@ -1849,11 +1978,12 @@
       // a coach / seed / voucher you've never acquired before is flagged for the Collection
       const collectible = group === "coach" || group === "charm" || group === "up";
       const undisc = collectible && it.id && !isDiscovered(it.id);
+      const free = slot.cost === 0 && !owned;
       return `
-        <div class="shop-item ${owned ? "sold" : ""} ${aff ? "" : "cant"}" data-group="${group}" data-i="${i}">
-          ${undisc ? `<span class="undisc-tag" data-tip="<b>Undiscovered</b><br>New to your Collection. Buy it to add it.">${icon("book")} Undiscovered</span>` : ""}
+        <div class="shop-item ${owned ? "sold" : ""} ${aff ? "" : "cant"} ${free ? "free" : ""}" data-group="${group}" data-i="${i}">
+          ${free ? `<span class="free-tag" data-tip="<b>Free</b><br>Granted by a skip tag.">${icon("sparkle")} Free</span>` : (undisc ? `<span class="undisc-tag" data-tip="<b>Undiscovered</b><br>New to your Collection. Buy it to add it.">${icon("book")} Undiscovered</span>` : "")}
           <div class="shop-item-body">${body}</div>
-          <button class="btn buy-btn ${aff ? "" : "disabled"}" data-buy="${group}:${i}" ${owned ? "disabled" : ""}>${owned ? "Sold" : "$" + slot.cost}</button>
+          <button class="btn buy-btn ${aff ? "" : "disabled"}" data-buy="${group}:${i}" ${owned ? "disabled" : ""}>${owned ? "Sold" : (slot.cost === 0 ? "Free" : "$" + slot.cost)}</button>
         </div>`;
     };
 
@@ -1886,12 +2016,13 @@
         <div class="shop-title">The Shop <span class="shop-round">before ${gameLabel(run.gameIndex)}</span></div>
         <div class="shop-money">
           <div class="payroll-big">$<span id="shop-payroll">${run.payroll}</span></div>
-          <button class="btn btn-reroll" data-act="reroll">Reroll ($${rerollCost()})</button>
+          <button class="btn btn-reroll" data-act="reroll">Reroll (${rerollCost() === 0 ? "Free" : "$" + rerollCost()})</button>
           <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
           <button class="btn btn-secondary" data-act="open-dugout">Dugout (${dugoutUsed(run)}/${run.dugoutSlots})</button>
           <button class="btn btn-big btn-gold" data-act="leave-shop">Proceed ${icon("chevronR")}</button>
         </div>
       </div>
+      ${tagTrayHTML(run)}
       ${dugFull ? `<div class="shop-warn">Dugout full (${dugoutUsed(run)}/${run.dugoutSlots}). Sell a coach in the Dugout view to make room.</div>` : ""}
       <div class="shop-grid">
         <div class="shop-rowgrp shop-rowgrp-top">
@@ -2360,6 +2491,7 @@
       case "toggle-sound": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); render(); break;
       case "toggle-sound-menu": META.sound = !META.sound; SFX.setEnabled(META.sound); saveMeta(); showMenu(); break;
       case "play-game": startGame(); break;
+      case "skip-frame": skipFrame(); break;
       case "cancel-atbat": cancelAtBat(); break;
       case "open-deck": openDeckView(0); break;
       case "deck-prev": openDeckView((STATE._deckPage || 0) - 1); break;
@@ -2438,6 +2570,12 @@
     if (!r.charms) r.charms = [];
     if (r.charmSlots == null) r.charmSlots = CONFIG.charmSlots;
     if (!r.achEarned) r.achEarned = {};
+    if (!r.tags) r.tags = [];
+    if (r.skips == null) r.skips = 0;
+    if (r.handBonusNext == null) r.handBonusNext = 0;
+    if (r.rallyBonusNext == null) r.rallyBonusNext = 0;
+    if (r.editionBoost == null) r.editionBoost = 0;
+    if (r.lastVoucherInning == null) r.lastVoucherInning = -1;
     // resume an in-progress inning if one was saved (refresh mid-game)
     const snap = loadGameSnap();
     if (snap && snap.game && !snap.game.ended && snap.gi === r.gameIndex) {

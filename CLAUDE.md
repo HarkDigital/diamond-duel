@@ -168,4 +168,16 @@ via a CSS `left/top` transition.
   shop shows **one voucher per inning**, seeded by inning so it holds steady across the 3
   frames and ignores rerolls; buying it sets `run.lastVoucherInning` so the slot stays empty
   until the next inning. `run.upgradesOwned` now stores voucher **ids** (was `fx`).
-- **Roadmap (remaining - Phase 5b):** 24 skip tags (earned by skipping a frame).
+- **Balatro 1:1 - Phase 5b (skip tags):** **24 skip tags** (`TAGS` in `data.js`). Skipping a
+  non-Boss frame (Top/Middle) forfeits that frame's win reward and its shop and grants a tag
+  instead (`isSkippable`/`tagFor`/`skipFrame`; `run.skips` counts them). Each tag has a
+  `when`: **instant** resolves on skip (money, double payroll, level a random action, free
+  common coaches, or a one-frame `handBonusNext`/`rallyBonusNext` consumed in `startGame`);
+  **shop** waits in `run.tags` and is turned into concrete free items on the next shop visit
+  (`consumeTagsIntoShop` -> `STATE.shop.tagFx`, re-applied every roll by `applyTagFxToShop`
+  so free coaches/packs survive rerolls; covers free Uncommon/Rare coaches, the 5 editioned
+  free coaches, a forced voucher, Coupon = coaches/vouchers free, Discount = free rerolls);
+  **boss** (Investment) waits in `run.tags` and pays out in `onWin` when a Boss is beaten
+  (added to the reward breakdown). The map shows the offered tag + a Skip button and a
+  held-tags tray (`tagTrayHTML`); the shop badges granted items **Free**. Tags are the 4th
+  **Collection** group and are discovered on earn. This completes the Balatro 1:1 master list.

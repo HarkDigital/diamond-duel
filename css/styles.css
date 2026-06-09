@@ -1427,3 +1427,40 @@ body.portrait #toast{ display:none !important; }
 /* 8 franchises -> a clean 4 × 2 grid */
 .franchise-grid{ grid-template-columns:repeat(4,1fr); }
 @media (max-height:560px){ .franchise-grid{ gap:9px; } .franchise-card{ padding:11px 13px; } .fr-stats{ gap:3px; margin-bottom:8px; } .fr-tag{ min-height:0; margin:4px 0 7px; } .fr-sub{ min-height:0; } }
+
+/* ---------- SKIP TAGS (earned by skipping a frame) ---------- */
+.tag-chip{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px 5px 8px; border-radius:999px;
+  background:linear-gradient(180deg,rgba(40,49,68,.95),rgba(26,33,48,.95)); border:1px solid var(--rar-common);
+  box-shadow:0 0 0 1px rgba(0,0,0,.3) inset, 0 2px 8px rgba(0,0,0,.3); color:#e8eefc; font-weight:700; font-size:.84rem; white-space:nowrap; }
+.tag-chip .tag-ic{ display:inline-flex; width:16px; height:16px; opacity:.95; }
+.tag-chip .tag-ic svg{ width:16px; height:16px; }
+.tag-chip.rar-star{ border-color:var(--rar-star); box-shadow:0 0 12px rgba(79,155,255,.28); }
+.tag-chip.rar-allstar{ border-color:var(--rar-allstar); box-shadow:0 0 12px rgba(182,108,255,.3); }
+.tag-chip.rar-legendary,.tag-chip.rar-legend{ border-color:var(--rar-legend); box-shadow:0 0 14px rgba(255,203,71,.4); }
+.tag-chip.rar-star .tag-ic{ color:#8fbaff; } .tag-chip.rar-allstar .tag-ic{ color:#c9b0ff; }
+.tag-chip.rar-legendary .tag-ic,.tag-chip.rar-legend .tag-ic{ color:var(--gold); }
+
+/* held-tags tray (map + shop) */
+.tags-tray{ display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:10px 0 2px; padding:8px 12px;
+  background:rgba(18,24,38,.55); border:1px solid rgba(120,140,180,.16); border-radius:12px; }
+.tags-tray .tt-label{ font-size:.7rem; letter-spacing:1.5px; text-transform:uppercase; color:#8ea0bf; font-weight:800; margin-right:2px; }
+.tag-chip.held{ animation:tagPop .28s cubic-bezier(.2,.9,.3,1.3); }
+@keyframes tagPop{ 0%{ transform:scale(.6); opacity:0 } 100%{ transform:scale(1); opacity:1 } }
+
+/* skip offer on the map (next to Play Ball) */
+.skip-offer{ display:flex; flex-direction:column; align-items:flex-end; gap:7px; margin-bottom:6px; padding:9px 11px;
+  background:linear-gradient(180deg,rgba(34,28,54,.5),rgba(22,20,38,.5)); border:1px dashed rgba(150,120,220,.4); border-radius:12px; }
+.skip-offer .skip-cap{ font-size:.66rem; letter-spacing:1.5px; text-transform:uppercase; color:#b79bff; font-weight:800; }
+.skip-btn{ font-weight:800; }
+.skip-btn:hover{ border-color:var(--rar-allstar); color:#d9c8ff; }
+
+/* free items in the shop (granted by a tag) */
+.shop-item.free{ box-shadow:0 0 0 2px var(--field) inset, 0 8px 22px rgba(90,209,122,.25); border-radius:14px; }
+.free-tag{ position:absolute; top:6px; left:6px; z-index:3; display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px; border-radius:999px; font-size:.66rem; font-weight:900; letter-spacing:.5px; text-transform:uppercase;
+  color:#06210f; background:linear-gradient(180deg,#7ef0a3,#46c46f); box-shadow:0 2px 8px rgba(70,196,111,.45); }
+.free-tag svg{ width:12px; height:12px; }
+
+/* collection: colour the rarer tag/voucher cells the existing screen missed */
+.col-cell.got.rar-legendary,.col-cell.got.rar-legend{ border-color:rgba(255,203,71,.55); }
+.col-cell.got.rar-legendary .col-ic,.col-cell.got.rar-legend .col-ic{ color:var(--gold); }

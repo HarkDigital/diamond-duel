@@ -602,6 +602,47 @@
   ];
 
   /* -------------------------------------------------------- */
+  /* SKIP TAGS                                                */
+  /* -------------------------------------------------------- */
+  // Balatro-style tags, earned by SKIPPING a frame (you forfeit that frame's win
+  // reward and its shop, and pocket a tag instead). Only Top and Middle frames are
+  // skippable; a Boss frame must be played. `when` decides when the tag resolves:
+  //   instant - the moment you skip (money, action levels, next-frame buffs)
+  //   shop    - the next shop you actually visit (free coach/pack/voucher, coupon...)
+  //   boss    - after you next beat a Boss (the Investment payout)
+  // `fx.kind` is read by applyTag (instant) and resolveShopTags / boss payout.
+  const TAGS = [
+    // --- instant ---
+    { id: "tag_speed",    name: "Speed Tag",       icon: "fastForward", rarity: "common",  when: "instant", fx: { kind: "speedMoney", amt: 5 },   text: "Gain $5 for every frame you have skipped this run." },
+    { id: "tag_owner",    name: "Owner Tag",       icon: "trendUp",     rarity: "allstar", when: "instant", fx: { kind: "double", cap: 40 },     text: "Double your payroll (max gain $40)." },
+    { id: "tag_payday",   name: "Payday Tag",      icon: "coin",        rarity: "common",  when: "instant", fx: { kind: "money", amt: 15 },      text: "Gain $15 right now." },
+    { id: "tag_bonus",    name: "Bonus Tag",       icon: "coin",        rarity: "common",  when: "instant", fx: { kind: "money", amt: 8 },       text: "Gain $8 right now." },
+    { id: "tag_training", name: "Training Tag",    icon: "rocket",      rarity: "star",    when: "instant", fx: { kind: "levelAction", amt: 2 },  text: "Level up a random action by 2." },
+    { id: "tag_callup",   name: "Call-Up Tag",     icon: "medal",       rarity: "star",    when: "instant", fx: { kind: "freeCoaches", amt: 2 },  text: "Add up to 2 free common coaches to your dugout." },
+    { id: "tag_lineup",   name: "Lineup Tag",      icon: "layers",      rarity: "star",    when: "instant", fx: { kind: "handNext", amt: 1 },     text: "+1 hand size for the next frame only." },
+    { id: "tag_rally",    name: "Rally Tag",       icon: "zap",         rarity: "star",    when: "instant", fx: { kind: "rallyNext", amt: 1.0 },  text: "Start the next frame at +1.0 Rally." },
+    // --- shop ---
+    { id: "tag_scout",    name: "Scout Tag",       icon: "eye",         rarity: "star",    when: "shop", fx: { kind: "freeCoach", rarity: "star" },        text: "The next shop has a free Uncommon coach." },
+    { id: "tag_ace",      name: "Ace Tag",         icon: "star",        rarity: "allstar", when: "shop", fx: { kind: "freeCoach", rarity: "allstar" },     text: "The next shop has a free Rare coach." },
+    { id: "tag_legend",   name: "Legend Tag",      icon: "trophy",      rarity: "legendary", when: "shop", fx: { kind: "editionCoach", ed: "legendary" }, text: "The next shop has a free Legendary coach." },
+    { id: "tag_allstar",  name: "All-Star Tag",    icon: "star",        rarity: "allstar", when: "shop", fx: { kind: "editionCoach", ed: "allstar" },     text: "The next shop has a free All-Star coach." },
+    { id: "tag_slugger",  name: "Slugger Tag",     icon: "bat",         rarity: "star",    when: "shop", fx: { kind: "editionCoach", ed: "slugger" },     text: "The next shop has a free Silver Slugger coach." },
+    { id: "tag_glove",    name: "Gold Glove Tag",  icon: "shield",      rarity: "star",    when: "shop", fx: { kind: "editionCoach", ed: "goldglove" },   text: "The next shop has a free Gold Glove coach." },
+    { id: "tag_coop",     name: "Cooperstown Tag", icon: "medal",       rarity: "allstar", when: "shop", fx: { kind: "editionCoach", ed: "hof" },          text: "The next shop has a free Hall of Fame coach." },
+    { id: "tag_voucher",  name: "Voucher Tag",     icon: "handshake",   rarity: "allstar", when: "shop", fx: { kind: "voucher" },                          text: "Adds a Front Office voucher to the next shop." },
+    { id: "tag_coupon",   name: "Coupon Tag",      icon: "sell",        rarity: "star",    when: "shop", fx: { kind: "coupon" },                           text: "Coaches and vouchers are free in the next shop." },
+    { id: "tag_discount", name: "Discount Tag",    icon: "shuffle",     rarity: "common",  when: "shop", fx: { kind: "freeReroll" },                       text: "Rerolls are free in the next shop." },
+    { id: "tag_prospect", name: "Prospect Tag",    icon: "bat",         rarity: "common",  when: "shop", fx: { kind: "freePack", packKind: "player",   size: "mega" }, text: "The next shop has a free Mega Prospect Pack." },
+    { id: "tag_scouting", name: "Scouting Tag",    icon: "eye",         rarity: "common",  when: "shop", fx: { kind: "freePack", packKind: "scouting", size: "" },     text: "The next shop has a free Scouting Pack." },
+    { id: "tag_salami",   name: "Salami Tag",      icon: "sprout",      rarity: "common",  when: "shop", fx: { kind: "freePack", packKind: "charm",    size: "" },     text: "The next shop has a free Salami Pack." },
+    { id: "tag_coaching", name: "Coaching Tag",    icon: "medal",       rarity: "common",  when: "shop", fx: { kind: "freePack", packKind: "coach",    size: "" },     text: "The next shop has a free Coaching Pack." },
+    { id: "tag_spring",   name: "Spring Tag",      icon: "rocket",      rarity: "common",  when: "shop", fx: { kind: "freePack", packKind: "action",   size: "" },     text: "The next shop has a free Spring Training Pack." },
+    // --- boss ---
+    { id: "tag_invest",   name: "Investment Tag",  icon: "trendUp",     rarity: "allstar", when: "boss", fx: { kind: "money", amt: 25 },  text: "Gain $25 after you beat the next Boss." },
+  ];
+  function getTag(id) { return TAGS.find((t) => t.id === id); }
+
+  /* -------------------------------------------------------- */
   /* BOOSTER PACKS                                             */
   /* -------------------------------------------------------- */
   // Packs come in three sizes (Balatro-style): Normal (3, pick 1), Jumbo (5, pick 1),
@@ -853,6 +894,7 @@
   global.CHARMS = CHARMS;
   global.ACHIEVEMENTS = ACHIEVEMENTS;
   global.UPGRADES = UPGRADES;
+  global.TAGS = TAGS;
   global.PACKS = PACKS;
   global.EDITIONS = EDITIONS;
   global.EDITION_WEIGHTS = EDITION_WEIGHTS;
@@ -869,5 +911,6 @@
   global.getCoach = getCoach;
   global.getBoss = getBoss;
   global.getCharm = getCharm;
+  global.getTag = getTag;
   global.getAchievement = getAchievement;
 })(window);
