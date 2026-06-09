@@ -18,8 +18,8 @@ GitHub Pages.
   URL and compare `shasum` of changed files to local.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=14`,
-`js/app.js?v=14`. **Bump every `?v=N` in `index.html` on each deploy** so returning
+`index.html` loads assets with a version query, e.g. `css/styles.css?v=15`,
+`js/app.js?v=15`. **Bump every `?v=N` in `index.html` on each deploy** so returning
 players' browsers fetch fresh CSS/JS instead of stale cached copies. (A stale CSS cache
 is what made the field-diagram fix appear "not to work" once.)
 
@@ -138,9 +138,16 @@ via a CSS `left/top` transition.
   that extend forever (`targetFor`, `CONFIG.target`/`pitcher`). Win inning 8's Boss -> World
   Series victory with a "Play Extra Innings" continue. Compact **linescore** (`.linescore`,
   8 inning columns + extra), post-mortem 24-frame strip, labels reworked.
+- **Balatro 1:1 - Phase 3 (lineups + stakes):** **15 lineups** (`FRANCHISES`, each with a
+  themed deck + a `mods` object of deltas on already-wired run fields: payroll/dugoutSlots/
+  handSize/charmSlots/extraCardSlots/rerollDiscount/startRally/noInterest/grantSalami, applied
+  in `newRun`). **5 difficulty stakes** (`STAKES`, Rookie..Cooperstown); `stakeMods(stake)` ->
+  cumulative `{targetMult, pitcherBonus, priceBump, handDelta}` applied in `targetFor`/
+  `makePitcher`/`priceOf`/`newRun`. Stakes gate behind `META.maxStake` (win a WS at the current
+  to unlock the next); `META.lineupWins` tracks best stake per lineup. Home screen is now a
+  **carousel** (`renderLineupCarousel`): one lineup at a time with arrows + dots, a 5-stake
+  selector, inline seed, Play Ball. `run.stake` + `run.franchiseId` define a run.
 - **Roadmap (remaining phases):** 5 baseball **editions** (All-Star/Silver Slugger/Gold
   Glove/Hall of Fame/Legendary) on cards + coaches; **action-leveling** pack (Celestial-equiv,
-  levels Swing/Power/Work the Count/Bunt/Steal); **15 lineups x 5 stakes** with carousel
-  select; 100 coaches; 32 tiered Front Office vouchers (base + upgrade gating, one per inning);
-  24 skip tags. (Pack art/sizes from Phase 1 and the 8x3 structure from Phase 2 are the
-  foundation these build on.)
+  levels Swing/Power/Work the Count/Bunt/Steal); 100 coaches; 32 tiered Front Office vouchers
+  (base + upgrade gating, one per inning); 24 skip tags.

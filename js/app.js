@@ -31,6 +31,8 @@
       franchisesPlayed: {},    // ids ever played
       franchisesWon: {},       // ids whose full run was won
       discovered: {},          // ids of coaches / seeds / front-office vouchers ever acquired (Collection)
+      maxStake: 1,             // highest difficulty stake unlocked (win a WS to unlock the next)
+      lineupWins: {},          // lineup id -> highest stake won at
     };
   }
   function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(META)); } catch (e) {} }
@@ -41,6 +43,8 @@
     if (!META.franchisesPlayed) META.franchisesPlayed = {};
     if (!META.franchisesWon) META.franchisesWon = {};
     if (!META.discovered) META.discovered = {};
+    if (!META.maxStake) META.maxStake = 1;
+    if (!META.lineupWins) META.lineupWins = {};
   })();
   // Collection: an item (coach / Salami Card / front-office voucher) is "discovered"
   // the first time you actually acquire it. Until then it shows locked in the Collection
@@ -94,11 +98,13 @@
     for (let i = 0; out.length < target; i++) out.push(cloneCard(getPlayer(ids[i % ids.length])));
     return out;
   }
-  function newRun(franchiseId, seed) {
+  function newRun(franchiseId, seed, stake) {
     const fr = FRANCHISES.find((f) => f.id === franchiseId) || FRANCHISES[0];
+    stake = Math.max(1, Math.min(STAKES.length, stake || 1));
     const run = {
       seed: seed || randomSeed(),
       franchiseId: fr.id,
+      stake: stake,
       gameIndex: 0,
       payroll: CONFIG.economy.startingPayroll + (fr.startBonusPayroll || 0),
       deck: buildStartingDeck(fr),
@@ -121,7 +127,21 @@
       stat: { gamesWon: 0, homers: 0, bestInning: 0, bestScore: 0 },
     };
     if (fr.signatureCoach) { run.dugout.push(cloneCoach(getCoach(fr.signatureCoach))); discover(fr.signatureCoach); }
-    // pre-roll all four boss rules so telegraphs match
+    // apply the lineup's effect (deltas on already-wired run tunables)
+    const m = fr.mods || {};
+    if (m.payroll) run.payroll += m.payroll;
+    if (m.dugoutSlots) run.dugoutSlots += m.dugoutSlots;
+    if (m.handSize) run.handSize += m.handSize;
+    if (m.charmSlots) run.charmSlots += m.charmSlots;
+    if (m.extraCardSlots) run.extraCardSlots += m.extraCardSlots;
+    if (m.rerollDiscount) run.rerollDiscount += m.rerollDiscount;
+    if (m.discount) run.discount += m.discount;
+    if (m.startRally) run.startRally = m.startRally;
+    if (m.noInterest) run.interestCap = 0;
+    if (m.grantSalami) { const crng = makeRNG(run.seed + ":lineupseed"); for (let i = 0; i < m.grantSalami && run.charms.length < run.charmSlots; i++) { const ch = crng.pick(CHARMS); run.charms.push(ch.id); discover(ch.id); } }
+    // the hardest stake shrinks your lineup card
+    run.handSize = Math.max(1, run.handSize + stakeMods(stake).handDelta);
+    // pre-roll the 8 boss rules so telegraphs match
     for (let r = 0; r < ROUNDS.length; r++) run.bosses.push(pickBoss(run, r));
     META.runs += 1;
     META.franchisesPlayed[fr.id] = true;
@@ -159,8 +179,9 @@
     const isBoss = frame === GAMES_PER_ROUND - 1;
     const rng = makeRNG(run.seed + ":pitcher:" + gameIndex);
     const pc = CONFIG.pitcher;
-    let stuff = pc.baseStuff + pc.stuffPerInning * inning + frame * pc.framePenalty + rng.range(-3, 3);
-    let command = pc.baseCommand + pc.commandPerInning * inning + frame * (pc.framePenalty * 0.8) + rng.range(-3, 3);
+    const sb = stakeMods(run.stake).pitcherBonus;
+    let stuff = pc.baseStuff + pc.stuffPerInning * inning + frame * pc.framePenalty + sb + rng.range(-3, 3);
+    let command = pc.baseCommand + pc.commandPerInning * inning + frame * (pc.framePenalty * 0.8) + sb + rng.range(-3, 3);
     let rule = null, name, boss = null;
     if (isBoss) {
       boss = bossFor(run, inning);
@@ -577,6 +598,10 @@
       run.wonWS = true;
       META.wins += 1;
       META.franchisesWon[run.franchiseId] = true;
+      // record the best stake won with this lineup, and unlock the next stake
+      const st = run.stake || 1;
+      if (st > (META.lineupWins[run.franchiseId] || 0)) META.lineupWins[run.franchiseId] = st;
+      if (st >= (META.maxStake || 1)) META.maxStake = Math.min(STAKES.length, st + 1);
       saveMeta(); checkCareerAch(); saveRun();
       return showVictory();
     }
@@ -613,7 +638,10 @@
   /* ---------- title ---------- */
   function renderTitle() {
     const hasSave = !!localStorage.getItem(SAVE_KEY);
-    const fr = FRANCHISES.map((f) => franchiseCardHTML(f)).join("");
+    if (STATE._pickIndex == null) STATE._pickIndex = 0;
+    if (STATE._replayFranchise) { const ri = FRANCHISES.findIndex((f) => f.id === STATE._replayFranchise); if (ri >= 0) STATE._pickIndex = ri; }
+    if (STATE._pickStake == null) STATE._pickStake = 1;
+    STATE._pickStake = Math.max(1, Math.min(STATE._pickStake, META.maxStake || 1));
     return `
     <div class="screen title-screen">
       <div class="title-hero">
@@ -624,9 +652,9 @@
         <p class="tagline">A baseball roguelike deckbuilder. Build a lineup, stack the rally, out-score the ace.</p>
       </div>
       ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
-      <h2 class="pick-h">Choose your franchise</h2>
-      ${STATE._replaySeed ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code> - pick a franchise to begin</div>` : `<div class="seed-hint">Pick a franchise. You can set an optional seed on the next screen.</div>`}
-      <div class="franchise-grid">${fr}</div>
+      <h2 class="pick-h">Choose your lineup</h2>
+      ${STATE._replaySeed ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code></div>` : ""}
+      ${renderLineupCarousel()}
       <div class="title-foot">
         <div class="foot-btns">
           <button class="btn btn-foot" data-act="open-profile">${icon("trophy")} Profile</button>
@@ -638,6 +666,52 @@
         <span class="foot-version">v1.0</span>
       </div>
     </div>`;
+  }
+
+  // Balatro-style lineup + difficulty carousel (one lineup shown at a time)
+  function renderLineupCarousel() {
+    const idx = STATE._pickIndex || 0;
+    const f = FRANCHISES[idx];
+    const stake = STATE._pickStake || 1;
+    const maxStake = META.maxStake || 1;
+    const coach = f.signatureCoach ? getCoach(f.signatureCoach) : null;
+    const ids = f.deck;
+    const totals = ids.reduce((a, id) => { const p = getPlayer(id); a.c += p.contact; a.p += p.power; a.e += p.eye; a.s += p.speed; return a; }, { c: 0, p: 0, e: 0, s: 0 });
+    const n = ids.length, mini = (v) => Math.round(v / n);
+    const bestStake = META.lineupWins[f.id] || 0;
+    const dots = FRANCHISES.map((_, i) => `<span class="lc-dot ${i === idx ? "on" : ""}" data-lineup-dot="${i}"></span>`).join("");
+    const stakeBtns = STAKES.map((s) => {
+      const locked = s.id > maxStake, sel = s.id === stake;
+      return `<button class="stake-btn st-${s.id} ${sel ? "sel" : ""} ${locked ? "locked" : ""}" data-stake="${s.id}" title="${s.name}">${locked ? icon("lock") : s.id}</button>`;
+    }).join("");
+    const cur = STAKES[stake - 1];
+    const unlockHint = (stake === maxStake && maxStake < STAKES.length) ? ` <span class="stake-unlock">Win the World Series here to unlock ${STAKES[stake].name}.</span>` : "";
+    return `
+      <div class="lineup-carousel">
+        <button class="lc-arrow" data-act="prev-lineup" aria-label="Previous lineup">${icon("chevronL")}</button>
+        <div class="lc-card">
+          ${bestStake ? `<div class="lc-best" title="Best stake won">${icon("trophy")} ${STAKES[bestStake - 1].name}</div>` : ""}
+          <div class="lc-num">${idx + 1} / ${FRANCHISES.length}</div>
+          <h3>${f.name}</h3>
+          <p class="lc-tag">${f.tagline}</p>
+          <div class="fr-stats lc-stats">
+            ${miniStat("CON", mini(totals.c))}${miniStat("POW", mini(totals.p))}${miniStat("EYE", mini(totals.e))}${miniStat("SPD", mini(totals.s))}
+          </div>
+          <div class="lc-effect"><span class="fr-star">${icon(coach ? coach.icon : "star")}</span> ${f.bonusText}</div>
+        </div>
+        <button class="lc-arrow" data-act="next-lineup" aria-label="Next lineup">${icon("chevronR")}</button>
+      </div>
+      <div class="lc-dots">${dots}</div>
+      <div class="stake-row">
+        <span class="stake-label">Difficulty</span>
+        <div class="stake-btns">${stakeBtns}</div>
+        <span class="stake-name st-${stake}">${cur.name}</span>
+      </div>
+      <div class="stake-desc">${cur.text}${unlockHint}</div>
+      <div class="lc-start">
+        <div class="lc-seed"><label>Seed <span>(optional)</span></label><input id="fr-seed" class="seed-input" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="random" value="${STATE._replaySeed ? escAttr(STATE._replaySeed) : ""}" /></div>
+        <button class="btn btn-big btn-gold" data-act="confirm-start">Play Ball ${icon("chevronR")}</button>
+      </div>`;
   }
 
   function franchiseCardHTML(f) {
@@ -1540,7 +1614,7 @@
     let seed = null;
     const el = document.getElementById("fr-seed") || document.getElementById("seed-input");
     if (el && el.value.trim()) seed = el.value.trim().toUpperCase();
-    STATE.run = newRun(id, seed);
+    STATE.run = newRun(id, seed, STATE._pickStake || 1);
     STATE.game = null;
     STATE._replaySeed = null; STATE._replayFranchise = null;
     clearGameSave();
@@ -1585,6 +1659,7 @@
 
   const HOWTO_SECTIONS = [
     `<section><h3>The goal</h3><p>A run is <b>8 innings</b>, and each inning has <b>3 frames</b> (Top, Middle, and a <b>Boss</b>). In every frame, pile up <b>Score</b> to beat its <b>Target</b> before you make your <b>3rd out</b>. Clear inning 8's Boss to win the <b>World Series</b>, then push your luck in <b>Extra Innings</b> for as long as your build holds up. Come up short in any frame and the run is over.</p></section>`,
+    `<section><h3>Lineups &amp; difficulty</h3><p>Pick a <b>lineup</b> on the home screen (use the arrows to flip through all 15). Each one starts you with a different roster and a unique perk: extra cash, a bigger dugout, a roomier hand, a free Salami card, and more. Then choose a <b>difficulty stake</b> (Rookie up to Cooperstown). Each stake stacks a harder rule on the one below it (higher targets, tougher pitchers, pricier shops), and you <b>unlock the next stake</b> by winning the World Series at the current one.</p></section>`,
     `<section><h3>Sending a batter up</h3><p>Your hand is your lineup. <b>Drag a card into the "Drop batter here" box</b> (or press <b>1-8</b>) to send that batter to the plate. The box highlights as you drag over it. Once they step up, the swing buttons appear in the bar above the box, and you can hit <b>Cancel</b> there to put the batter back. You draw a fresh card after every at-bat.</p></section>`,
     `<section><h3>Choosing a swing</h3><ul><li><b>Swing Away</b> - balanced; your natural swing.</li><li><b>Power Swing</b> - more homers &amp; extra-base hits, but more strikeouts.</li><li><b>Work the Count</b> - lots of walks, few strikeouts, little power.</li></ul><p>With runners on, you can also <b>Bunt</b> or <b>Send</b> a runner from the same bar.</p></section>`,
     `<section class="howto-rally"><h3>The Rally - the heart of it</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value:</b> Walk 1, Single 2, Double 3, Triple 4, Home Run 5 - plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> starts at <b>×1.0</b> and climbs <b>+0.5</b> each time you reach base safely - but an <b>out resets it to ×1.0</b>.</li></ul><p>Land your big bats while the rally is high.</p></section>`,
@@ -1598,7 +1673,7 @@
     `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, and a <b>Coaching Pack</b> offers coaches. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
-  const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]];
+  const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13]];
   function showHowTo(page) {
     if (SFX && SFX.click) SFX.click();
     const np = HOWTO_PAGES.length;
@@ -1728,7 +1803,7 @@
 
     sh.bought = sh.bought || {}; // keys of consumed slots
   }
-  function priceOf(base) { return Math.max(1, base - (STATE.run.discount || 0)); }
+  function priceOf(base) { return Math.max(1, base - (STATE.run.discount || 0) + stakeMods(STATE.run.stake).priceBump); }
   function rerollCost() {
     const eco = CONFIG.economy;
     return Math.max(1, eco.rerollBase + eco.rerollStep * STATE.shop.reroll - (STATE.run.rerollDiscount || 0));
@@ -2130,9 +2205,20 @@
   function roundName(gi) { return isExtraInnings(gi) ? "Extra Innings " + (inningOf(gi) - ROUNDS.length) : "Inning " + inningOf(gi); }
   function gameLabel(gi) { return roundName(gi) + " · " + (isBossInning(gi) ? "Boss" : FRAME_NAMES[frameOf(gi)]); }
   // target for a frame: base * growth^(inning-1) * frameMult[frame]; extends into Extra Innings.
+  // difficulty stakes: cumulative modifiers, keyed off run.stake (1..5)
+  function stakeMods(stake) {
+    stake = Math.max(1, Math.min(STAKES.length, stake || 1));
+    return {
+      targetMult: 1 + 0.08 * (stake - 1),          // 1.00 / 1.08 / 1.16 / 1.24 / 1.32
+      pitcherBonus: stake >= 3 ? (stake - 2) * 2 + 1 : 0,  // +3 / +5 / +7
+      priceBump: stake >= 4 ? 1 : 0,
+      handDelta: stake >= 5 ? -1 : 0,
+    };
+  }
   function targetFor(gi) {
     const t = CONFIG.target;
-    return Math.max(1, Math.round(t.base * Math.pow(t.inningGrowth, inningOf(gi) - 1) * (t.frameMult[frameOf(gi)] || 1)));
+    const mult = (STATE.run ? stakeMods(STATE.run.stake).targetMult : 1);
+    return Math.max(1, Math.round(t.base * Math.pow(t.inningGrowth, inningOf(gi) - 1) * (t.frameMult[frameOf(gi)] || 1) * mult));
   }
   function ordinal(n) { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 
@@ -2185,6 +2271,8 @@
       }
       const act = e.target.closest("[data-act]");
       const fr = e.target.closest("[data-franchise]");
+      const dotEl = e.target.closest("[data-lineup-dot]");
+      const stakeEl = e.target.closest("[data-stake]");
       const buyEl = e.target.closest("[data-buy]");
       const packTapEl = e.target.closest("[data-packslot]");
       const apEl = e.target.closest("[data-approach]");
@@ -2192,6 +2280,8 @@
       const sendEl = e.target.closest("[data-send]");
 
       if (fr) { startFromFranchise(fr.getAttribute("data-franchise")); return; }
+      if (dotEl) { STATE._pickIndex = parseInt(dotEl.getAttribute("data-lineup-dot"), 10); if (SFX.click) SFX.click(); render(); return; }
+      if (stakeEl) { const s = parseInt(stakeEl.getAttribute("data-stake"), 10); if (s <= (META.maxStake || 1)) { STATE._pickStake = s; if (SFX.click) SFX.click(); render(); } else if (SFX.error) SFX.error(); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
       if (packTapEl && STATE.screen === "shop") {
         if (_suppressPackClick) { _suppressPackClick = false; return; }   // a drag already opened it
@@ -2238,7 +2328,9 @@
       case "abandon-run": confirmAbandon("back-to-menu"); break;
       case "replay-seed": if (STATE.run) replaySeed(STATE.run.seed, STATE.run.franchiseId); break;
       case "abandon-confirm": clearSave(); STATE.run = null; STATE.game = null; closeOverlay(); STATE.screen = "title"; render(); break;
-      case "confirm-start": case "confirm-newrun": { const id = STATE._pendingFranchise; STATE._pendingFranchise = null; if (id) doStartRun(id); break; }
+      case "prev-lineup": STATE._pickIndex = ((STATE._pickIndex || 0) - 1 + FRANCHISES.length) % FRANCHISES.length; if (SFX.click) SFX.click(); render(); break;
+      case "next-lineup": STATE._pickIndex = ((STATE._pickIndex || 0) + 1) % FRANCHISES.length; if (SFX.click) SFX.click(); render(); break;
+      case "confirm-start": case "confirm-newrun": { const id = (STATE._pendingFranchise) || FRANCHISES[STATE._pickIndex || 0].id; STATE._pendingFranchise = null; doStartRun(id); break; }
       case "retry-run": closeOverlay(); STATE.run = null; STATE.game = null; STATE.screen = "title"; render(); break;
       case "to-title": closeOverlay(); STATE.screen = "title"; render(); break;
       case "close-ov": closeOverlay(); break;

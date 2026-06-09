@@ -575,6 +575,93 @@
         "benny_alvarez", "comet_reyes", "kid_zamora", "jackrabbit_jones", "spray_okafor",
         "joey_marsh", "eddie_lux"],
     },
+    {
+      id: "frontoffice",
+      name: "The Front Office",
+      tagline: "Deep pockets. Buy your way to a contender.",
+      signatureCoach: null,
+      bonusText: "Start with +$15 Payroll. Outspend the league.",
+      mods: { payroll: 15 },
+      deck: ["nico_reyburn", "joey_marsh", "vic_castellano", "chip_donnelly", "gil_hatcher",
+        "eddie_lux", "rusty_blanco", "pip_sandoval", "cole_morrow", "doc_ellwood",
+        "gabe_whitfield", "benny_alvarez"],
+    },
+    {
+      id: "farmhands",
+      name: "The Farmhands",
+      tagline: "Develop talent. Run deep.",
+      signatureCoach: null,
+      bonusText: "An extra dugout slot (9 coaches). Build a bigger staff.",
+      mods: { dugoutSlots: 1 },
+      deck: ["flash_tomlin", "sunny_okada", "chip_donnelly", "scooter_pace", "crusher_voss",
+        "tank_mercer", "gunnar_polk", "doc_ellwood", "milo_fenn", "eddie_lux",
+        "comet_reyes", "nico_reyburn"],
+    },
+    {
+      id: "specialists",
+      name: "The Specialists",
+      tagline: "A man for every situation.",
+      signatureCoach: null,
+      bonusText: "A bigger lineup card: +1 hand size, more options each at-bat.",
+      mods: { handSize: 1 },
+      deck: ["nico_reyburn", "rudy_falk", "ace_brannigan", "hank_delgado", "dusty_quintero",
+        "joey_marsh", "vic_castellano", "pip_sandoval", "cole_morrow", "ozzie_klein",
+        "pete_almonte", "eddie_lux"],
+    },
+    {
+      id: "superstition",
+      name: "The Superstition",
+      tagline: "Rituals, rally caps, and a lucky Salami.",
+      signatureCoach: null,
+      bonusText: "Roomier pouch (+1 Salami slot) and a free Salami card to start.",
+      mods: { charmSlots: 1, grantSalami: 1 },
+      deck: ["ziggy_park", "marty_soto", "buster_kray", "hank_delgado", "sherman_boyle",
+        "desmond_pratt", "walt_pemberton", "ozzie_klein", "vic_castellano", "joey_marsh",
+        "eddie_lux", "gabe_whitfield"],
+    },
+    {
+      id: "pennypinchers",
+      name: "The Penny-Pinchers",
+      tagline: "Grind out every dollar.",
+      signatureCoach: null,
+      bonusText: "No interest on banked Payroll, but +$10 up front. Spend it early.",
+      mods: { noInterest: true, payroll: 10 },
+      deck: ["gil_hatcher", "eddie_lux", "rusty_blanco", "benny_alvarez", "pip_sandoval",
+        "cole_morrow", "doc_ellwood", "chip_donnelly", "slick_bonner", "turbo_vance",
+        "breeze_holloway", "nico_reyburn"],
+    },
+    {
+      id: "bigleaguers",
+      name: "The Big Leaguers",
+      tagline: "Bright lights, big swings.",
+      signatureCoach: null,
+      bonusText: "Start every frame at x1.25 Rally. A swingy, all-or-nothing slugger lineup.",
+      mods: { startRally: 1.25 },
+      deck: ["mack_thunderton", "bruno_vargas", "duke_hammond", "cy_bigsby", "rex_stoneman",
+        "boom_castillo", "moose_kowalski", "blast_jennings", "el_toro_mendez", "sherman_boyle",
+        "hank_delgado", "milo_fenn"],
+    },
+    {
+      id: "scouts",
+      name: "The Scouts",
+      tagline: "Wired into the network.",
+      signatureCoach: null,
+      bonusText: "+1 shop card slot and $1 off every reroll. See more, pay less.",
+      mods: { extraCardSlots: 1, rerollDiscount: 1 },
+      deck: ["rocket_ruiz", "dash_okafor", "sunny_okada", "ozzie_klein", "hank_delgado",
+        "nico_reyburn", "joey_marsh", "gil_hatcher", "eddie_lux", "vic_castellano",
+        "comet_reyes", "dink_harper"],
+    },
+  ];
+
+  // Difficulty stakes (Balatro-style). Cumulative: each level keeps the harder rules below it.
+  // You unlock the next stake by winning the World Series at the current one (META.maxStake).
+  const STAKES = [
+    { id: 1, name: "Rookie",      text: "The standard climb. Win it to unlock Veteran." },
+    { id: 2, name: "Veteran",     text: "Targets are 8% higher." },
+    { id: 3, name: "All-Star",    text: "Targets +16%, and pitchers throw harder (+3 Stuff / Command)." },
+    { id: 4, name: "Cy Young",    text: "Targets +24%, pitchers +5, and the shop charges $1 more." },
+    { id: 5, name: "Cooperstown", text: "Targets +32%, pitchers +7, prices +$1, and your lineup card is 1 smaller." },
   ];
 
   /* -------------------------------------------------------- */
@@ -604,6 +691,7 @@
   global.UPGRADES = UPGRADES;
   global.PACKS = PACKS;
   global.FRANCHISES = FRANCHISES;
+  global.STAKES = STAKES;
   global.ROUNDS = ROUNDS;
   global.GAMES_PER_ROUND = GAMES_PER_ROUND;
   global.RARITY_ORDER = RARITY_ORDER;
