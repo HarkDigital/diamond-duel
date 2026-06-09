@@ -18,8 +18,8 @@ GitHub Pages.
   URL and compare `shasum` of changed files to local.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=15`,
-`js/app.js?v=15`. **Bump every `?v=N` in `index.html` on each deploy** so returning
+`index.html` loads assets with a version query, e.g. `css/styles.css?v=16`,
+`js/app.js?v=16`. **Bump every `?v=N` in `index.html` on each deploy** so returning
 players' browsers fetch fresh CSS/JS instead of stale cached copies. (A stale CSS cache
 is what made the field-diagram fix appear "not to work" once.)
 
@@ -147,7 +147,14 @@ via a CSS `left/top` transition.
   to unlock the next); `META.lineupWins` tracks best stake per lineup. Home screen is now a
   **carousel** (`renderLineupCarousel`): one lineup at a time with arrows + dots, a 5-stake
   selector, inline seed, Play Ball. `run.stake` + `run.franchiseId` define a run.
-- **Roadmap (remaining phases):** 5 baseball **editions** (All-Star/Silver Slugger/Gold
-  Glove/Hall of Fame/Legendary) on cards + coaches; **action-leveling** pack (Celestial-equiv,
-  levels Swing/Power/Work the Count/Bunt/Steal); 100 coaches; 32 tiered Front Office vouchers
-  (base + upgrade gating, one per inning); 24 skip tags.
+- **Balatro 1:1 - Phase 4 (editions + action leveling):** 5 deluxe **editions** on a card/
+  coach `deluxe` field - All-Star (+2 Bag), Silver Slugger (+1 Rally), Gold Glove (x1.5 Rally
+  that play), Hall of Fame (+2 Bag +0.5 Rally), Legendary (biggest; coach takes no slot).
+  `CONFIG.editionFx` drives the engine hooks in `resolveAtBat`; coaches use `coach.aura`
+  (`applyDeluxeToCoach`) and Legendary is free (`dugoutUsed`). They roll on pack card/coach
+  options (`rollDeluxe`, `CONFIG.editionSpawnChance`) and render with an animated shimmer
+  (`.has-dx.dx-*` + `.dx-badge`). **Action leveling** (Spring Training packs, kind "action"):
+  `run.actionLevels` {swing/power/contact/bunt/steal}; each level adds `CONFIG.actionLevelRally`
+  to that action's safe plays (engine) and shows a `Lv` badge on the swing buttons.
+- **Roadmap (remaining - Phase 5):** 100 coaches; 32 tiered Front Office vouchers (base +
+  upgrade gating, one per inning); 24 skip tags.

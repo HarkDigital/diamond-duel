@@ -129,7 +129,7 @@
     // Roster: each franchise's deck is padded to this many cards
     startingDeckSize: 30,
 
-    // Edition effects
+    // Card-treatment effects (applied by Scouting reports)
     edition: {
       goldPayroll: 2,
       clutchRallyBonus: 1.0,
@@ -137,6 +137,22 @@
       veteranRallyBonus: 0.2,
       foilStatBump: 6,
     },
+
+    // Deluxe editions (Balatro-style, on the `deluxe` field of a card/coach). A scoring
+    // play by a deluxe card adds bag / rally / a rally multiplier. On a coach they instead
+    // grant a flat Rally aura (DELUXE_COACH_AURA in app), and Legendary takes no dugout slot.
+    editionFx: {
+      allstar:   { bag: 2 },
+      slugger:   { rally: 1.0 },
+      goldglove: { mult: 1.5 },
+      hof:       { bag: 2, rally: 0.5 },
+      legendary: { bag: 3, rally: 1.0 },
+    },
+    editionSpawnChance: 0.15,   // chance a pack card/coach rolls a deluxe edition
+
+    // Action leveling (Balatro Celestial-style). Each level above 1 adds this much Rally
+    // to a safe play made with that action (Swing Away / Power Swing / Work the Count / Bunt / Steal).
+    actionLevelRally: 0.3,
   };
 
   /* -------------------------------------------------------- */
@@ -487,6 +503,33 @@
     { id: "pk_coach",          name: "Coaching Pack",       kind: "coach",    size: "",      choose: 1, count: 3, rarity: "star",    cost: 6,  text: "Choose 1 of 3 coaches." },
     { id: "pk_coach_jumbo",    name: "Jumbo Coaching Pack", kind: "coach",    size: "jumbo", choose: 1, count: 5, rarity: "star",    cost: 8,  text: "Choose 1 of 5 coaches." },
     { id: "pk_coach_mega",     name: "Mega Coaching Pack",  kind: "coach",    size: "mega",  choose: 2, count: 5, rarity: "allstar", cost: 10, text: "Choose 2 of 5 coaches." },
+    // Spring Training (Celestial-style): level up your at-bat actions
+    { id: "pk_spring",         name: "Spring Training",       kind: "action",   size: "",      choose: 1, count: 3, rarity: "star",    cost: 5,  text: "Level up 1 of 3 actions." },
+    { id: "pk_spring_jumbo",   name: "Jumbo Spring Training", kind: "action",   size: "jumbo", choose: 1, count: 5, rarity: "star",    cost: 7,  text: "Level up 1 of 5 actions." },
+    { id: "pk_spring_mega",    name: "Mega Spring Training",  kind: "action",   size: "mega",  choose: 2, count: 5, rarity: "allstar", cost: 9,  text: "Level up 2 of 5 actions." },
+  ];
+
+  // Deluxe editions (display). Effects live in CONFIG.editionFx.
+  const EDITIONS = [
+    { id: "allstar",   name: "All-Star",       text: "+2 Bag value when this card scores." },
+    { id: "slugger",   name: "Silver Slugger", text: "+1.0 Rally when this card scores." },
+    { id: "goldglove", name: "Gold Glove",     text: "This card's scoring play is worth x1.5 Rally." },
+    { id: "hof",       name: "Hall of Fame",   text: "+2 Bag and +0.5 Rally when this card scores." },
+    { id: "legendary", name: "Legendary",      text: "+3 Bag and +1.0 Rally. On a coach it takes no dugout slot." },
+  ];
+  // weighted spawn (rarer ones near the end)
+  const EDITION_WEIGHTS = [
+    { v: "allstar", w: 50 }, { v: "slugger", w: 30 }, { v: "goldglove", w: 14 }, { v: "hof", w: 5 }, { v: "legendary", w: 1 },
+  ];
+  function getEdition(id) { return EDITIONS.find((e) => e.id === id); }
+
+  // The five at-bat actions you can level up (Spring Training).
+  const ACTIONS = [
+    { id: "swing",   name: "Swing Away",     text: "Your balanced swing scores hotter." },
+    { id: "power",   name: "Power Swing",    text: "Selling out for the big fly scores hotter." },
+    { id: "contact", name: "Work the Count", text: "Patient at-bats score hotter." },
+    { id: "bunt",    name: "Bunt",           text: "Sacrifices and bunt singles score hotter." },
+    { id: "steal",   name: "Steal",          text: "Stolen bases score hotter." },
   ];
 
   /* -------------------------------------------------------- */
@@ -690,6 +733,10 @@
   global.ACHIEVEMENTS = ACHIEVEMENTS;
   global.UPGRADES = UPGRADES;
   global.PACKS = PACKS;
+  global.EDITIONS = EDITIONS;
+  global.EDITION_WEIGHTS = EDITION_WEIGHTS;
+  global.ACTIONS = ACTIONS;
+  global.getEdition = getEdition;
   global.FRANCHISES = FRANCHISES;
   global.STAKES = STAKES;
   global.ROUNDS = ROUNDS;

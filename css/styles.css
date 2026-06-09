@@ -428,6 +428,32 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .pack-deal .pack-opt{ animation:packDeal .4s cubic-bezier(.2,1.2,.3,1) backwards; animation-delay:calc(.32s + var(--deal,0) * 80ms); }
 @keyframes packDeal{ from{ opacity:0; transform:translateY(22px) scale(.8) rotate(-3deg); } to{ opacity:1; transform:none; } }
 .pk-opening{ position:relative; }
+/* Spring Training pack tint */
+.pk-wrap.kind-action{ background:linear-gradient(165deg,#3a2f12,#1c1608); } .pk-wrap.kind-action .pk-ico .ico{ color:#ffd98a; } .pk-wrap.kind-action .pk-band{ background:linear-gradient(180deg,#b08a2f,#6e521c); }
+.pack-burst.kind-action{ background:linear-gradient(165deg,#3a2f12,#1c1608); } .pack-burst.kind-action .pk-ico .ico{ color:#ffd98a; }
+
+/* ===== deluxe editions (All-Star / Silver Slugger / Gold Glove / Hall of Fame / Legendary) ===== */
+.dx-badge{ position:absolute; top:2px; left:50%; transform:translateX(-50%); z-index:5; font-size:.5rem; font-weight:900; letter-spacing:.4px; text-transform:uppercase; padding:1px 6px; border-radius:6px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.55); }
+.has-dx{ position:relative; }
+.card.has-dx::after, .shop-coach.has-dx::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:3; mix-blend-mode:screen; opacity:.5;
+  background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.6) 46%, transparent 60%); background-size:250% 250%; animation:dxSheen 2.6s linear infinite; }
+@keyframes dxSheen{ 0%{ background-position:150% 0; } 100%{ background-position:-50% 0; } }
+.card.has-dx.dx-goldglove::after, .card.has-dx.dx-legendary::after, .shop-coach.has-dx.dx-goldglove::after, .shop-coach.has-dx.dx-legendary::after{ opacity:.65;
+  background:linear-gradient(115deg, transparent 24%, rgba(255,120,255,.45) 40%, rgba(120,255,220,.45) 52%, transparent 66%); background-size:250% 250%; }
+.has-dx.dx-allstar{ box-shadow:0 0 0 2px #5aa0ff, 0 0 16px rgba(90,160,255,.5); }
+.has-dx.dx-slugger{ box-shadow:0 0 0 2px #cfd8e3, 0 0 16px rgba(200,215,230,.5); }
+.has-dx.dx-goldglove{ box-shadow:0 0 0 2px #ffcf4a, 0 0 18px rgba(255,203,71,.6); }
+.has-dx.dx-hof{ box-shadow:0 0 0 2px #d98a4a, 0 0 18px rgba(217,138,74,.55); }
+.has-dx.dx-legendary{ box-shadow:0 0 0 2px #c084fc, 0 0 22px rgba(192,132,252,.7); }
+.dx-badge.dx-allstar{ background:linear-gradient(180deg,#7fb6ff,#2f6dcf); color:#06122b; }
+.dx-badge.dx-slugger{ background:linear-gradient(180deg,#e8eef5,#9fb2c6); color:#1a232e; }
+.dx-badge.dx-goldglove{ background:linear-gradient(90deg,#ff8a5c,#ffd24a,#7fe0a8,#9bd8ff,#c9b6ff); color:#1a1206; }
+.dx-badge.dx-hof{ background:linear-gradient(180deg,#e8a05a,#a5632f); color:#1f1208; }
+.dx-badge.dx-legendary{ background:linear-gradient(90deg,#ff6b6b,#ffd24a,#5ad17a,#60a5fa,#c084fc); color:#0a0512; }
+
+/* action leveling (Spring Training) */
+.act-lv{ font-size:.62rem; font-weight:900; color:var(--gold); background:rgba(255,203,71,.14); border:1px solid var(--gold-deep); border-radius:6px; padding:0 5px; margin-left:5px; white-space:nowrap; }
+.ap-lv{ font-size:.58rem; font-weight:900; color:#1a1206; background:linear-gradient(180deg,#ffd24a,#e8a92a); border-radius:5px; padding:0 4px; vertical-align:middle; }
 .sc-name,.sm-name{font-weight:800; margin-bottom:4px}
 .sc-text,.sm-text{color:var(--ink-dim); font-size:.72rem; line-height:1.3}
 .shop-cons .sm-name,.shop-analytics .sm-name{color:var(--great)}

@@ -188,6 +188,7 @@
       game.rally += 0.5;
       ev.triggers.push("coach:small_ball");
     }
+    if (run.actionLevels && run.actionLevels.steal > 1) { game.rally += (run.actionLevels.steal - 1) * (CONFIG.actionLevelRally || 0.3); ev.triggers.push("action:steal"); }
     if (SFX) SFX.steal();
   }
 
@@ -203,6 +204,7 @@
       b[fromBase + 1] = runner; b[fromBase] = null; runner.stoleThisInning = true;
       res.caught = false; res.to = fromBase + 1;
       if (hasCoach(run, "smallBall")) { game.rally += 0.5; res.rallyBonus = 0.5; res.triggers.push("coach:small_ball"); }
+      if (run.actionLevels && run.actionLevels.steal > 1) { const sl = (run.actionLevels.steal - 1) * (CONFIG.actionLevelRally || 0.3); game.rally += sl; res.rallyBonus += sl; res.triggers.push("action:steal"); }
     } else {
       b[fromBase] = null;
       game.outsRemaining -= 1; game.outsThisInning += 1;
@@ -363,6 +365,8 @@
       }
       // Ace Killer trait: +1 bag vs boss pitchers
       if (batter.trait === "acekiller" && pitcher.isBoss) bag += 1;
+      // deluxe edition: extra Bag value (All-Star / Hall of Fame / Legendary)
+      if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].bag) { bag += C.editionFx[batter.deluxe].bag; ev.triggers.push("deluxe:" + batter.deluxe); }
     }
 
     /* ---------- event rally bonus (applies to scoring THIS event only) ---------- */
@@ -378,10 +382,14 @@
       // signature traits
       if (batter.trait === "clutch" && (outsThisInning === 2 || rispBefore)) { eventRallyBonus += 1.0; ev.triggers.push("trait:clutch"); }
       if (batter.trait === "acekiller" && pitcher.isBoss) { eventRallyBonus += 1.0; ev.triggers.push("trait:acekiller"); }
+      // deluxe edition: extra Rally (Silver Slugger / Hall of Fame / Legendary)
+      if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].rally) eventRallyBonus += C.editionFx[batter.deluxe].rally;
     }
 
     /* ---------- score the event ---------- */
-    const rallyUsed = game.rally + eventRallyBonus;
+    let rallyUsed = game.rally + eventRallyBonus;
+    // Gold Glove edition: this scoring play is worth a Rally multiple
+    if (isSafe && batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].mult) rallyUsed *= C.editionFx[batter.deluxe].mult;
     let scoreGained = 0;
     if (bag > 0 && isSafe) {
       scoreGained = Math.round(bag * rallyUsed);
@@ -403,8 +411,10 @@
       if (run.analytics && run.analytics.rally) bonus += run.analytics.rally * 0.1;
       if (run.analytics && run.analytics.patience && (finalOutcome === "BB" || finalOutcome === "HBP")) bonus += run.analytics.patience * 0.25;
       if (game.sparkBonus) bonus += game.sparkBonus; // Sparkplug trait active this inning
-      // Coaching Clinic seed: each mentored coach adds a flat Rally aura to every scoring play
+      // Coaching Clinic seed + deluxe coaches: each coach aura adds a flat Rally per scoring play
       for (let _ci = 0; _ci < run.dugout.length; _ci++) { const _co = run.dugout[_ci]; if (_co && _co.aura) { bonus += _co.aura; ev.triggers.push("charm:mentor"); } }
+      // action leveling (Spring Training): the chosen approach scores hotter per level
+      if (run.actionLevels && run.actionLevels[approach] > 1) { bonus += (run.actionLevels[approach] - 1) * (C.actionLevelRally || 0.3); ev.triggers.push("action:" + approach); }
 
       let total = inc + bonus;
       if (pitcher.rule === "workhorse") { total *= 0.5; ev.triggers.push("boss:workhorse"); }

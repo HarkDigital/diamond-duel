@@ -77,16 +77,22 @@
       uid: uid("card"), id: tpl.id, name: tpl.name, nick: tpl.nick || null,
       bats: tpl.bats, contact: tpl.contact, power: tpl.power, eye: tpl.eye, speed: tpl.speed,
       tags: tpl.tags.slice(), edition: tpl.edition || null, rarity: tpl.rarity, cost: tpl.cost,
-      trait: tpl.trait || null, _streak: 0,
+      trait: tpl.trait || null, deluxe: tpl.deluxe || null, _streak: 0,
     };
   }
   function cloneCoach(tpl) {
     return {
       uid: uid("coach"), id: tpl.id, name: tpl.name, fx: tpl.fx, trigger: tpl.trigger,
       icon: tpl.icon, text: tpl.text, rarity: tpl.rarity, cost: tpl.cost,
+      deluxe: tpl.deluxe || null, aura: tpl.aura || 0,
       state: tpl.state ? JSON.parse(JSON.stringify(tpl.state)) : undefined,
     };
   }
+  // deluxe-edition helpers
+  const DELUXE_COACH_AURA = { allstar: 0.1, slugger: 0.15, goldglove: 0.2, hof: 0.25, legendary: 0.2 };
+  function dugoutUsed(run) { return run.dugout.filter((c) => c.deluxe !== "legendary").length; }   // Legendary coaches take no slot
+  function applyDeluxeToCoach(coach, ed) { coach.deluxe = ed; coach.aura = (coach.aura || 0) + (DELUXE_COACH_AURA[ed] || 0); }
+  function rollDeluxe(rng) { return rng.chance(CONFIG.editionSpawnChance) ? rng.weighted(EDITION_WEIGHTS) : null; }
 
   /* ---------------- run setup ---------------- */
   // a fuller roster: the franchise's signature 12, padded out to the full roster size
@@ -124,6 +130,7 @@
       rerollDiscount: 0,
       interestCap: CONFIG.economy.interestCap,
       shopBuys: 0,
+      actionLevels: { swing: 1, power: 1, contact: 1, bunt: 1, steal: 1 },  // Spring Training
       stat: { gamesWon: 0, homers: 0, bestInning: 0, bestScore: 0 },
     };
     if (fr.signatureCoach) { run.dugout.push(cloneCoach(getCoach(fr.signatureCoach))); discover(fr.signatureCoach); }
@@ -307,11 +314,12 @@
     const tr = getTrait(card.trait);
     const traitTag = tr ? `<span class="trait-chip" data-tip="<b>${tr.name}</b><br>${tr.desc}">${icon(tr.icon)}</span>` : "";
     const streak = (card._streak || 0) >= 2 ? `<span class="streak-chip hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</span>` : (card._streak || 0) <= -2 ? `<span class="streak-chip cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</span>` : "";
-    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${icon(a.icon)}</span><span class="ap-name">${a.name}</span><span class="ap-desc">${a.desc}</span></button>`;
+    const lvBadge = (id) => { const lv = (STATE.run.actionLevels && STATE.run.actionLevels[id]) || 1; return lv > 1 ? ` <span class="ap-lv" title="Spring Training level ${lv}">Lv${lv}</span>` : ""; };
+    const btn = (a) => `<button class="approach-btn ap-${a.id}" data-approach="${a.id}"><span class="ap-icon">${icon(a.icon)}</span><span class="ap-name">${a.name}${lvBadge(a.id)}</span><span class="ap-desc">${a.desc}</span></button>`;
     const runnersOn = g.bases.some(Boolean);
-    const buntBtn = runnersOn ? `<button class="tactic-btn ap-bunt" data-approach="bunt" title="Sacrifice - trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt</button>` : "";
+    const buntBtn = runnersOn ? `<button class="tactic-btn ap-bunt" data-approach="bunt" title="Sacrifice - trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt${lvBadge("bunt")}</button>` : "";
     let sends = "";
-    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} - caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b></button>`; });
+    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} - caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b>${lvBadge("steal")}</button>`; });
     // Cancel lives with the tactics (under Bunt / Send) instead of a corner X.
     const cancelBtn = `<button class="tactic-btn ab-cancel-btn" data-act="cancel-atbat" title="Put this batter back and pick someone else">${icon("close")} Cancel</button>`;
     const tactics = `<div class="tactics-row">${buntBtn}${sends}${cancelBtn}</div>`;
@@ -934,6 +942,7 @@
   function cardHTML(c, idx, opts) {
     opts = opts || {};
     const ed = c.edition ? `<div class="edition ed-${c.edition}">${editionLabel(c.edition)}</div>` : "";
+    const dx = c.deluxe ? `<div class="dx-badge dx-${c.deluxe}">${(getEdition(c.deluxe) || {}).name || ""}</div>` : "";
     const pos = (c.tags.find((t) => /^(C|1B|2B|SS|3B|LF|CF|RF|OF|DH)$/.test(t))) || "";
     const roleTags = c.tags.filter((t) => ["slugger", "contact", "speedster", "table-setter", "utility", "veteran", "rookie", "legend"].indexOf(t) >= 0).slice(0, 3);
     const tagHTML = roleTags.map((t) => `<span class="ctag ct-${t}">${t}</span>`).join("");
@@ -944,12 +953,12 @@
     const streakBadge = st >= 2 ? `<div class="card-streak hot" data-tip="<b>Hot streak</b><br>Boosted hitting stats while hot.">${icon("flame")}</div>` : st <= -2 ? `<div class="card-streak cold" data-tip="<b>Cold streak</b><br>Reduced hitting stats while cold.">${icon("snowflake")}</div>` : "";
     const infoBtn = `<button class="card-info" data-cardinfo aria-label="Player info" data-tip="${cardTip(c)}">${icon("help")}</button>`;
     return `
-      <div class="card rar-${c.rarity} ${c.edition ? "has-ed ed-bg-" + c.edition : ""}${st >= 2 ? " is-hot" : st <= -2 ? " is-cold" : ""}" ${idxAttr} data-uid="${c.uid}">
+      <div class="card rar-${c.rarity} ${c.edition ? "has-ed ed-bg-" + c.edition : ""}${c.deluxe ? " has-dx dx-" + c.deluxe : ""}${st >= 2 ? " is-hot" : st <= -2 ? " is-cold" : ""}" ${idxAttr} data-uid="${c.uid}">
         <div class="card-top">
           <div class="bats bats-${c.bats}">${c.bats}</div>
           <div class="card-name">${shortName(c.name)}</div>
         </div>
-        ${ed}${streakBadge}
+        ${ed}${dx}${streakBadge}
         <div class="card-stats">
           ${statBar("C", c.contact, "b-contact")}
           ${statBar("P", c.power, "b-power")}
@@ -999,7 +1008,8 @@
   function coachIconHTML(c) {
     const glyph = c.icon ? icon(c.icon) : icon("star");
     const scale = (c.state && c.state.bonus) ? `<span class="coach-badge">+${c.state.bonus.toFixed(1)}</span>` : "";
-    return `<div class="coach-icon rar-${c.rarity}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}"><span class="ci-glyph">${glyph}</span>${scale}</div>`;
+    const dxTip = c.deluxe ? `<br><span class='tip-use'>${(getEdition(c.deluxe) || {}).name}${c.deluxe === "legendary" ? " (no slot)" : " coach: +" + (DELUXE_COACH_AURA[c.deluxe] || 0) + " Rally aura"}</span>` : "";
+    return `<div class="coach-icon rar-${c.rarity} ${c.deluxe ? "has-dx dx-" + c.deluxe : ""}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}${dxTip}"><span class="ci-glyph">${glyph}</span>${scale}</div>`;
   }
   function coachChipHTML(c, opts) {
     opts = opts || {};
@@ -1128,7 +1138,7 @@
       toast(`${c.name} applied to ${shortName(card.name)}.`);
     } else if (c.target === "coach") {
       if (c.op === "copycoach") {
-        if (run.dugout.length >= run.dugoutSlots) { toast("Dugout is full - sell a coach first."); ok = false; }
+        if (dugoutUsed(run) >= run.dugoutSlots) { toast("Dugout is full - sell a coach first."); ok = false; }
         else { const coach = run.dugout[targetIndex]; if (coach && getCoach(coach.id)) { run.dugout.push(cloneCoach(getCoach(coach.id))); toast(`Copied ${coach.name}.`); } else ok = false; }
       } else if (c.op === "aura") {
         const coach = run.dugout[targetIndex];
@@ -1670,10 +1680,11 @@
     `<section><h3>Innings, frames &amp; bosses</h3><p>Each of the 8 innings has three frames: <b>Top</b>, <b>Middle</b>, and <b>Boss</b>, with the target climbing each step. The <b>Boss</b> frame is a special pitcher with a nasty rule, telegraphed on the linescore so you can prepare. You shop between every frame. Win inning 8's Boss for the title, then <b>Extra Innings</b> scale up forever.</p></section>`,
     `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
     `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, and <b>Front Office</b> voucher: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
-    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, and a <b>Coaching Pack</b> offers coaches. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
+    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, a <b>Coaching Pack</b> offers coaches, and a <b>Spring Training</b> pack levels up your at-bat actions. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
+    `<section><h3>Editions &amp; Spring Training</h3><p>Cards and coaches in packs can roll a shiny <b>edition</b>: <b>All-Star</b> (+2 Bag), <b>Silver Slugger</b> (+1.0 Rally), <b>Gold Glove</b> (that play scores at x1.5 Rally), <b>Hall of Fame</b> (+2 Bag and +0.5 Rally), and the rare <b>Legendary</b> (the biggest boost, and on a coach it takes no dugout slot). An edition fires whenever that card scores. Separately, <b>Spring Training</b> packs <b>level up an action</b> (Swing Away, Power Swing, Work the Count, Bunt, Steal), so every safe play with that action builds your Rally faster. Levels show right on the swing buttons.</p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
-  const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13]];
+  const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14]];
   function showHowTo(page) {
     if (SFX && SFX.click) SFX.click();
     const np = HOWTO_PAGES.length;
@@ -1796,7 +1807,7 @@
       const p = PACKS.find((x) => x.kind === k && x.size === size) || PACKS.find((x) => x.kind === k && !x.size);
       return { kind: "pack", item: p, cost: priceOf(p.cost) };
     };
-    sh.packs = ["player", "scouting", "charm", "coach"].map(packFor);
+    sh.packs = ["player", "scouting", "charm", "coach", "action"].map(packFor);
 
     // direct card / consumable / charm slots are retired in favor of packs
     sh.cards = []; sh.consumables = []; sh.charms = [];
@@ -1809,8 +1820,9 @@
     return Math.max(1, eco.rerollBase + eco.rerollStep * STATE.shop.reroll - (STATE.run.rerollDiscount || 0));
   }
   // shared pack styling helpers (used by the shop and the opening overlay)
-  function packIcon(kind) { return ({ player: "bat", charm: "sparkle", analytics: "barChart", scouting: "eye", coach: "medal" })[kind] || "layers"; }
-  function packLabel(kind) { return ({ player: "PROSPECT", charm: "SALAMI", analytics: "SCOUTING", scouting: "SCOUTING", coach: "COACHING" })[kind] || "PACK"; }
+  function packIcon(kind) { return ({ player: "bat", charm: "sparkle", analytics: "barChart", scouting: "eye", coach: "medal", action: "rocket" })[kind] || "layers"; }
+  function packLabel(kind) { return ({ player: "PROSPECT", charm: "SALAMI", analytics: "SCOUTING", scouting: "SCOUTING", coach: "COACHING", action: "SPRING" })[kind] || "PACK"; }
+  function actionIcon(id) { return ({ swing: "bat", power: "muscle", contact: "eye", bunt: "chevronsDown", steal: "arrowUpRight" })[id] || "rocket"; }
 
   function renderShop() {
     const run = STATE.run, sh = STATE.shop;
@@ -1855,7 +1867,7 @@
     };
     const packs = sh.packs.map((s, i) => packHTML(s, i)).join("");
 
-    const dugFull = run.dugout.length >= run.dugoutSlots;
+    const dugFull = dugoutUsed(run) >= run.dugoutSlots;
 
     return `
     <div class="screen shop-screen">
@@ -1865,11 +1877,11 @@
           <div class="payroll-big">$<span id="shop-payroll">${run.payroll}</span></div>
           <button class="btn btn-reroll" data-act="reroll">Reroll ($${rerollCost()})</button>
           <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
-          <button class="btn btn-secondary" data-act="open-dugout">Dugout (${run.dugout.length}/${run.dugoutSlots})</button>
+          <button class="btn btn-secondary" data-act="open-dugout">Dugout (${dugoutUsed(run)}/${run.dugoutSlots})</button>
           <button class="btn btn-big btn-gold" data-act="leave-shop">Proceed ${icon("chevronR")}</button>
         </div>
       </div>
-      ${dugFull ? `<div class="shop-warn">Dugout full (${run.dugout.length}/${run.dugoutSlots}). Sell a coach in the Dugout view to make room.</div>` : ""}
+      ${dugFull ? `<div class="shop-warn">Dugout full (${dugoutUsed(run)}/${run.dugoutSlots}). Sell a coach in the Dugout view to make room.</div>` : ""}
       <div class="shop-grid">
         <div class="shop-rowgrp shop-rowgrp-top">
           <div class="shop-section sec-coaches"><h3>Coaches</h3><div class="shop-row">${coaches}</div></div>
@@ -1889,7 +1901,7 @@
     </div>`;
   }
   function emptyRow() { return `<div class="shop-empty">- sold out -</div>`; }
-  function cloneCardPreview(tpl) { const c = cloneCard(tpl); return c; }
+  function cloneCardPreview(tpl, deluxe) { const c = cloneCard(tpl); if (deluxe) c.deluxe = deluxe; return c; }
 
   /* ---------- buying ---------- */
   function buy(group, i) {
@@ -1908,7 +1920,7 @@
     if (run.payroll < slot.cost) { SFX.error(); shake(`.shop-item[data-group="${group}"][data-i="${i}"]`); return; }
 
     if (group === "coach") {
-      if (run.dugout.length >= run.dugoutSlots) { SFX.error(); toast("Dugout is full - sell a coach first."); return; }
+      if (dugoutUsed(run) >= run.dugoutSlots) { SFX.error(); toast("Dugout is full - sell a coach first."); return; }
       run.dugout.push(cloneCoach(slot.item));
       discover(slot.item.id);
       finishBuy(slot, key); render();
@@ -2037,17 +2049,20 @@
       if (round >= 1 || pack.size) rar.push("allstar");   // jumbo/mega packs can roll stronger cards
       if (round >= 2) rar.push("legend");
       const pool = PLAYERS.filter((p) => rar.indexOf(p.rarity) >= 0);
-      options = rng.sample(pool, pack.count).map((p) => ({ kind: "card", item: p }));
+      options = rng.sample(pool, pack.count).map((p) => ({ kind: "card", item: p, deluxe: rollDeluxe(rng) }));
     } else if (pack.kind === "coach") {
       const ownedFx = new Set(run.dugout.map((c) => c.fx));
       const pool = COACHES.filter((c) => !ownedFx.has(c.fx));
-      options = rng.sample(pool, pack.count).map((c) => ({ kind: "coach", item: c }));
+      options = rng.sample(pool, pack.count).map((c) => ({ kind: "coach", item: c, deluxe: rollDeluxe(rng) }));
     } else if (pack.kind === "scouting" || pack.kind === "analytics") {
       // a Scouting pack mixes analytics and scouting reports
       const pool = ANALYTICS.concat(SCOUTING);
       options = rng.sample(pool, pack.count).map((c) => ({ kind: c.kind, item: c }));
     } else if (pack.kind === "charm") {
       options = rng.sample(CHARMS, pack.count).map((c) => ({ kind: "charm", item: c }));
+    } else if (pack.kind === "action") {
+      // Spring Training: each option levels up an at-bat action
+      options = rng.sample(ACTIONS, pack.count).map((a) => ({ kind: "action", item: a }));
     }
     STATE._pack = { pack, options, picksLeft: pack.choose, onDone, picked: [] };
     renderPackOverlay();
@@ -2055,13 +2070,19 @@
   function renderPackOverlay() {
     const ctx = STATE._pack;
     if (!ctx) return;
+    const run = STATE.run;
     const firstOpen = !ctx.opened;            // play the tear-open + deal animation only once
     ctx.opened = true;
     const opts = ctx.options.map((o, i) => {
       const picked = ctx.picked.indexOf(i) >= 0;
       let body;
-      if (o.kind === "card") body = cardHTML(cloneCardPreview(o.item), null);
-      else body = `<div class="shop-coach">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div></div>`;
+      if (o.kind === "card") body = cardHTML(cloneCardPreview(o.item, o.deluxe), null);
+      else if (o.kind === "action") {
+        const lvl = (run.actionLevels && run.actionLevels[o.item.id]) || 1;
+        body = `<div class="shop-coach action-opt"><span class="sc-ico">${icon(actionIcon(o.item.id))}</span><div class="sc-name">${o.item.name} <span class="act-lv">Lv ${lvl} -&gt; ${lvl + 1}</span></div><div class="sc-text">${o.item.text}</div></div>`;
+      } else {
+        body = `<div class="shop-coach ${o.deluxe ? "has-dx dx-" + o.deluxe : ""}">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div>${o.deluxe ? `<div class="dx-badge dx-${o.deluxe}">${getEdition(o.deluxe).name}</div>` : ""}</div>`;
+      }
       return `<div class="pack-opt ${picked ? "picked" : ""}" data-packpick="${i}" style="--deal:${i}">${body}${picked ? '<div class="pick-check">' + icon("check") + '</div>' : ""}</div>`;
     }).join("");
     const left = ctx.picksLeft;
@@ -2082,11 +2103,14 @@
     if (ctx.picked.indexOf(i) >= 0) return;
     const o = ctx.options[i];
     const run = STATE.run;
-    if (o.kind === "card") run.deck.push(cloneCard(o.item));
+    if (o.kind === "card") { const c = cloneCard(o.item); if (o.deluxe) c.deluxe = o.deluxe; run.deck.push(c); }
     else if (o.kind === "coach") {
-      if (run.dugout.length >= run.dugoutSlots) { toast("Dugout full - can't take this coach."); return; }
-      run.dugout.push(cloneCoach(o.item));
+      if (dugoutUsed(run) >= run.dugoutSlots) { toast("Dugout full - can't take this coach."); return; }
+      const c = cloneCoach(o.item); if (o.deluxe) applyDeluxeToCoach(c, o.deluxe);
+      run.dugout.push(c);
       discover(o.item.id);
+    } else if (o.kind === "action") {
+      run.actionLevels[o.item.id] = ((run.actionLevels[o.item.id]) || 1) + 1;
     } else if (o.kind === "scouting") {
       // scouting reports apply to a chosen card after the pack closes
       STATE._pendingScout = STATE._pendingScout || [];
@@ -2161,7 +2185,7 @@
     }).join("") || `<div class="shop-empty">No coaches yet.</div>`;
     overlay(`
       <div class="ov-card dugout-view">
-        <h2>Dugout (${run.dugout.length}/${run.dugoutSlots})</h2>
+        <h2>Dugout (${dugoutUsed(run)}/${run.dugoutSlots})</h2>
         <div class="ov-sub">Tap a coach to see what it does · sell any for half its cost.</div>
         <div class="dug-list">${cells}</div>
         <button class="btn btn-gold" data-act="close-ov">Close</button>
@@ -2640,7 +2664,7 @@
       else {
         who = coach.name;
         if (c.op === "copycoach") {
-          if (run.dugout.length >= run.dugoutSlots) { toast("Dugout is full. Sell a coach first."); ok = false; }
+          if (dugoutUsed(run) >= run.dugoutSlots) { toast("Dugout is full. Sell a coach first."); ok = false; }
           else { const base = getCoach(coach.id); if (base) run.dugout.push(cloneCoach(base)); else ok = false; }
         } else if (c.op === "aura") {
           coach.aura = +(((coach.aura || 0) + c.amt).toFixed(2));
