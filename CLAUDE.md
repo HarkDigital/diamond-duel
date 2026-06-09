@@ -18,8 +18,8 @@ GitHub Pages.
   URL and compare `shasum` of changed files to local.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=11`,
-`js/app.js?v=11`. **Bump every `?v=N` in `index.html` on each deploy** so returning
+`index.html` loads assets with a version query, e.g. `css/styles.css?v=12`,
+`js/app.js?v=12`. **Bump every `?v=N` in `index.html` on each deploy** so returning
 players' browsers fetch fresh CSS/JS instead of stale cached copies. (A stale CSS cache
 is what made the field-diagram fix appear "not to work" once.)
 
@@ -42,7 +42,7 @@ is what made the field-diagram fix appear "not to work" once.)
 | `js/rng.js` | seeded RNG, resumable via `state()` |
 | `js/audio.js` | WebAudio SFX (`SFX.*`) |
 | `js/icons.js` | inline-SVG icon set; `icon(name[, extraClass])` |
-| `js/data.js` | all content + tuning: `CONFIG`, `FRANCHISES`, cards, `COACHES`, `CHARMS` (Sunflower Seeds), `UPGRADES` (Front Office), `ACHIEVEMENTS`, `TRAITS`, `ROUNDS` |
+| `js/data.js` | all content + tuning: `CONFIG`, `FRANCHISES`, cards, `COACHES`, `CHARMS` (Salami Cards), `UPGRADES` (Front Office), `ACHIEVEMENTS`, `TRAITS`, `ROUNDS` |
 | `js/engine.js` | pure rules: `Engine.resolveAtBat`, steals, rally math, coach effects |
 | `js/app.js` | everything else: state, rendering, screens, shop, drag, save/load, overlays |
 | `css/styles.css` | all styles; responsive via a scale-to-fit stage + media queries |
@@ -51,7 +51,7 @@ is what made the field-diagram fix appear "not to work" once.)
 
 `#stage` is a fixed design surface scaled to fit the viewport via `transform: scale()`
 (`stageScale()` reads the matrix). The game screen is a CSS grid (`game-main`) with
-`col-field` (diamond + outs/inning), `col-summary` (play log), `col-powerups` (Seeds),
+`col-field` (diamond + outs/inning), `col-summary` (play log), `col-powerups` (Salami),
 `col-dugout` (coaches), and a full-width `atbat-bar`.
 
 The **field diamond** must stay a perfect square or the percentage-positioned bases and
@@ -84,7 +84,7 @@ via a CSS `left/top` transition.
 - **Coaches** (`COACHES`, the "build"/Jokers): passive/situational/scaling/economy effects
   applied in `engine.js`. A coach may carry a runtime `aura` (flat Rally per safe play) added
   by the Coaching Clinic seed.
-- **Sunflower Seeds** (`CHARMS`, one-shot consumables): `target` is `player`, `coach`, or
+- **Salami Cards** (`CHARMS`, one-shot consumables): `target` is `player`, `coach`, or
   `immediate`.
   - player/coach seeds are **dragged** onto a hand card or dugout coach
     (`onCharmPointerDown/Move/Up` + `applyCharmToTarget`). Tapping is a fallback that opens a
@@ -107,11 +107,18 @@ via a CSS `left/top` transition.
 
 - Field-box layout, inline swing bar (no popup), drag-to-bat, abandon confirmation.
 - Charms/powerups system, ?-only card tooltips.
-- **Batch 8:** renamed powerups to **Sunflower Seeds**; 49 achievements + Profile;
+- **Batch 8:** named the one-shot powerups; 49 achievements + Profile;
   animated splash; mid-inning save/resume; 8 franchises (4×2); deck/roster 30 with paginated
   deck view; dugout 2×4; card footer (trait/pos/? lower-right); equal-height shop coaches.
 - Field diagram made square (cqmin); at-bat header simplified (no platoon chip, no "how do
   you swing?"); corner X replaced by a labeled **Cancel** in the tactics.
-- **This batch:** hide seed until run ends; spruced post-mortem; removed all em/en dashes;
-  **Collection** screen + discovery tracking + Undiscovered tags; **drag** Seeds onto
-  players/coaches; coach-affecting seed (Coaching Clinic aura); asset cache-busting (`?v=`).
+- Hide seed until run ends; spruced post-mortem; removed all em/en dashes; **Collection**
+  screen + discovery tracking + Undiscovered tags; **drag** Salami cards onto players/coaches;
+  coach-affecting card (Coaching Clinic aura); asset cache-busting (`?v=`).
+- Scoreboard score column re-centered (`1.3fr 1.6fr 1.3fr`).
+- **This batch:** renamed the consumables to **Salami Cards** (panel `SALAMI`, internal
+  identifiers stay `CHARMS`/`charm`); **pack-based shop** - Coaches and Front Office are still
+  bought directly, but Players, Salami, Analytics/Scouting, and Boosters are now sealed
+  **packs** you drag into the open slot (or tap) to open, then choose one or skip. New pack
+  kinds (`pk_salami` charm, `pk_frontoffice` analytics) reuse `openPack`/`packPick`;
+  `onPackPointerDown/Move/Up` handle the drag.

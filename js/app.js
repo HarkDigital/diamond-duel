@@ -42,7 +42,7 @@
     if (!META.franchisesWon) META.franchisesWon = {};
     if (!META.discovered) META.discovered = {};
   })();
-  // Collection: an item (coach / Sunflower Seed / front-office voucher) is "discovered"
+  // Collection: an item (coach / Salami Card / front-office voucher) is "discovered"
   // the first time you actually acquire it. Until then it shows locked in the Collection
   // and carries an "Undiscovered" tag in the shop.
   function isDiscovered(id) { return !!(META.discovered && META.discovered[id]); }
@@ -708,7 +708,7 @@
         </div>
 
         <div class="col-powerups">
-          <div class="pw-title">SEEDS</div>
+          <div class="pw-title">SALAMI</div>
           <div class="powerups" id="powerups"></div>
         </div>
 
@@ -950,7 +950,7 @@
   function grantCharm(id, announce) {
     const run = STATE.run;
     if (!run) return false;
-    if (run.charms.length >= run.charmSlots) { if (announce) toast("Charm pouch is full - use one first."); return false; }
+    if (run.charms.length >= run.charmSlots) { if (announce) toast("Salami pouch is full. Use one first."); return false; }
     run.charms.push(id);
     discover(id);
     saveRun();
@@ -1070,7 +1070,7 @@
     if (ach) achievementBanner(ach);
     return true;
   }
-  // in-inning feat: unlock the achievement AND gift a Sunflower Seed (once per run)
+  // in-inning feat: unlock the achievement AND gift a Salami Card (once per run)
   function awardAchievement(id) {
     const run = STATE.run;
     unlockAchievement(id);
@@ -1085,7 +1085,7 @@
     const granted = grantCharm(charmId, false);
     if (SFX && SFX.coin) SFX.coin();
     const cn = getCharm(charmId);
-    if (granted && cn) toast(`Feat: ${ach.name} - earned the ${cn.name} seed!`);
+    if (granted && cn) toast(`Feat: ${ach.name} - earned the ${cn.name} Salami card!`);
     saveRun();
   }
   // career-stat milestone checks (call after bumping META.career.*)
@@ -1458,7 +1458,7 @@
     if (SFX && SFX.click) SFX.click();
     const groups = [
       { title: "Coaches", items: COACHES },
-      { title: "Sunflower Seeds", items: CHARMS },
+      { title: "Salami Cards", items: CHARMS },
       { title: "Front Office", items: UPGRADES },
     ];
     let allN = 0, gotN = 0;
@@ -1485,7 +1485,7 @@
     overlay(`
       <div class="ov-card collection-card">
         <h2><span class="h2-ico">${icon("book")}</span> Collection <span class="col-total">${gotN} / ${allN}</span></h2>
-        <div class="ov-sub">Coaches, Sunflower Seeds, and Front Office vouchers. Locked items reveal once you acquire them in a run.</div>
+        <div class="ov-sub">Coaches, Salami Cards, and Front Office vouchers. Locked items reveal once you acquire them in a run.</div>
         <div class="col-board">${board}</div>
         <div class="ov-actions">
           <button class="btn btn-secondary" data-act="open-profile">${icon("chevronL")} Back</button>
@@ -1582,9 +1582,9 @@
     `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> - the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
     `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot - bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
     `<section><h3>Innings &amp; bosses</h3><p>Nine innings across three phases - <b>Early</b>, <b>Middle</b>, <b>Late</b> - and the third of each is a <b>Boss</b> with a nasty rule, telegraphed on the linescore so you can prepare for it. Beat the boss to move on to the next phase.</p></section>`,
-    `<section><h3>Sunflower Seeds</h3><p>Seeds are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a seed onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few seeds fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Buy seeds in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
-    `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Sunflower Seed</b>, and <b>Front Office</b> voucher: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
-    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> on <b>Players</b> and <b>Coaches</b>, on <b>Sunflower Seeds</b> and <b>Analytics &amp; Scouting</b>, on <b>Booster Packs</b>, and on <b>Front Office</b> vouchers. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck - building is the point.</em></p></section>`,
+    `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Charcuterie Board</b> pack in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
+    `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, and <b>Front Office</b> voucher: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
+    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose one</b> of what is inside, or <b>skip</b> it. A <b>Prospect</b> or <b>Free Agent</b> pack offers players, a <b>Charcuterie Board</b> offers Salami cards, a <b>Front Office Memo</b> offers analytics and scouting, and a <b>booster</b> pack rounds things out. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
   const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]];
@@ -1687,34 +1687,30 @@
     const rng = makeRNG(run.seed + ":shop:" + run.gameIndex + ":" + sh.reroll);
     const round = Math.floor(run.gameIndex / GAMES_PER_ROUND);
 
-    // coaches not already owned
+    // coaches not already owned (direct buy)
     const ownedFx = new Set(run.dugout.map((c) => c.fx));
     const coachPool = COACHES.filter((c) => !ownedFx.has(c.fx));
     sh.coaches = rng.sample(coachPool, CONFIG.shop.coachSlots).map((c) => ({ kind: "coach", item: c, cost: priceOf(c.cost) }));
 
-    // player cards by rarity gate
-    let rar = ["common", "star"];
-    if (round >= 1) rar.push("allstar");
-    if (round >= 2) rar.push("legend");
-    const cardPool = PLAYERS.filter((p) => rar.indexOf(p.rarity) >= 0);
-    const nCards = CONFIG.shop.cardSlots + run.extraCardSlots;
-    sh.cards = rng.sample(cardPool, nCards).map((p) => ({ kind: "card", item: p, cost: priceOf(p.cost) }));
-
-    // consumables: analytics + scouting mix
-    const consPool = ANALYTICS.concat(SCOUTING);
-    sh.consumables = rng.sample(consPool, CONFIG.shop.consumableSlots).map((c) => ({ kind: c.kind, item: c, cost: priceOf(c.cost) }));
-
-    // charms (consumable powerups)
-    sh.charms = rng.sample(CHARMS, 2).map((c) => ({ kind: "charm", item: c, cost: priceOf(c.cost) }));
-
-    // one upgrade (vouchers) not owned
+    // one Front Office voucher not owned (direct buy)
     const upPool = UPGRADES.filter((u) => run.upgradesOwned.indexOf(u.fx) < 0);
     sh.upgrades = rng.sample(upPool, 1).map((u) => ({ kind: "upgrade", item: u, cost: priceOf(u.cost) }));
 
-    // packs
-    sh.packs = rng.sample(PACKS, CONFIG.shop.packSlots).map((p) => ({ kind: "pack", item: p, cost: priceOf(p.cost) }));
+    // everything else is a sealed pack you drag open: a player pack, a Salami pack,
+    // an analytics/scouting pack, and a wildcard booster.
+    const getPack = (id) => PACKS.find((p) => p.id === id);
+    const packIds = [
+      round >= 1 ? "pk_player_big" : "pk_player",
+      "pk_salami",
+      "pk_frontoffice",
+      rng.pick(["pk_coach", "pk_scout"]),
+    ];
+    sh.packs = packIds.map((id) => { const p = getPack(id); return { kind: "pack", item: p, cost: priceOf(p.cost) }; });
 
-    sh.bought = sh.bought || {}; // uid-ish keys of consumed slots
+    // direct card / consumable / charm slots are retired in favor of packs
+    sh.cards = []; sh.consumables = []; sh.charms = [];
+
+    sh.bought = sh.bought || {}; // keys of consumed slots
   }
   function priceOf(base) { return Math.max(1, base - (STATE.run.discount || 0)); }
   function rerollCost() {
@@ -1745,11 +1741,21 @@
     };
 
     const coaches = sh.coaches.map((s, i) => slotHTML(s, i, "coach")).join("") || emptyRow();
-    const cards = sh.cards.map((s, i) => slotHTML(s, i, "card")).join("");
-    const cons = sh.consumables.map((s, i) => slotHTML(s, i, "cons")).join("");
-    const charms = (sh.charms || []).map((s, i) => slotHTML(s, i, "charm")).join("") || emptyRow();
     const ups = sh.upgrades.map((s, i) => slotHTML(s, i, "up")).join("") || emptyRow();
-    const packs = sh.packs.map((s, i) => slotHTML(s, i, "pack")).join("");
+
+    const packIcon = (kind) => ({ player: "bat", charm: "sparkle", analytics: "barChart", scouting: "eye", coach: "medal" })[kind] || "layers";
+    const packHTML = (slot, i) => {
+      const it = slot.item;
+      const owned = sh.bought["pack" + i];
+      const aff = run.payroll >= slot.cost && !owned;
+      return `
+        <div class="shop-pack kind-${it.kind} ${owned ? "opened" : ""} ${aff ? "" : "cant"}" data-packslot="${i}" data-tip="<b>${it.name}</b><br>${it.text}">
+          <div class="pk-card"><span class="pk-ico">${icon(packIcon(it.kind))}</span><span class="pk-seal">${it.count}</span></div>
+          <div class="pk-name">${it.name}</div>
+          <div class="pk-cost">${owned ? "Opened" : "$" + slot.cost}</div>
+        </div>`;
+    };
+    const packs = sh.packs.map((s, i) => packHTML(s, i)).join("");
 
     const dugFull = run.dugout.length >= run.dugoutSlots;
 
@@ -1769,13 +1775,17 @@
       <div class="shop-grid">
         <div class="shop-rowgrp shop-rowgrp-top">
           <div class="shop-section sec-coaches"><h3>Coaches</h3><div class="shop-row">${coaches}</div></div>
-          <div class="shop-section sec-players"><h3>Players</h3><div class="shop-row">${cards}</div></div>
+          <div class="shop-section sec-frontoffice"><h3>Front Office</h3><div class="shop-row">${ups}</div></div>
         </div>
-        <div class="shop-rowgrp shop-rowgrp-bottom">
-          <div class="shop-section"><h3>Sunflower Seeds</h3><div class="shop-row">${charms}</div></div>
-          <div class="shop-section"><h3>Analytics &amp; Scouting</h3><div class="shop-row">${cons}</div></div>
-          <div class="shop-section"><h3>Booster Packs</h3><div class="shop-row">${packs}</div></div>
-          <div class="shop-section"><h3>Front Office</h3><div class="shop-row">${ups}</div></div>
+        <div class="shop-section sec-packs">
+          <h3>Packs <span class="sec-hint">drag a pack into the slot to open it, or just tap it</span></h3>
+          <div class="pack-area">
+            <div class="pack-open-slot" id="pack-slot">
+              <span class="pos-ico">${icon("layers")}</span>
+              <span class="pos-text"><b>Open a pack</b><span>drag one here</span></span>
+            </div>
+            <div class="pack-rack">${packs}</div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -1786,6 +1796,7 @@
   /* ---------- buying ---------- */
   function buy(group, i) {
     const run = STATE.run, sh = STATE.shop;
+    if (STATE._pack || STATE._pick) return;   // finish resolving the current pack/pick first
     const key = group + i;
     if (sh.bought[key]) return;
     let slot;
@@ -1804,7 +1815,7 @@
       discover(slot.item.id);
       finishBuy(slot, key); render();
     } else if (group === "charm") {
-      if (run.charms.length >= run.charmSlots) { SFX.error(); toast("Charm pouch is full - use one first."); return; }
+      if (run.charms.length >= run.charmSlots) { SFX.error(); toast("Salami pouch is full. Use one first."); return; }
       run.charms.push(slot.item.id);
       discover(slot.item.id);
       finishBuy(slot, key); toast(`${slot.item.name} added to your charms.`); render();
@@ -1935,6 +1946,11 @@
       options = rng.sample(pool, pack.count).map((c) => ({ kind: "coach", item: c }));
     } else if (pack.kind === "scouting") {
       options = rng.sample(SCOUTING, pack.count).map((c) => ({ kind: "scouting", item: c }));
+    } else if (pack.kind === "charm") {
+      options = rng.sample(CHARMS, pack.count).map((c) => ({ kind: "charm", item: c }));
+    } else if (pack.kind === "analytics") {
+      const pool = ANALYTICS.concat(SCOUTING);
+      options = rng.sample(pool, pack.count).map((c) => ({ kind: c.kind, item: c }));
     }
     STATE._pack = { pack, options, picksLeft: pack.choose, onDone, picked: [] };
     renderPackOverlay();
@@ -1947,14 +1963,16 @@
       let body;
       if (o.kind === "card") body = cardHTML(cloneCardPreview(o.item), null);
       else body = `<div class="shop-coach">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div></div>`;
-      return `<div class="pack-opt ${picked ? "picked" : ""}" data-packpick="${i}">${body}${picked ? '<div class="pick-check">' + icon("check") + '</div>' : ""}</div>`;
+      return `<div class="pack-opt ${picked ? "picked" : ""}" data-packpick="${i}" style="--deal:${i}">${body}${picked ? '<div class="pick-check">' + icon("check") + '</div>' : ""}</div>`;
     }).join("");
+    const left = ctx.picksLeft;
+    const btnLabel = left === 0 ? "Done " + icon("check") : (ctx.picked.length ? "Skip rest" : "Skip pack");
     overlay(`
       <div class="ov-card pack-ov">
-        <h2>${ctx.pack.name}</h2>
-        <div class="ov-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}. (${ctx.picksLeft} left)</div>
-        <div class="pack-grid">${opts}</div>
-        <button class="btn ${ctx.picksLeft === 0 ? "btn-gold" : "btn-ghost"}" data-act="pack-done">${ctx.picksLeft === 0 ? "Done" : "Skip rest"}</button>
+        <h2><span class="h2-ico">${icon("layers")}</span> ${ctx.pack.name}</h2>
+        <div class="ov-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}.${left > 0 ? " (" + left + " left)" : ""}</div>
+        <div class="pack-grid pack-deal">${opts}</div>
+        <button class="btn ${left === 0 ? "btn-gold" : "btn-ghost"}" data-act="pack-done">${btnLabel}</button>
       </div>`);
   }
   function packPick(i) {
@@ -1969,10 +1987,15 @@
       run.dugout.push(cloneCoach(o.item));
       discover(o.item.id);
     } else if (o.kind === "scouting") {
-      // immediate apply via picker after closing pack - simpler: add as if a bump on random? Instead apply directly with picker
-      // For simplicity in packs, scouting reports auto-apply to a chosen card after pack closes:
+      // scouting reports apply to a chosen card after the pack closes
       STATE._pendingScout = STATE._pendingScout || [];
       STATE._pendingScout.push(o.item);
+    } else if (o.kind === "charm") {
+      if (run.charms.length >= run.charmSlots) { toast("Salami pouch is full. Use one first."); return; }
+      run.charms.push(o.item.id);
+      discover(o.item.id);
+    } else if (o.kind === "analytics") {
+      run.analytics[o.item.key] = (run.analytics[o.item.key] || 0) + 1;
     }
     ctx.picked.push(i);
     ctx.picksLeft -= 1;
@@ -2128,12 +2151,17 @@
       const act = e.target.closest("[data-act]");
       const fr = e.target.closest("[data-franchise]");
       const buyEl = e.target.closest("[data-buy]");
+      const packTapEl = e.target.closest("[data-packslot]");
       const apEl = e.target.closest("[data-approach]");
       const sellEl = e.target.closest("[data-sell]");
       const sendEl = e.target.closest("[data-send]");
 
       if (fr) { startFromFranchise(fr.getAttribute("data-franchise")); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
+      if (packTapEl && STATE.screen === "shop") {
+        if (_suppressPackClick) { _suppressPackClick = false; return; }   // a drag already opened it
+        buy("pack", parseInt(packTapEl.getAttribute("data-packslot"), 10)); return;
+      }
       if (STATE.screen === "game" && sendEl && !STATE.busy) { sendRunner(parseInt(sendEl.getAttribute("data-send"), 10)); return; }
       if (STATE.screen === "game" && apEl && !STATE.busy) { commitAtBat(apEl.getAttribute("data-approach")); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
@@ -2400,7 +2428,7 @@
     if (SFX && SFX.click) SFX.click();
   }
 
-  /* ---------- charm drag-and-drop: drop a Sunflower Seed onto a player or coach ---------- */
+  /* ---------- charm drag-and-drop: drop a Salami Card onto a player or coach ---------- */
   let _cdrag = null, _suppressCharmClick = false;
   function charmZoneSelector(kind) { return kind === "coach" ? "#dugout .coach-icon[data-uid]" : "#hand .card[data-uid]"; }
   function markCharmZones(kind, on) { $$(charmZoneSelector(kind)).forEach((el) => el.classList.toggle("charm-zone", on)); }
@@ -2420,7 +2448,7 @@
     if (!badge || badge.classList.contains("empty")) return;
     const idx = parseInt(badge.getAttribute("data-charm"), 10);
     const c = getCharm(STATE.run.charms[idx]);
-    if (!c || c.target === "immediate") return;     // immediate seeds: a tap uses them (click handler)
+    if (!c || c.target === "immediate") return;     // immediate Salami cards: a tap uses them (click handler)
     _cdrag = { idx, charm: c, badge, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, target: null };
     try { badge.setPointerCapture(e.pointerId); } catch (err) {}
   }
@@ -2499,6 +2527,60 @@
     } else if (SFX && SFX.error) { SFX.error(); }
   }
 
+  /* ---------- shop: drag a sealed pack onto the open slot to open it ---------- */
+  let _pdrag = null, _suppressPackClick = false;
+  function packSlotHit(x, y) {
+    const slot = $("#pack-slot");
+    if (!slot) return false;
+    const r = slot.getBoundingClientRect();
+    return x >= r.left - 24 && x <= r.right + 24 && y >= r.top - 24 && y <= r.bottom + 24;
+  }
+  function onPackPointerDown(e) {
+    _suppressPackClick = false;
+    if (STATE.screen !== "shop") return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const el = e.target.closest(".shop-pack[data-packslot]");
+    if (!el || el.classList.contains("opened") || el.classList.contains("cant")) return;
+    _pdrag = { i: parseInt(el.getAttribute("data-packslot"), 10), el, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, over: false };
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+  function onPackPointerMove(e) {
+    if (!_pdrag) return;
+    const dx = e.clientX - _pdrag.x0, dy = e.clientY - _pdrag.y0;
+    if (!_pdrag.moved && Math.hypot(dx, dy) > 6) {
+      _pdrag.moved = true;
+      const card = _pdrag.el.querySelector(".pk-card");
+      const g = card ? card.cloneNode(true) : document.createElement("div");
+      g.classList.add("pack-ghost");
+      document.body.appendChild(g);
+      _pdrag.ghost = g;
+      _pdrag.el.classList.add("pack-dragging");
+      const slot = $("#pack-slot"); if (slot) slot.classList.add("slot-armed");
+    }
+    if (_pdrag.moved) {
+      _pdrag.ghost.style.left = e.clientX + "px";
+      _pdrag.ghost.style.top = e.clientY + "px";
+      _pdrag.over = packSlotHit(e.clientX, e.clientY);
+      const slot = $("#pack-slot"); if (slot) slot.classList.toggle("slot-hover", _pdrag.over);
+    }
+  }
+  function onPackPointerUp() {
+    if (!_pdrag) return;
+    const d = _pdrag; _pdrag = null;
+    if (d.ghost) d.ghost.remove();
+    d.el.classList.remove("pack-dragging");
+    const slot = $("#pack-slot");
+    if (slot) slot.classList.remove("slot-armed", "slot-hover");
+    if (d.moved) {
+      _suppressPackClick = true;                 // a drag must not also fire the tap handler
+      if (d.over) {
+        if (slot) { slot.classList.remove("slot-pop"); void slot.offsetWidth; slot.classList.add("slot-pop"); }
+        buy("pack", d.i);                        // pay + open (reuses the existing pack flow)
+      } else if (SFX && SFX.click) { SFX.click(); }
+    }
+    // a plain tap (no movement) falls through to the click handler -> buy("pack", i)
+  }
+
   function setupDrag() {
     document.addEventListener("pointerdown", onCardPointerDown);
     document.addEventListener("pointermove", onCardPointerMove);
@@ -2508,6 +2590,10 @@
     document.addEventListener("pointermove", onCharmPointerMove);
     document.addEventListener("pointerup", onCharmPointerUp);
     document.addEventListener("pointercancel", onCharmPointerUp);
+    document.addEventListener("pointerdown", onPackPointerDown);
+    document.addEventListener("pointermove", onPackPointerMove);
+    document.addEventListener("pointerup", onPackPointerUp);
+    document.addEventListener("pointercancel", onPackPointerUp);
   }
 
   function boot() {

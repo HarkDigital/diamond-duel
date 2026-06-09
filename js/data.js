@@ -120,7 +120,7 @@
 
     // Dugout
     dugoutSlots: 8,
-    // Sunflower Seeds (consumable powerups, Balatro-Arcana style)
+    // Salami Cards (consumable powerups, Balatro-Arcana style)
     charmSlots: 4,
     // Roster: each franchise's deck is padded to this many cards
     startingDeckSize: 30,
@@ -380,10 +380,10 @@
 
   /* -------------------------------------------------------- */
   /* ACHIEVEMENTS - 49 feats & milestones. `seed:true` ones    */
-  /* also gift a Sunflower Seed the moment you pull them off.   */
+  /* also gift a Salami Card the moment you pull them off.   */
   /* -------------------------------------------------------- */
   const ACHIEVEMENTS = [
-    // --- in-inning feats (also gift a Sunflower Seed) ---
+    // --- in-inning feats (also gift a Salami Card) ---
     { id: "grand_slam",     cat: "Power",    name: "Grand Slam",       text: "Hit a home run with the bases loaded.", seed: true },
     { id: "long_ball",      cat: "Power",    name: "Going Yard",       text: "Hit two home runs in one inning.", seed: true },
     { id: "three_hr",       cat: "Power",    name: "Murderers' Row",   text: "Hit three home runs in one inning.", seed: true },
@@ -437,9 +437,9 @@
     { id: "thin_deck",      cat: "Building",  name: "Lean & Mean",     text: "Trim your deck to 12 cards or fewer." },
     { id: "deep_pockets",   cat: "Building",  name: "Deep Pockets",    text: "Hold $40 at once." },
     // --- sunflower seeds ---
-    { id: "first_seed",     cat: "Seeds",     name: "Crack a Seed",    text: "Use your first Sunflower Seed." },
-    { id: "seeds_20",       cat: "Seeds",     name: "Seed Habit",      text: "Use 20 Sunflower Seeds." },
-    { id: "free_runner",    cat: "Seeds",     name: "Free Pass",       text: "Use an Intentional Walk seed." },
+    { id: "first_seed",     cat: "Salami",    name: "First Slice",     text: "Use your first Salami Card." },
+    { id: "seeds_20",       cat: "Salami",    name: "Deli Regular",    text: "Use 20 Salami Cards." },
+    { id: "free_runner",    cat: "Salami",    name: "Free Pass",       text: "Use an Intentional Walk Salami Card." },
     // --- franchises & meta ---
     { id: "all_franchises", cat: "Franchise", name: "Globetrotter",    text: "Play a run with every franchise." },
     { id: "win_variety",    cat: "Franchise", name: "Versatile",       text: "Win a run with five different franchises." },
@@ -468,6 +468,8 @@
     { id: "pk_player_big", name: "Free Agent Pack", kind: "player", choose: 1, count: 4, rarity: "star", cost: 6, text: "Choose 1 of 4 stronger player cards." },
     { id: "pk_coach", name: "Coaching Pack", kind: "coach", choose: 1, count: 3, rarity: "star", cost: 6, text: "Choose 1 of 3 coaches." },
     { id: "pk_scout", name: "Scouting Pack", kind: "scouting", choose: 2, count: 3, rarity: "common", cost: 5, text: "Choose 2 of 3 scouting reports." },
+    { id: "pk_salami", name: "Charcuterie Board", kind: "charm", choose: 1, count: 3, rarity: "star", cost: 5, text: "Choose 1 of 3 Salami cards." },
+    { id: "pk_frontoffice", name: "Front Office Memo", kind: "analytics", choose: 1, count: 3, rarity: "common", cost: 5, text: "Choose 1 of 3 analytics or scouting reports." },
   ];
 
   /* -------------------------------------------------------- */
