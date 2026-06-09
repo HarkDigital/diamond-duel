@@ -18,10 +18,12 @@ GitHub Pages.
   URL and compare `shasum` of changed files to local.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=16`,
-`js/app.js?v=16`. **Bump every `?v=N` in `index.html` on each deploy** so returning
-players' browsers fetch fresh CSS/JS instead of stale cached copies. (A stale CSS cache
-is what made the field-diagram fix appear "not to work" once.)
+`index.html` loads assets with a version query, e.g. `css/styles.css?v=22`,
+`js/app.js?v=22` (7 tags total; currently **v=22**). **Bump every `?v=N` in `index.html` on
+each deploy** so returning players' browsers fetch fresh CSS/JS instead of stale cached copies.
+(A stale CSS cache is what made the field-diagram fix appear "not to work" once. It also bites
+during preview iteration: a plain reload may serve the cached `?v=N`, so bump the version or
+cache-bust the `<link>` href to force-fetch edited CSS.)
 
 ## Hard conventions
 
@@ -42,8 +44,8 @@ is what made the field-diagram fix appear "not to work" once.)
 | `js/rng.js` | seeded RNG, resumable via `state()` |
 | `js/audio.js` | WebAudio SFX (`SFX.*`) |
 | `js/icons.js` | inline-SVG icon set; `icon(name[, extraClass])` |
-| `js/data.js` | all content + tuning: `CONFIG`, `FRANCHISES`, cards, `COACHES`, `CHARMS` (Salami Cards), `UPGRADES` (Front Office), `ACHIEVEMENTS`, `TRAITS`, `ROUNDS` |
-| `js/engine.js` | pure rules: `Engine.resolveAtBat`, steals, rally math, coach effects |
+| `js/data.js` | all content + tuning: `CONFIG` (incl. `scoreScale`, `shop.packWeights`), 15 `FRANCHISES` (lineups), cards, 100 `COACHES`, 12 `CHARMS` (Salami Cards), 32 `UPGRADES` (Front Office vouchers), 24 `TAGS` (skip tags), 49 `ACHIEVEMENTS`, `TRAITS`, `ROUNDS`, 5 `STAKES`, 5 `EDITIONS`, 15 `PACKS`, `ACTIONS` |
+| `js/engine.js` | pure rules: `Engine.resolveAtBat`, steals, rally math, edition hooks, and three generic coach dispatchers (Bag/Rally/Econ) that read each coach's `gen` descriptor |
 | `js/app.js` | everything else: state, rendering, screens, shop, drag, save/load, overlays |
 | `css/styles.css` | all styles; responsive via a scale-to-fit stage + media queries |
 
@@ -87,29 +89,73 @@ via a CSS `left/top` transition.
 - **Save/resume:** `SAVE_KEY` (run) + `GAME_KEY` (mid-inning snapshot incl. RNG `state()`).
   Refresh + Continue restores screen, score, bases, outs.
 - **Meta/profile:** `META` (localStorage `META_KEY`) holds `ach`, `career`, `discovered`,
-  franchises, sound. `defaultMeta()` + `migrateMeta()` back-fill new fields on old saves.
+  `franchisesPlayed`/`franchisesWon`, `maxStake`, `lineupWins`, `sound`, and `speed` (1..4,
+  game-speed setting, default 4 = fastest). `defaultMeta()` + `migrateMeta()` back-fill new
+  fields on old saves.
 - **Achievements:** 49 in `ACHIEVEMENTS`. `unlockAchievement` (once ever, banner) and
-  `awardAchievement` (feats that also gift a Seed, once per run).
-- **Coaches** (`COACHES`, the "build"/Jokers): passive/situational/scaling/economy effects
-  applied in `engine.js`. A coach may carry a runtime `aura` (flat Rally per safe play) added
-  by the Coaching Clinic seed.
-- **Salami Cards** (`CHARMS`, one-shot consumables): `target` is `player`, `coach`, or
+  `awardAchievement` (feats that also gift a Salami Card, once per run). **Seeded runs earn
+  nothing:** `runIsSeeded()` (set from a typed/replayed seed via `run.seeded`) gates
+  `unlockAchievement`, all `META.career`/`wins`/`runs`/`bestScore` accrual, and stake/lineup
+  progression.
+- **Coaches** (`COACHES`, the "build"/Jokers): **100 total.** The 21 originals use hand-coded
+  `fx`; the 79 newer ones are pure data carrying a `gen` descriptor read by three generic
+  dispatchers in `engine.js` (Bag / Rally / Econ). A coach may carry a runtime `aura` (flat
+  Rally per safe play, from the Coaching Clinic salami or a deluxe edition), and a `deluxe`
+  edition. Sell a coach for half cost anytime in the dugout view (`sellCoach`).
+- **Salami Cards** (`CHARMS`, 12 one-shot consumables): `target` is `player`, `coach`, or
   `immediate`.
-  - player/coach seeds are **dragged** onto a hand card or dugout coach
-    (`onCharmPointerDown/Move/Up` + `applyCharmToTarget`). Tapping is a fallback that opens a
-    picker (`useCharm` -> `openCharmPicker` -> `applyCharmTo`).
-  - `immediate` seeds (Intentional Walk, Momentum Shift, Second Wind) are **tapped**
-    (`applyImmediateCharm`).
-- **Collection** (`showCollection`, Balatro-style): every coach / seed / voucher, locked
-  (`lock` icon + "???") until `isDiscovered(id)`. `discover(id)` is called when an item is
-  acquired (shop buy, pack, granted seed, signature coach). Undiscovered shop items show an
-  "Undiscovered" tag (`.undisc-tag`).
-- **Drag:** card-to-bat and seed-to-target both use document-level pointer handlers in
-  `setupDrag()`. The card drag uses `#bat-zone`; the seed drag builds a `.charm-ghost` and
-  highlights `.charm-zone` / `.charm-hover` targets.
+  - player/coach cards are **drag-only**: drag onto a hand card or dugout coach mid-round
+    (`onCharmPointerDown/Move/Up` + `applyCharmToTarget`). Tapping just nudges + hints (no
+    picker; `openCharmPicker` is retired).
+  - `immediate` cards (Intentional Walk, Momentum Shift, Second Wind) are **tapped**
+    (a confirm overlay -> `applyImmediateCharm`).
+  - **Sell at all times:** every pouch badge has a corner `.cb-sell` button (`sellCharm`,
+    half cost back). When a pack pick can't fit a full pouch/dugout, `openMakeRoom()` lets you
+    sell a held item and take the card instead of being forced to skip.
+- **Collection** (`showCollection`, Balatro-style): four groups - Coaches, Salami Cards, Front
+  Office vouchers, and Skip Tags - locked (`lock` icon + "???") until `isDiscovered(id)`.
+  `discover(id)` fires when an item is acquired (shop buy, pack, granted salami, signature coach,
+  earned tag). Undiscovered shop items show an "Undiscovered" tag (`.undisc-tag`).
+- **Lineups & stakes:** 15 lineups (`FRANCHISES`, each a themed deck + a `mods` delta object
+  applied in `newRun`) x 5 difficulty `STAKES` (`stakeMods(stake)` -> cumulative target/pitcher/
+  price/hand deltas). Home screen is a carousel (`renderLineupCarousel`). Stakes gate behind
+  `META.maxStake` (win a WS to unlock the next).
+- **Front Office vouchers** (`UPGRADES`, 32 = 16 base + 16 upgrades): an upgrade has `requires:
+  <baseId>` and only appears once the base is owned. The shop offers **one voucher per inning**
+  (seeded by inning, stable across the 3 frames). 7 originals use `fx`; the rest are data-driven
+  via `mods` in `applyUpgrade`. Bought ids live in `run.upgradesOwned`.
+- **Editions** (`EDITIONS`, 5 deluxe: All-Star/Silver Slugger/Gold Glove/Hall of Fame/Legendary)
+  on a card/coach `deluxe` field; `CONFIG.editionFx` drives engine hooks, `applyDeluxeToCoach`
+  the coach aura, Legendary is free (`dugoutUsed`). Roll on pack options (`rollDeluxe`); the
+  `.dx-badge` carries a `data-tip` describing the effect.
+- **Action leveling** (Spring Training packs, kind "action"): `run.actionLevels`
+  {swing/power/contact/bunt/steal}; each level adds `CONFIG.actionLevelRally` in the engine.
+- **Skip Tags** (`TAGS`, 24): skipping a non-Boss frame forfeits its reward + shop and grants a
+  tag (`isSkippable`/`tagFor`/`skipFrame`). `when`: instant (resolve on skip), shop (resolve into
+  free items at the next shop via `consumeTagsIntoShop`/`applyTagFxToShop`), or boss (Investment
+  pays out in `onWin`). Held tags render in `tagTrayHTML`.
+- **Shop & packs:** `rollShop` offers direct-buy coaches + one voucher + `CONFIG.shop.packSlots`
+  (2) **sealed packs**, each a weighted pick from `CONFIG.shop.packWeights` (not every family every
+  shop). Pack art (`.pk-wrap`) is a foil bag with serrated/crimped tearable edges; dragging one
+  onto `#pack-slot` (or tapping) opens it with a tear animation (`.pack-burst` halves), then deals
+  the choices (`openPack`/`renderPackOverlay`/`packPick`). Reroll, sell, and make-room supported.
+- **Game speed:** `META.speed` (1..4, default 4 = fastest). `speedScale()` = `4/speed` scales
+  every `sleep()`/`pace()` timeout (base running `LEG_MS`, result display, juice removals) and a
+  `--gs` CSS var on `#stage` (`applySpeedVar()`) scales gameplay animation durations
+  (`calc(base * var(--gs,1))`). Interaction feedback (hover/press/drag) is excluded. Menu has a
+  1x/2x/3x/4x selector (`setSpeed`).
+- **Juice** (`js/app.js`, plain CSS/JS): `stampOutcome` (outcome word punch-in), tiered
+  `screenShake`, `ballFlight` (a ball arcs onto the field), rally **heat meter** (`--heat` +
+  `rally-warm/hot/blaze`), `flashCoachById` (coach trigger pop), `tickNumber` (score count-up),
+  `confettiBurst` (run win). All scale with `--gs`.
+- **Drag:** card-to-bat, salami-to-target, and pack-to-slot all use document-level pointer
+  handlers. Card drag uses `#bat-zone`; the salami drag builds a `.charm-ghost` and highlights
+  `.charm-zone`/`.charm-hover`; the pack drag (`onPackPointerDown/Move/Up`) builds a `.pack-ghost`
+  and highlights `#pack-slot`.
 - **Seeds (RNG) visibility:** the run seed is **hidden during a run** (map + Stats show
-  "hidden until the run ends") and revealed only on the run-end screens (victory + the
-  `showGameOver` post-mortem), where it is copyable/replayable via `seedChip`.
+  "hidden until the run ends", or "seeded run, no unlocks" when `run.seeded`) and revealed only on
+  the run-end screens (victory + the `showGameOver` post-mortem), copyable/replayable via
+  `seedChip`. A typed/replayed seed sets `run.seeded` -> the run earns no achievements/progression.
 - **Tooltips:** custom `TIP` controller; `?`-only hover on cards, tap-to-pin, touch suppression.
 
 ## Change history (most recent batches)
