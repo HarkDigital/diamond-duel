@@ -63,19 +63,21 @@ via a CSS `left/top` transition.
 
 ## Game model (important for "runs"/"innings" questions)
 
-- A **run** is **8 innings** (Balatro antes; `ROUNDS.length`), each with **3 frames**
-  (`GAMES_PER_ROUND`): **Top / Middle / Boss**. So **24 frames** main, then **Extra Innings**
-  (endless). `gameIndex` 0..23 main, 24+ extra. Helpers: `inningOf`/`frameOf`/`isBossInning`/
-  `isExtraInnings`/`roundName`/`gameLabel`. Beat inning 8's Boss (frame 24) -> `showVictory`
-  with a "Play Extra Innings" continue (`run.wonWS`); leaving keeps the run continuable.
+- A **run** is **9 innings** (a full baseball game; Balatro antes; `ROUNDS.length`), each with
+  **3 frames** (`GAMES_PER_ROUND`): **Top / Middle / Boss**. So **27 frames** main, then **Extra
+  Innings** (endless). `gameIndex` 0..26 main, 27+ extra. Helpers: `inningOf`/`frameOf`/
+  `isBossInning`/`isExtraInnings`/`roundName`/`gameLabel`. Beat inning 9's Boss (frame 27) ->
+  `showVictory` (confetti) with a "Play Extra Innings" continue (`run.wonWS`); leaving keeps it continuable.
 - Targets come from a **formula** `targetFor(gi)` = `round(base * inningGrowth^(inning-1) *
-  frameMult[frame])` (`CONFIG.target`), so it extends into Extra Innings. Pitcher stuff/command
-  scale per inning + per frame (`CONFIG.pitcher`). Bosses pre-rolled for 8 innings, extras via
-  `bossFor` on demand.
+  frameMult[frame] * scoreScale)` (`CONFIG.target`/`scoreScale`), rounded to a clean multiple of 5,
+  so it extends into Extra Innings. Pitcher stuff/command scale per inning + per frame
+  (`CONFIG.pitcher`). Bosses pre-rolled for 9 innings, extras via `bossFor` on demand.
 - Each **"game"** object (`STATE.game`) is **one frame vs one pitcher**, with **3 outs**
   (`CONFIG.outsPerGame`; the Closer boss gives 2; the Second Wind seed adds 1).
-- **`g.score` / target** ("0 / 10") is the roguelike currency = sum of **Bag value × Rally**.
-  Rally starts ×1.0 and climbs +0.5 per safe play; an out persists rally (resets at inning end).
+- **`g.score` / target** ("0 / 700") is the roguelike currency = sum of **Bag value × Rally**.
+  Bag (after every coach/edition bonus) and the target are both multiplied by `CONFIG.scoreScale`
+  (**100**) so on-screen numbers feel grand; balance is identical (score >= target unchanged).
+  Rally is the un-scaled multiplier: starts ×1.0, climbs +0.5 per safe play; an out persists rally (resets at inning end).
 - **`g.runsScored`** ("Runs this inning") = literal runners who crossed the plate this
   game/inning. It resets to 0 each new inning (new `STATE.game`). It is **not** the run total
   and **not** the same as Score.
@@ -181,3 +183,15 @@ via a CSS `left/top` transition.
   (added to the reward breakdown). The map shows the offered tag + a Skip button and a
   held-tags tray (`tagTrayHTML`); the shop badges granted items **Free**. Tags are the 4th
   **Collection** group and are discovered on earn. This completes the Balatro 1:1 master list.
+- **Phase 6 (structure + juice):** run extended to **9 innings** (`INNINGS_TO_WIN`), so 27 frames.
+  **100x score scale** (`CONFIG.scoreScale`): the engine multiplies the finished bag by it and
+  `targetFor` multiplies the target (rounded to a clean 5), so numbers are grand and balance is
+  unchanged (economy/rally not scaled; `big_swing` threshold scaled too). **Lineup carousel** cards
+  are a fixed 312px-tall, `flex:1 1 0` uniform card (`overflow:hidden`). **Pack reveal modal**
+  enlarged (`min(1040px,95vw)`, bigger cards, names wrap). **Pack tear-open**: the pack rips into
+  two halves (`.pkb-top`/`.pkb-bot`) with a jagged `.pkb-rip` + flash, then cards deal. **Edition
+  tooltips**: the `.dx-badge` carries a `data-tip` with the edition's effect. **Juice** (all CSS/JS,
+  no deps): `stampOutcome` (color-coded punch-in stamp, GRAND SLAM variant), tiered `screenShake`
+  (sm/big/huge), `ballFlight` (a ball arcs onto the field, path per outcome + HR flash), rally
+  **heat meter** (`--heat` colour + `rally-warm/hot/blaze` glow/flame tiers), stronger `coach-icon
+  .trigger` pop + ring, `tickNumber` count-up on the score, and `confettiBurst` on a run win.

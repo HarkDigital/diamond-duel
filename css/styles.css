@@ -93,20 +93,21 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .franchise-card:hover .fr-go{opacity:1}
 
 /* ===== lineup + difficulty carousel ===== */
-.lineup-carousel{display:flex; align-items:center; justify-content:center; gap:16px; margin:0 auto; max-width:580px}
+.lineup-carousel{display:flex; align-items:center; justify-content:center; gap:16px; margin:0 auto; width:560px; max-width:94vw}
 .lc-arrow{flex:0 0 auto; width:46px; height:46px; border-radius:50%; border:1px solid var(--line); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform .12s, border-color .15s, color .15s}
 .lc-arrow:hover{transform:scale(1.08); border-color:var(--gold); color:var(--gold)}
 .lc-arrow .ico{width:24px; height:24px}
-.lc-card{flex:1 1 auto; position:relative; text-align:left; background:linear-gradient(180deg,var(--panel),var(--panel-2)); border:1px solid var(--line); border-radius:16px; padding:18px 20px; min-height:190px; box-shadow:0 12px 30px rgba(0,0,0,.45); animation:lcPop .22s ease}
+.lc-card{flex:1 1 0; min-width:0; position:relative; text-align:left; background:linear-gradient(180deg,var(--panel),var(--panel-2)); border:1px solid var(--line); border-radius:16px; padding:18px 20px; height:312px; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 12px 30px rgba(0,0,0,.45); animation:lcPop .22s ease}
 @keyframes lcPop{from{opacity:.3; transform:scale(.97)} to{opacity:1; transform:none}}
 .lc-num{position:absolute; top:12px; right:14px; font-size:.72rem; color:var(--ink-faint); font-weight:700}
 .lc-best{position:absolute; top:10px; left:14px; font-size:.66rem; font-weight:800; color:var(--gold); background:rgba(255,203,71,.12); border:1px solid var(--gold-deep); border-radius:8px; padding:2px 7px}
 .lc-best .ico{width:.85em; height:.85em; vertical-align:-0.12em; margin-right:2px}
 .lc-card h3{font-size:1.4rem; font-weight:900; margin-top:14px}
-.lc-tag{color:var(--ink-dim); font-size:.88rem; margin:5px 0 12px}
+.lc-tag{color:var(--ink-dim); font-size:.88rem; margin:5px 0 12px; min-height:2.4em}
 .lc-stats{margin-bottom:12px}
-.lc-effect{color:var(--gold); font-weight:700; font-size:.9rem; line-height:1.3}
-.lc-effect .fr-star{color:var(--gold-2)}
+.lc-effect{color:var(--gold); font-weight:700; font-size:.9rem; line-height:1.3; margin-top:auto; min-height:2.6em; display:flex; align-items:center; gap:6px}
+.lc-effect .fr-star{color:var(--gold-2); flex:0 0 auto; display:inline-flex}
+.lc-effect .fr-star svg{width:1em; height:1em}
 .lc-dots{display:flex; gap:6px; justify-content:center; margin:14px 0 4px; flex-wrap:wrap}
 .lc-dot{width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.15); cursor:pointer; transition:background .12s, transform .12s}
 .lc-dot:hover{background:rgba(255,255,255,.4)}
@@ -407,30 +408,36 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
   box-shadow:0 16px 34px rgba(0,0,0,.6), 0 0 26px rgba(255,203,71,.4); }
 .pack-ghost .pk-size{ display:none; }
 
-/* ===== pack opening: the pack pops + tears, then the cards deal out ===== */
-.pack-burst{ position:absolute; top:46px; left:50%; z-index:6; width:104px; height:148px; margin-left:-52px; border-radius:12px;
-  display:flex; align-items:flex-start; justify-content:center; padding-top:30px; pointer-events:none;
-  border:2px solid rgba(0,0,0,.5); box-shadow:0 10px 24px rgba(0,0,0,.5); animation:packBurst .72s cubic-bezier(.3,1,.4,1) forwards; }
-.pack-burst .pk-ico .ico{ width:52px; height:52px; color:#fff; }
-.pack-burst.kind-player{ background:linear-gradient(165deg,#1d4060,#0c1d2c); } .pack-burst.kind-player .pk-ico .ico{ color:#9bd8ff; }
-.pack-burst.kind-charm{ background:linear-gradient(165deg,#332663,#161030); } .pack-burst.kind-charm .pk-ico .ico{ color:#d2c2ff; }
-.pack-burst.kind-scouting{ background:linear-gradient(165deg,#194b37,#0a1f17); } .pack-burst.kind-scouting .pk-ico .ico{ color:#92e7b6; }
-.pack-burst.kind-coach{ background:linear-gradient(165deg,#4a3018,#21130b); } .pack-burst.kind-coach .pk-ico .ico{ color:#f3bd86; }
-.pack-burst::after{ content:""; position:absolute; inset:-6px; border-radius:16px; border:3px solid rgba(255,255,255,.85); opacity:0; animation:burstRing .72s ease-out forwards; }
-@keyframes packBurst{
-  0%{ transform:scale(.5) rotate(-5deg); opacity:0; }
-  26%{ transform:scale(1.04) rotate(0deg); opacity:1; }
-  46%{ transform:scale(1.1) rotate(2deg); opacity:1; }
-  100%{ transform:scale(1.6) rotate(0deg); opacity:0; }
-}
-@keyframes burstRing{ 0%,40%{ opacity:0; transform:scale(.7); } 55%{ opacity:.9; transform:scale(1); } 100%{ opacity:0; transform:scale(1.6); } }
-/* the option cards spill out after the pack pops */
-.pack-deal .pack-opt{ animation:packDeal .4s cubic-bezier(.2,1.2,.3,1) backwards; animation-delay:calc(.32s + var(--deal,0) * 80ms); }
+/* ===== pack opening: the pack rips in half, then the cards deal out ===== */
+.pack-burst{ position:absolute; top:54px; left:50%; z-index:6; width:108px; height:152px; margin-left:-54px; pointer-events:none; }
+.pkb-half{ position:absolute; left:0; width:100%; height:50%; overflow:hidden; border:2px solid rgba(0,0,0,.5); box-shadow:0 10px 24px rgba(0,0,0,.5);
+  display:flex; align-items:center; justify-content:center; }
+.pkb-top{ top:0; border-radius:12px 12px 0 0; border-bottom:none; transform-origin:bottom center; animation:pkbTop .58s cubic-bezier(.3,.9,.3,1) forwards; }
+.pkb-bot{ bottom:0; border-radius:0 0 12px 12px; border-top:none; transform-origin:top center; animation:pkbBot .58s cubic-bezier(.3,.9,.3,1) forwards; }
+.pkb-top .pk-ico .ico{ width:46px; height:46px; }
+.pkb-bot .pk-label{ font-size:.6rem; font-weight:900; letter-spacing:2px; color:rgba(255,255,255,.72); }
+.pack-burst.kind-player .pkb-half{ background:linear-gradient(165deg,#1d4060,#0c1d2c); }   .pack-burst.kind-player .pk-ico .ico{ color:#9bd8ff; }
+.pack-burst.kind-charm .pkb-half{ background:linear-gradient(165deg,#332663,#161030); }    .pack-burst.kind-charm .pk-ico .ico{ color:#d2c2ff; }
+.pack-burst.kind-scouting .pkb-half{ background:linear-gradient(165deg,#194b37,#0a1f17); } .pack-burst.kind-scouting .pk-ico .ico{ color:#92e7b6; }
+.pack-burst.kind-coach .pkb-half{ background:linear-gradient(165deg,#4a3018,#21130b); }    .pack-burst.kind-coach .pk-ico .ico{ color:#f3bd86; }
+.pack-burst.kind-action .pkb-half{ background:linear-gradient(165deg,#3a2f12,#1c1608); }   .pack-burst.kind-action .pk-ico .ico{ color:#ffd98a; }
+/* the jagged rip line that flashes along the seam */
+.pkb-rip{ position:absolute; left:-7px; right:-7px; top:50%; height:16px; margin-top:-8px; z-index:7;
+  background:linear-gradient(90deg,transparent,#fff 18%,#fff 82%,transparent);
+  clip-path:polygon(0 50%,6% 0,12% 100%,18% 8%,24% 92%,30% 0,36% 100%,42% 8%,48% 92%,54% 0,60% 100%,66% 8%,72% 92%,78% 0,84% 100%,90% 8%,96% 92%,100% 50%);
+  opacity:0; animation:pkbRip .58s ease-out forwards; }
+.pkb-flash{ position:absolute; inset:-44px; z-index:5; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.92), rgba(255,255,255,0) 64%); opacity:0; animation:pkbFlash .58s ease-out forwards; }
+@keyframes pkbTop{ 0%,16%{ transform:translateY(0) rotate(0); opacity:1 } 100%{ transform:translateY(-94px) rotate(-22deg); opacity:0 } }
+@keyframes pkbBot{ 0%,16%{ transform:translateY(0) rotate(0); opacity:1 } 100%{ transform:translateY(64px) rotate(11deg); opacity:0 } }
+@keyframes pkbRip{ 0%,12%{ opacity:0; transform:scaleY(.4) } 30%{ opacity:1; transform:scaleY(1.25) } 60%,100%{ opacity:0; transform:scaleY(.6) } }
+@keyframes pkbFlash{ 0%,12%{ opacity:0; transform:scale(.4) } 34%{ opacity:1; transform:scale(1) } 100%{ opacity:0; transform:scale(1.5) } }
+/* the option cards spill out after the pack rips */
+.pack-deal .pack-opt{ animation:packDeal .4s cubic-bezier(.2,1.2,.3,1) backwards; animation-delay:calc(.44s + var(--deal,0) * 80ms); }
 @keyframes packDeal{ from{ opacity:0; transform:translateY(22px) scale(.8) rotate(-3deg); } to{ opacity:1; transform:none; } }
 .pk-opening{ position:relative; }
 /* Spring Training pack tint */
 .pk-wrap.kind-action{ background:linear-gradient(165deg,#3a2f12,#1c1608); } .pk-wrap.kind-action .pk-ico .ico{ color:#ffd98a; } .pk-wrap.kind-action .pk-band{ background:linear-gradient(180deg,#b08a2f,#6e521c); }
-.pack-burst.kind-action{ background:linear-gradient(165deg,#3a2f12,#1c1608); } .pack-burst.kind-action .pk-ico .ico{ color:#ffd98a; }
 
 /* ===== deluxe editions (All-Star / Silver Slugger / Gold Glove / Hall of Fame / Legendary) ===== */
 .dx-badge{ position:absolute; top:2px; left:50%; transform:translateX(-50%); z-index:5; font-size:.5rem; font-weight:900; letter-spacing:.4px; text-transform:uppercase; padding:1px 6px; border-radius:6px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.55); }
@@ -1464,3 +1471,86 @@ body.portrait #toast{ display:none !important; }
 /* collection: colour the rarer tag/voucher cells the existing screen missed */
 .col-cell.got.rar-legendary,.col-cell.got.rar-legend{ border-color:rgba(255,203,71,.55); }
 .col-cell.got.rar-legendary .col-ic,.col-cell.got.rar-legend .col-ic{ color:var(--gold); }
+
+/* ============================================================
+   PHASE 6: bigger pack modal, edition tips, juice (stamps,
+   shake, rally heat, coach triggers, ball flight, confetti)
+   ============================================================ */
+
+/* --- bigger pack reveal modal so names/cards fit --- */
+.ov-card.pack-ov{ max-width:min(1040px,95vw); width:min(1040px,95vw); padding:30px 34px; }
+.pack-ov .pack-grid{ gap:18px; max-height:64vh; align-items:stretch; }
+.pack-ov .pack-opt .card{ width:172px; min-height:224px; padding:13px 12px; }
+.pack-ov .pack-opt .card .card-top{ align-items:flex-start; }
+.pack-ov .pack-opt .card .card-name{ font-size:.95rem; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.08; max-height:2.2em; }
+.pack-ov .pack-opt .card .sbar{ font-size:.7rem; }
+.pack-ov .pack-opt .shop-coach{ width:188px; min-height:172px; padding:15px 14px; }
+.pack-ov .pack-opt .shop-coach .sc-name{ font-size:1.04rem; }
+.pack-ov .pack-opt .shop-coach .sc-text{ font-size:.82rem; }
+.pack-ov .pack-opt .shop-coach .sc-ico .ico{ width:30px; height:30px; }
+@media (max-width:560px){ .pack-ov .pack-opt .card{ width:140px; min-height:188px; } .pack-ov .pack-opt .shop-coach{ width:150px; } }
+
+/* --- edition badge: show it's interactive (tooltip on hover/tap) --- */
+.dx-badge{ cursor:help; }
+.card .dx-badge{ pointer-events:auto; }
+
+/* --- outcome stamp: punches in, color-coded, scale-bounce --- */
+.outcome-stamp{ position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); z-index:60; pointer-events:none;
+  font-weight:900; font-size:5.2rem; letter-spacing:2px; text-transform:uppercase; white-space:nowrap;
+  -webkit-text-stroke:3px rgba(0,0,0,.6); text-shadow:0 6px 26px rgba(0,0,0,.6); animation:stampPunch .82s cubic-bezier(.2,1.5,.3,1) forwards; }
+.outcome-stamp.os-good{ color:#7ce0a0; } .outcome-stamp.os-great{ color:#74c0ff; }
+.outcome-stamp.os-ok{ color:#cdd6e6; } .outcome-stamp.os-bad{ color:#ff7a72; }
+.outcome-stamp.os-huge,.outcome-stamp.os-hr{ color:#ffd24a; font-size:6.4rem; -webkit-text-stroke:4px rgba(60,30,0,.55); }
+.outcome-stamp.os-grand{ color:#ff8a3c; font-size:7rem; }
+@keyframes stampPunch{ 0%{ opacity:0; transform:translate(-50%,-50%) scale(2.4) rotate(-8deg); }
+  18%{ opacity:1; transform:translate(-50%,-50%) scale(.92) rotate(-2deg); }
+  32%{ transform:translate(-50%,-50%) scale(1.06) rotate(0); } 70%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  100%{ opacity:0; transform:translate(-50%,-58%) scale(1.04); } }
+
+/* --- screen shake: a third, bigger tier for homers/grand slams --- */
+#app.shake-huge{ animation:shakeHuge .62s cubic-bezier(.36,.07,.19,.97); }
+@keyframes shakeHuge{ 0%,100%{ transform:translate(0,0) } 10%{ transform:translate(-9px,5px) rotate(-.6deg) } 25%{ transform:translate(11px,-7px) rotate(.7deg) }
+  40%{ transform:translate(-12px,6px) rotate(-.7deg) } 55%{ transform:translate(10px,-5px) rotate(.5deg) } 70%{ transform:translate(-7px,4px) } 85%{ transform:translate(5px,-3px) } }
+
+/* --- rally heat meter: glow/flames climb as the rally builds --- */
+.sb-rally{ transition:box-shadow .3s, background .3s; }
+.sb-rally.rally-warm{ background:radial-gradient(120% 120% at 50% 120%, hsla(calc(46 - var(--heat)*46),100%,55%,.16), transparent 70%); }
+.sb-rally.rally-hot{ box-shadow:0 0 22px hsla(calc(40 - var(--heat)*40),100%,55%,.4); }
+.sb-rally.rally-blaze{ box-shadow:0 0 34px hsla(calc(30 - var(--heat)*30),100%,52%,.6), 0 0 12px hsla(20,100%,55%,.5) inset; }
+.sb-rally.rally-hot::after,.sb-rally.rally-blaze::after{ content:""; position:absolute; left:50%; bottom:-2px; width:70%; height:18px; transform:translateX(-50%);
+  background:radial-gradient(60% 100% at 50% 100%, hsla(calc(36 - var(--heat)*36),100%,58%,.85), transparent 70%);
+  filter:blur(2px); animation:rallyFlame .7s ease-in-out infinite alternate; pointer-events:none; }
+@keyframes rallyFlame{ from{ opacity:.55; transform:translateX(-50%) scaleY(.8) } to{ opacity:1; transform:translateX(-50%) scaleY(1.25) } }
+.sb-rally-num.rally-grow{ animation:rallyGrowBig .5s cubic-bezier(.2,1.6,.3,1); }
+@keyframes rallyGrowBig{ 0%{ transform:scale(1) } 35%{ transform:scale(1.5) } 100%{ transform:scale(var(--rs,1)) } }
+
+/* --- visible coach triggers: a stronger pop + glow ring --- */
+.coach-icon.trigger,.coach-chip.trigger{ animation:coachTrigBig .62s cubic-bezier(.2,1.5,.3,1); box-shadow:0 0 0 2px var(--gold), 0 0 26px rgba(255,203,71,.75); z-index:5; }
+@keyframes coachTrigBig{ 0%{ transform:scale(1) } 30%{ transform:scale(1.32) rotate(-4deg) } 55%{ transform:scale(1.12) rotate(2deg) } 100%{ transform:scale(1) } }
+.coach-icon.trigger::after{ content:""; position:absolute; inset:-5px; border-radius:inherit; border:2px solid var(--gold); opacity:0; animation:coachRing .62s ease-out; pointer-events:none; }
+@keyframes coachRing{ 0%{ opacity:.9; transform:scale(.8) } 100%{ opacity:0; transform:scale(1.5) } }
+
+/* --- ball flight: a ball arcs from the plate onto the field --- */
+.ball-fly{ position:absolute; left:50%; top:80%; width:13px; height:13px; margin:-6px 0 0 -6px; border-radius:50%; z-index:8; pointer-events:none;
+  background:radial-gradient(circle at 35% 30%, #fff, #ece4d2 65%, #c9b68d); box-shadow:0 0 9px rgba(255,255,255,.8), 0 0 3px rgba(255,160,60,.7); }
+.bf-1B{ animation:bf1 .72s ease-out forwards; } .bf-2B{ animation:bf2 .74s ease-out forwards; }
+.bf-3B{ animation:bf3 .76s ease-out forwards; } .bf-HR{ animation:bfHR .94s cubic-bezier(.3,.5,.5,1) forwards; }
+@keyframes bf1{ 0%{ left:50%; top:80%; transform:scale(.6) } 50%{ top:48%; transform:scale(1) } 100%{ left:64%; top:44%; transform:scale(.85); opacity:.5 } }
+@keyframes bf2{ 0%{ left:50%; top:80%; transform:scale(.6) } 45%{ top:26%; transform:scale(1.05) } 100%{ left:74%; top:22%; transform:scale(.8); opacity:.5 } }
+@keyframes bf3{ 0%{ left:50%; top:80%; transform:scale(.6) } 45%{ top:18%; left:34%; transform:scale(1.05) } 100%{ left:20%; top:15%; transform:scale(.8); opacity:.5 } }
+@keyframes bfHR{ 0%{ left:50%; top:80%; transform:scale(.6) } 45%{ top:14%; transform:scale(1.25) } 100%{ left:50%; top:-24%; transform:scale(.45); opacity:0 } }
+.hr-flash{ position:absolute; left:50%; top:-6%; width:60%; height:34%; transform:translateX(-50%); z-index:7; pointer-events:none; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,210,90,.9), rgba(255,140,40,0) 68%); animation:hrFlash .8s ease-out forwards; }
+@keyframes hrFlash{ 0%{ opacity:0; transform:translateX(-50%) scale(.4) } 40%{ opacity:1; transform:translateX(-50%) scale(1) } 100%{ opacity:0; transform:translateX(-50%) scale(1.4) } }
+
+/* --- confetti + trophy flourish on winning a run --- */
+.confetti-wrap{ position:absolute; inset:0; z-index:200; pointer-events:none; overflow:hidden; }
+.confetti-wrap i{ position:absolute; top:-24px; width:10px; height:14px; border-radius:2px; opacity:.95;
+  animation-name:confettiFall; animation-timing-function:cubic-bezier(.3,.4,.5,1); animation-fill-mode:forwards; }
+@keyframes confettiFall{ 0%{ transform:translateY(-24px) rotate(0); opacity:0 } 10%{ opacity:1 }
+  100%{ transform:translateY(105vh) rotate(calc(var(--rot,180deg) * 4)); opacity:.9 } }
+
+/* --- 9-inning linescore: keep nine columns fitting on one row --- */
+.linescore{ flex-wrap:nowrap; }
+.linescore .ls-inning{ min-width:0; }
+.linescore .ls-frame{ min-width:0; }

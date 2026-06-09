@@ -407,6 +407,10 @@
       }
     }
 
+    // Scale the finished bag (base + every coach/edition bonus) so on-screen numbers are
+    // grand. Applied last, so all relative contributions are preserved; targets scale to match.
+    bag = Math.round(bag * (C.scoreScale || 1));
+
     /* ---------- score the event ---------- */
     let rallyUsed = game.rally + eventRallyBonus;
     // Gold Glove edition: this scoring play is worth a Rally multiple

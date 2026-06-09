@@ -62,6 +62,12 @@
     // Bag values
     bag: { BB: 1, HBP: 1, "1B": 2, "2B": 3, "3B": 4, HR: 5 },
 
+    // Score scale. Bag values (after every coach/edition bonus) and every frame target are
+    // multiplied by this, so the on-screen numbers feel grand (Balatro-style) while the
+    // balance is untouched: score >= target is identical at any scale. Rally stays a small
+    // multiplier (x1.0, x1.5, ...) and the economy/payroll is NOT scaled.
+    scoreScale: 100,
+
     // Target curve. Each frame's target = round(base * inningGrowth^inning * frameMult[frame]),
     // where inning is 0-based and frame is 0(Top)/1(Middle)/2(Boss). This ramps the 24 frames of
     // the main run and keeps escalating forever into Extra Innings. Early frames are clearable
@@ -504,7 +510,7 @@
     { id: "perfect_inning", cat: "Winning",  name: "Perfect Inning",   text: "Clear an inning without making a single out.", seed: true },
     { id: "comeback",       cat: "Winning",  name: "Down to the Wire", text: "Clear an inning on your final out.", seed: true },
     { id: "walkoff",        cat: "Winning",  name: "Walk-Off",         text: "Clear an inning on a home run.", seed: true },
-    { id: "big_swing",      cat: "Scoring",  name: "One Big Swing",    text: "Score 15+ from a single at-bat.", seed: true },
+    { id: "big_swing",      cat: "Scoring",  name: "One Big Swing",    text: "Score 1500+ from a single at-bat.", seed: true },
     { id: "boss_sweep",     cat: "Bosses",   name: "Giant Killer",     text: "Beat all three bosses in one run.", seed: true },
     // --- power milestones ---
     { id: "first_dinger",   cat: "Power",    name: "First Dinger",     text: "Hit your first home run." },
@@ -875,7 +881,7 @@
   // A run is 8 innings (Balatro antes). Each inning has 3 frames (Top / Middle / Boss);
   // the 3rd frame is a Boss pitcher with a rule. Beat inning 8's boss to win the World
   // Series, then continue into Extra Innings (endless, exponentially escalating).
-  const INNINGS_TO_WIN = 8;
+  const INNINGS_TO_WIN = 9; // a full baseball game: 9 innings to the World Series
   const GAMES_PER_ROUND = 3; // frames per inning; frame idx 2 is the Boss
   const ROUNDS = [];
   for (let _i = 1; _i <= INNINGS_TO_WIN; _i++) ROUNDS.push({ id: "inn" + _i, name: "Inning " + _i });

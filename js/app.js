@@ -478,13 +478,16 @@
     const o = ev.outcome;
     g.lastOutcome = o;
 
-    // sound + screen-shake juice
-    if (o === "HR") { SFX.homer(); screenShake(true); flashScreen("huge"); }
-    else if (o === "2B" || o === "3B") { SFX.xbh(); screenShake(false); }
-    else if (o === "1B") SFX.single();
+    // sound + screen-shake juice (shake scales with the result)
+    if (o === "HR") { SFX.homer(); screenShake(ev.runsOnPlay >= 4 ? "huge" : "big"); flashScreen("huge"); }
+    else if (o === "2B" || o === "3B") { SFX.xbh(); screenShake("big"); }
+    else if (o === "1B") { SFX.single(); screenShake("sm"); }
     else if (o === "BB" || o === "HBP") SFX.walk();
-    else if (o === "K") SFX.strikeout();
+    else if (o === "K") { SFX.strikeout(); screenShake("sm"); }
     else SFX.out();
+    // outcome stamp punches in, color-coded; a ball arcs onto the field on contact
+    stampOutcome(OUTCOME_LABEL[o] || o, OUTCOME_CLASS[o] || "neutral", o, ev.runsOnPlay >= 4);
+    if (o === "1B" || o === "2B" || o === "3B" || o === "HR") ballFlight(o);
 
     // ---- achievements & career stats ----
     const isHit = (o === "1B" || o === "2B" || o === "3B" || o === "HR");
@@ -503,7 +506,7 @@
       g.walks = (g.walks || 0) + 1; META.career.walks++;
       if (g.walks >= 3) awardAchievement("patient_eye");
     }
-    if (ev.scoreGained >= 15) awardAchievement("big_swing");
+    if (ev.scoreGained >= 15 * (CONFIG.scoreScale || 1)) awardAchievement("big_swing");
     if (g.rally > (META.career.bestRally || 1)) META.career.bestRally = g.rally;
     if (g.score > (META.career.bestInningScore || 0)) META.career.bestInningScore = g.score;
     saveMeta(); checkCareerAch();
@@ -545,12 +548,75 @@
 
   function trim(n) { return Number.isInteger(n) ? "" + n : n.toFixed(1); }
 
-  function screenShake(big) {
-    const el = $("#app");
+  function screenShake(level) {
+    const el = $("#app");   // NOT #stage (it carries the fit transform: scale)
     if (!el) return;
-    const cls = big ? "shake-big" : "shake-sm";
-    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
-    setTimeout(() => el.classList.remove(cls), 560);
+    // accept legacy boolean (true = big) or a level string ("sm" | "big" | "huge")
+    const lvl = level === true ? "big" : level === false ? "sm" : (level || "sm");
+    const cls = "shake-" + lvl;
+    ["shake-sm", "shake-big", "shake-huge"].forEach((c) => el.classList.remove(c));
+    void el.offsetWidth; el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), 620);
+  }
+  // a big color-coded outcome word that punches onto the screen with a scale-bounce
+  function stampOutcome(label, cls, outcome, grand) {
+    const host = $("#stage") || document.body;
+    const d = document.createElement("div");
+    d.className = "outcome-stamp os-" + cls + (outcome === "HR" ? " os-hr" : "") + (grand ? " os-grand" : "");
+    d.textContent = grand && outcome === "HR" ? "GRAND SLAM" : label;
+    host.appendChild(d);
+    setTimeout(() => d.remove(), outcome === "HR" ? 1150 : 820);
+  }
+  // a ball arcs from the plate out onto the field; the path/height scales with the hit
+  function ballFlight(outcome) {
+    const dia = $(".diamond");
+    if (!dia) return;
+    const b = document.createElement("div");
+    b.className = "ball-fly bf-" + outcome;
+    dia.appendChild(b);
+    if (outcome === "HR") {
+      const flash = document.createElement("div");
+      flash.className = "hr-flash";
+      dia.appendChild(flash);
+      setTimeout(() => flash.remove(), 900);
+    }
+    setTimeout(() => b.remove(), outcome === "HR" ? 1000 : 760);
+  }
+  // confetti + a little trophy pop, for winning a run (the World Series)
+  function confettiBurst(n) {
+    const host = $("#stage") || document.body;
+    const wrap = document.createElement("div");
+    wrap.className = "confetti-wrap";
+    const colors = ["#ffcb47", "#56b4ff", "#ff7a59", "#5ad17a", "#b66cff", "#ffffff"];
+    const count = n || 70;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement("i");
+      const hue = colors[i % colors.length];
+      const left = (i / count) * 100;
+      const delay = (i % 10) * 40;
+      const dur = 1700 + (i % 7) * 220;
+      const rot = (i * 47) % 360;
+      p.style.cssText = `left:${left}%; background:${hue}; animation-delay:${delay}ms; animation-duration:${dur}ms; --rot:${rot}deg;`;
+      wrap.appendChild(p);
+    }
+    host.appendChild(wrap);
+    setTimeout(() => wrap.remove(), 3600);
+  }
+  // tween a number element from its current value up to `to` (Balatro-style count-up)
+  function tickNumber(el, to, dur) {
+    if (!el) return;
+    const from = parseInt(("" + el.textContent).replace(/[^0-9-]/g, ""), 10) || 0;
+    to = Math.round(to);
+    if (from === to) { el.textContent = to; return; }
+    const start = performance.now();
+    dur = dur || 450;
+    (function step(now) {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = t * (2 - t); // ease-out
+      el.textContent = Math.round(from + (to - from) * eased);
+      if (t < 1) requestAnimationFrame(step);
+      else el.textContent = to;
+    })(start);
   }
   function flashScreen(kind) {
     let f = $("#screen-flash");
@@ -1015,7 +1081,8 @@
   function cardHTML(c, idx, opts) {
     opts = opts || {};
     const ed = c.edition ? `<div class="edition ed-${c.edition}">${editionLabel(c.edition)}</div>` : "";
-    const dx = c.deluxe ? `<div class="dx-badge dx-${c.deluxe}">${(getEdition(c.deluxe) || {}).name || ""}</div>` : "";
+    const dxEd = c.deluxe ? (getEdition(c.deluxe) || {}) : null;
+    const dx = c.deluxe ? `<div class="dx-badge dx-${c.deluxe}" data-tip="<b>${dxEd.name || ""} edition</b><br>${dxEd.text || ""}">${dxEd.name || ""}</div>` : "";
     const pos = (c.tags.find((t) => /^(C|1B|2B|SS|3B|LF|CF|RF|OF|DH)$/.test(t))) || "";
     const roleTags = c.tags.filter((t) => ["slugger", "contact", "speedster", "table-setter", "utility", "veteran", "rookie", "legend"].indexOf(t) >= 0).slice(0, 3);
     const tagHTML = roleTags.map((t) => `<span class="ctag ct-${t}">${t}</span>`).join("");
@@ -1329,13 +1396,15 @@
 
   function bumpScore(amt) {
     const g = STATE.game;
-    setText("sb-score", g.score);
     const pct = Math.min(100, (g.score / g.target) * 100);
     const pf = $("#sb-progress"); if (pf) pf.style.width = pct + "%";
-    if (amt > 0) {
-      const el = $("#sb-score");
-      if (el) { el.classList.remove("score-bump"); void el.offsetWidth; el.classList.add("score-bump"); }
+    const el = $("#sb-score");
+    if (amt > 0 && el) {
+      tickNumber(el, g.score, 460);          // count up to the new score
+      el.classList.remove("score-bump"); void el.offsetWidth; el.classList.add("score-bump");
       floatText($("#sb-rally-wrap") ? $(".sb-score") : null, `+${amt}`, "float-score");
+    } else {
+      setText("sb-score", g.score);
     }
   }
 
@@ -1364,6 +1433,10 @@
     if (wrap) {
       const heat = Math.min(1, (v - 1) / 6);
       wrap.style.setProperty("--heat", heat.toFixed(3));
+      // discrete tiers add flame/glow intensity as the rally climbs
+      wrap.classList.toggle("rally-warm", v >= 2);
+      wrap.classList.toggle("rally-hot", v >= 3.5);
+      wrap.classList.toggle("rally-blaze", v >= 5.5);
     }
     if (grow) { el.classList.remove("rally-grow"); void el.offsetWidth; el.classList.add("rally-grow"); }
   }
@@ -1491,6 +1564,8 @@
   // shown once, after beating inning 8's Boss. The run is NOT cleared: you can push into Extra Innings.
   function showVictory() {
     SFX.win();
+    confettiBurst(90);
+    setTimeout(() => confettiBurst(60), 700);   // a second wave for a real flourish
     const run = STATE.run;
     overlay(`
       <div class="ov-card victory-ov">
@@ -2245,13 +2320,18 @@
         const lvl = (run.actionLevels && run.actionLevels[o.item.id]) || 1;
         body = `<div class="shop-coach action-opt"><span class="sc-ico">${icon(actionIcon(o.item.id))}</span><div class="sc-name">${o.item.name} <span class="act-lv">Lv ${lvl} -&gt; ${lvl + 1}</span></div><div class="sc-text">${o.item.text}</div></div>`;
       } else {
-        body = `<div class="shop-coach ${o.deluxe ? "has-dx dx-" + o.deluxe : ""}">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div>${o.deluxe ? `<div class="dx-badge dx-${o.deluxe}">${getEdition(o.deluxe).name}</div>` : ""}</div>`;
+        body = `<div class="shop-coach ${o.deluxe ? "has-dx dx-" + o.deluxe : ""}">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div>${o.deluxe ? `<div class="dx-badge dx-${o.deluxe}" data-tip="<b>${getEdition(o.deluxe).name} edition</b><br>${getEdition(o.deluxe).text}">${getEdition(o.deluxe).name}</div>` : ""}</div>`;
       }
       return `<div class="pack-opt ${picked ? "picked" : ""}" data-packpick="${i}" style="--deal:${i}">${body}${picked ? '<div class="pick-check">' + icon("check") + '</div>' : ""}</div>`;
     }).join("");
     const left = ctx.picksLeft;
     const btnLabel = left === 0 ? "Done " + icon("check") : (ctx.picked.length ? "Skip rest" : "Skip pack");
-    const burst = firstOpen ? `<div class="pack-burst kind-${ctx.pack.kind}"><span class="pk-ico">${icon(packIcon(ctx.pack.kind))}</span></div>` : "";
+    const burst = firstOpen ? `<div class="pack-burst kind-${ctx.pack.kind}">
+        <div class="pkb-half pkb-top"><span class="pk-ico">${icon(packIcon(ctx.pack.kind))}</span></div>
+        <div class="pkb-half pkb-bot"><span class="pk-label">${packLabel(ctx.pack.kind)}</span></div>
+        <div class="pkb-rip"></div>
+        <div class="pkb-flash"></div>
+      </div>` : "";
     overlay(`
       <div class="ov-card pack-ov ${firstOpen ? "pk-opening" : ""}">
         ${burst}
@@ -2406,7 +2486,10 @@
   function targetFor(gi) {
     const t = CONFIG.target;
     const mult = (STATE.run ? stakeMods(STATE.run.stake).targetMult : 1);
-    return Math.max(1, Math.round(t.base * Math.pow(t.inningGrowth, inningOf(gi) - 1) * (t.frameMult[frameOf(gi)] || 1) * mult));
+    const scale = CONFIG.scoreScale || 1;
+    const raw = t.base * Math.pow(t.inningGrowth, inningOf(gi) - 1) * (t.frameMult[frameOf(gi)] || 1) * mult * scale;
+    // round to a clean multiple of 5 so the grand numbers read nicely
+    return Math.max(1, Math.round(raw / 5) * 5);
   }
   function ordinal(n) { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 
