@@ -328,32 +328,61 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .pack-open-slot.slot-pop{ animation:slotPop .4s ease; }
 @keyframes slotPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.12); box-shadow:0 0 40px rgba(255,203,71,.7); } 100%{ transform:scale(1); } }
 
-.shop-pack{ width:150px; display:flex; flex-direction:column; align-items:center; gap:7px; cursor:grab; touch-action:none; user-select:none; transition:transform .12s; }
-.shop-pack.cant, .shop-pack.opened{ opacity:.42; cursor:default; }
-.shop-pack:not(.cant):not(.opened):hover{ transform:translateY(-5px); }
-.shop-pack.pack-dragging{ opacity:.3; }
-.pk-card{ width:108px; height:130px; border-radius:14px; display:flex; align-items:center; justify-content:center; position:relative;
-  border:2px solid var(--line); box-shadow:0 8px 20px rgba(0,0,0,.45), inset 0 0 30px rgba(0,0,0,.3); background:linear-gradient(160deg,#1a2742,#0e1726); }
-.pk-card::before{ content:""; position:absolute; inset:7px; border-radius:9px; border:1px dashed rgba(255,255,255,.14); pointer-events:none; }
-.pk-ico .ico{ width:42px; height:42px; color:#fff; }
-.pk-seal{ position:absolute; bottom:8px; right:9px; font-size:.74rem; font-weight:900; color:var(--ink-dim); background:rgba(0,0,0,.45); border-radius:8px; padding:1px 7px; }
-.pk-name{ font-size:.78rem; font-weight:800; text-align:center; line-height:1.12; }
-.pk-cost{ font-size:.9rem; font-weight:900; color:var(--gold); }
+/* ===== sealed packs: tall card packs you drag into the slot to open ===== */
+.shop-pack{ width:128px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:grab; touch-action:none; user-select:none; transition:transform .12s; }
+.shop-pack.cant, .shop-pack.opened{ opacity:.45; cursor:default; }
+.shop-pack:not(.cant):not(.opened):hover{ transform:translateY(-6px) rotate(-1deg); }
+.shop-pack.pack-dragging{ opacity:.28; }
+/* the pack itself: art window up top, bold label band near the bottom (Balatro-style) */
+.pk-wrap{ position:relative; width:120px; height:170px; border-radius:13px; overflow:hidden;
+  border:2px solid rgba(0,0,0,.55); box-shadow:0 11px 22px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.05);
+  background:linear-gradient(165deg,#23344f,#0d1827); }
+.pk-wrap::after{ content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(115deg, transparent 36%, rgba(255,255,255,.13) 48%, transparent 58%); }
+.pk-art{ position:absolute; left:0; right:0; top:0; height:112px; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.18), transparent 64%); }
+.pk-art .pk-ico .ico{ width:56px; height:56px; color:#fff; filter:drop-shadow(0 3px 7px rgba(0,0,0,.55)); }
+.pk-shine{ position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 8px, transparent 8px 16px); }
+.pk-band{ position:absolute; left:-6px; right:-6px; bottom:15px; transform:rotate(-3deg); padding:5px 6px; text-align:center;
+  border-top:2px solid rgba(255,255,255,.18); border-bottom:2px solid rgba(0,0,0,.5); box-shadow:0 4px 11px rgba(0,0,0,.45); background:#0c1320; }
+.pk-band-name{ display:block; font-size:.82rem; font-weight:900; letter-spacing:1px; color:#fff; line-height:1; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.pk-band-sub{ display:block; font-size:.52rem; font-weight:800; letter-spacing:1.5px; color:rgba(255,255,255,.7); margin-top:2px; }
+.pk-size{ position:absolute; top:9px; right:-2px; z-index:3; font-size:.55rem; font-weight:900; letter-spacing:1px; color:#1a1206;
+  background:linear-gradient(180deg,#ffd24a,#e8a92a); padding:2px 8px; border-radius:4px 0 0 4px; box-shadow:0 2px 6px rgba(0,0,0,.5); }
+.shop-pack.sz-mega .pk-size, .pack-burst.sz-mega .pk-size{ background:linear-gradient(180deg,#ff9d5c,#e8632a); color:#fff; }
+.pk-cost{ font-size:.92rem; font-weight:900; color:var(--gold); }
 .shop-pack.opened .pk-cost{ color:var(--ink-faint); }
-.shop-pack.kind-player .pk-card{ background:linear-gradient(160deg,#16324a,#0c1d2c); border-color:#2f6d8f; } .shop-pack.kind-player .pk-ico .ico{ color:#7fd0ff; }
-.shop-pack.kind-charm .pk-card{ background:linear-gradient(160deg,#2c2150,#161030); border-color:#6b54b0; } .shop-pack.kind-charm .pk-ico .ico{ color:#c9b6ff; }
-.shop-pack.kind-analytics .pk-card{ background:linear-gradient(160deg,#13352a,#0a1f17); border-color:#2f8f5f; } .shop-pack.kind-analytics .pk-ico .ico{ color:#79e0a8; }
-.shop-pack.kind-scouting .pk-card{ background:linear-gradient(160deg,#33321a,#1c1b0f); border-color:#8f7d2f; } .shop-pack.kind-scouting .pk-ico .ico{ color:#e6d27a; }
-.shop-pack.kind-coach .pk-card{ background:linear-gradient(160deg,#3a2516,#21130b); border-color:#a5632f; } .shop-pack.kind-coach .pk-ico .ico{ color:#f0b27a; }
+/* per-kind tints (apply to the shop pack AND the dragged ghost, which clones .pk-wrap) */
+.pk-wrap.kind-player{ background:linear-gradient(165deg,#1d4060,#0c1d2c); } .pk-wrap.kind-player .pk-ico .ico{ color:#9bd8ff; } .pk-wrap.kind-player .pk-band{ background:linear-gradient(180deg,#1f6f99,#103f5a); }
+.pk-wrap.kind-charm{ background:linear-gradient(165deg,#332663,#161030); } .pk-wrap.kind-charm .pk-ico .ico{ color:#d2c2ff; } .pk-wrap.kind-charm .pk-band{ background:linear-gradient(180deg,#5a44a0,#332463); }
+.pk-wrap.kind-scouting, .pk-wrap.kind-analytics{ background:linear-gradient(165deg,#194b37,#0a1f17); } .pk-wrap.kind-scouting .pk-ico .ico, .pk-wrap.kind-analytics .pk-ico .ico{ color:#92e7b6; } .pk-wrap.kind-scouting .pk-band, .pk-wrap.kind-analytics .pk-band{ background:linear-gradient(180deg,#2f8f5f,#185237); }
+.pk-wrap.kind-coach{ background:linear-gradient(165deg,#4a3018,#21130b); } .pk-wrap.kind-coach .pk-ico .ico{ color:#f3bd86; } .pk-wrap.kind-coach .pk-band{ background:linear-gradient(180deg,#a5632f,#6a3c1b); }
 
-.pack-ghost{ position:fixed; left:0; top:0; z-index:1200; pointer-events:none; transform:translate(-50%,-50%) scale(1.1) rotate(-5deg);
-  width:108px; height:130px; border-radius:14px; border:2px solid var(--gold); box-shadow:0 14px 30px rgba(0,0,0,.55), 0 0 26px rgba(255,203,71,.4);
-  display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg,#1a2742,#0e1726); }
-.pack-ghost .ico{ width:42px; height:42px; color:#fff; } .pack-ghost .pk-seal{ display:none; }
+.pack-ghost{ position:fixed; left:0; top:0; z-index:1200; pointer-events:none; transform:translate(-50%,-50%) scale(1.06) rotate(-5deg);
+  box-shadow:0 16px 34px rgba(0,0,0,.6), 0 0 26px rgba(255,203,71,.4); }
+.pack-ghost .pk-size{ display:none; }
 
-/* options deal in when a pack opens */
-.pack-deal .pack-opt{ animation:packDeal .34s cubic-bezier(.2,1.2,.3,1) backwards; animation-delay:calc(var(--deal,0) * 70ms); }
-@keyframes packDeal{ from{ opacity:0; transform:translateY(16px) scale(.86) rotate(-3deg); } to{ opacity:1; transform:none; } }
+/* ===== pack opening: the pack pops + tears, then the cards deal out ===== */
+.pack-burst{ position:absolute; top:46px; left:50%; z-index:6; width:104px; height:148px; margin-left:-52px; border-radius:12px;
+  display:flex; align-items:flex-start; justify-content:center; padding-top:30px; pointer-events:none;
+  border:2px solid rgba(0,0,0,.5); box-shadow:0 10px 24px rgba(0,0,0,.5); animation:packBurst .72s cubic-bezier(.3,1,.4,1) forwards; }
+.pack-burst .pk-ico .ico{ width:52px; height:52px; color:#fff; }
+.pack-burst.kind-player{ background:linear-gradient(165deg,#1d4060,#0c1d2c); } .pack-burst.kind-player .pk-ico .ico{ color:#9bd8ff; }
+.pack-burst.kind-charm{ background:linear-gradient(165deg,#332663,#161030); } .pack-burst.kind-charm .pk-ico .ico{ color:#d2c2ff; }
+.pack-burst.kind-scouting{ background:linear-gradient(165deg,#194b37,#0a1f17); } .pack-burst.kind-scouting .pk-ico .ico{ color:#92e7b6; }
+.pack-burst.kind-coach{ background:linear-gradient(165deg,#4a3018,#21130b); } .pack-burst.kind-coach .pk-ico .ico{ color:#f3bd86; }
+.pack-burst::after{ content:""; position:absolute; inset:-6px; border-radius:16px; border:3px solid rgba(255,255,255,.85); opacity:0; animation:burstRing .72s ease-out forwards; }
+@keyframes packBurst{
+  0%{ transform:scale(.5) rotate(-5deg); opacity:0; }
+  26%{ transform:scale(1.04) rotate(0deg); opacity:1; }
+  46%{ transform:scale(1.1) rotate(2deg); opacity:1; }
+  100%{ transform:scale(1.6) rotate(0deg); opacity:0; }
+}
+@keyframes burstRing{ 0%,40%{ opacity:0; transform:scale(.7); } 55%{ opacity:.9; transform:scale(1); } 100%{ opacity:0; transform:scale(1.6); } }
+/* the option cards spill out after the pack pops */
+.pack-deal .pack-opt{ animation:packDeal .4s cubic-bezier(.2,1.2,.3,1) backwards; animation-delay:calc(.32s + var(--deal,0) * 80ms); }
+@keyframes packDeal{ from{ opacity:0; transform:translateY(22px) scale(.8) rotate(-3deg); } to{ opacity:1; transform:none; } }
+.pk-opening{ position:relative; }
 .sc-name,.sm-name{font-weight:800; margin-bottom:4px}
 .sc-text,.sm-text{color:var(--ink-dim); font-size:.72rem; line-height:1.3}
 .shop-cons .sm-name,.shop-analytics .sm-name{color:var(--great)}

@@ -463,13 +463,26 @@
   /* -------------------------------------------------------- */
   /* BOOSTER PACKS                                             */
   /* -------------------------------------------------------- */
+  // Packs come in three sizes (Balatro-style): Normal (3, pick 1), Jumbo (5, pick 1),
+  // Mega (5, pick 2). One family per card kind: Prospect (players), Scouting (analytics +
+  // scouting reports), Salami, Coaching.
   const PACKS = [
-    { id: "pk_player", name: "Prospect Pack", kind: "player", choose: 1, count: 3, rarity: "common", cost: 4, text: "Choose 1 of 3 player cards." },
-    { id: "pk_player_big", name: "Free Agent Pack", kind: "player", choose: 1, count: 4, rarity: "star", cost: 6, text: "Choose 1 of 4 stronger player cards." },
-    { id: "pk_coach", name: "Coaching Pack", kind: "coach", choose: 1, count: 3, rarity: "star", cost: 6, text: "Choose 1 of 3 coaches." },
-    { id: "pk_scout", name: "Scouting Pack", kind: "scouting", choose: 2, count: 3, rarity: "common", cost: 5, text: "Choose 2 of 3 scouting reports." },
-    { id: "pk_salami", name: "Charcuterie Board", kind: "charm", choose: 1, count: 3, rarity: "star", cost: 5, text: "Choose 1 of 3 Salami cards." },
-    { id: "pk_frontoffice", name: "Front Office Memo", kind: "analytics", choose: 1, count: 3, rarity: "common", cost: 5, text: "Choose 1 of 3 analytics or scouting reports." },
+    // Prospect (player cards)
+    { id: "pk_prospect",       name: "Prospect Pack",       kind: "player",   size: "",      choose: 1, count: 3, rarity: "common",  cost: 4,  text: "Choose 1 of 3 Prospect cards." },
+    { id: "pk_prospect_jumbo", name: "Jumbo Prospect Pack", kind: "player",   size: "jumbo", choose: 1, count: 5, rarity: "star",    cost: 6,  text: "Choose 1 of 5 Prospect cards." },
+    { id: "pk_prospect_mega",  name: "Mega Prospect Pack",  kind: "player",   size: "mega",  choose: 2, count: 5, rarity: "allstar", cost: 8,  text: "Choose 2 of 5 Prospect cards." },
+    // Scouting (analytics + scouting reports)
+    { id: "pk_scout",          name: "Scouting Pack",       kind: "scouting", size: "",      choose: 1, count: 3, rarity: "common",  cost: 4,  text: "Choose 1 of 3 Scouting cards." },
+    { id: "pk_scout_jumbo",    name: "Jumbo Scouting Pack", kind: "scouting", size: "jumbo", choose: 1, count: 5, rarity: "star",    cost: 6,  text: "Choose 1 of 5 Scouting cards." },
+    { id: "pk_scout_mega",     name: "Mega Scouting Pack",  kind: "scouting", size: "mega",  choose: 2, count: 5, rarity: "allstar", cost: 8,  text: "Choose 2 of 5 Scouting cards." },
+    // Salami
+    { id: "pk_salami",         name: "Salami Pack",         kind: "charm",    size: "",      choose: 1, count: 3, rarity: "star",    cost: 5,  text: "Choose 1 of 3 Salami cards." },
+    { id: "pk_salami_jumbo",   name: "Jumbo Salami Pack",   kind: "charm",    size: "jumbo", choose: 1, count: 5, rarity: "star",    cost: 7,  text: "Choose 1 of 5 Salami cards." },
+    { id: "pk_salami_mega",    name: "Mega Salami Pack",    kind: "charm",    size: "mega",  choose: 2, count: 5, rarity: "allstar", cost: 9,  text: "Choose 2 of 5 Salami cards." },
+    // Coaching
+    { id: "pk_coach",          name: "Coaching Pack",       kind: "coach",    size: "",      choose: 1, count: 3, rarity: "star",    cost: 6,  text: "Choose 1 of 3 coaches." },
+    { id: "pk_coach_jumbo",    name: "Jumbo Coaching Pack", kind: "coach",    size: "jumbo", choose: 1, count: 5, rarity: "star",    cost: 8,  text: "Choose 1 of 5 coaches." },
+    { id: "pk_coach_mega",     name: "Mega Coaching Pack",  kind: "coach",    size: "mega",  choose: 2, count: 5, rarity: "allstar", cost: 10, text: "Choose 2 of 5 coaches." },
   ];
 
   /* -------------------------------------------------------- */

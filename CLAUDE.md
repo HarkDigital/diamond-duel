@@ -18,8 +18,8 @@ GitHub Pages.
   URL and compare `shasum` of changed files to local.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=12`,
-`js/app.js?v=12`. **Bump every `?v=N` in `index.html` on each deploy** so returning
+`index.html` loads assets with a version query, e.g. `css/styles.css?v=13`,
+`js/app.js?v=13`. **Bump every `?v=N` in `index.html` on each deploy** so returning
 players' browsers fetch fresh CSS/JS instead of stale cached copies. (A stale CSS cache
 is what made the field-diagram fix appear "not to work" once.)
 
@@ -116,9 +116,18 @@ via a CSS `left/top` transition.
   screen + discovery tracking + Undiscovered tags; **drag** Salami cards onto players/coaches;
   coach-affecting card (Coaching Clinic aura); asset cache-busting (`?v=`).
 - Scoreboard score column re-centered (`1.3fr 1.6fr 1.3fr`).
-- **This batch:** renamed the consumables to **Salami Cards** (panel `SALAMI`, internal
-  identifiers stay `CHARMS`/`charm`); **pack-based shop** - Coaches and Front Office are still
-  bought directly, but Players, Salami, Analytics/Scouting, and Boosters are now sealed
-  **packs** you drag into the open slot (or tap) to open, then choose one or skip. New pack
-  kinds (`pk_salami` charm, `pk_frontoffice` analytics) reuse `openPack`/`packPick`;
-  `onPackPointerDown/Move/Up` handle the drag.
+- Renamed the consumables to **Salami Cards** (panel `SALAMI`, internal identifiers stay
+  `CHARMS`/`charm`); pack-based shop - Coaches and Front Office bought directly, the rest are
+  sealed packs you drag (or tap) to open. `onPackPointerDown/Move/Up` handle the drag.
+- **Balatro 1:1 - Phase 1 (packs):** Analytics & Scouting -> **Scouting Cards/Packs** (one
+  pool of `ANALYTICS`+`SCOUTING`); player cards/packs -> **Prospect Cards/Packs**. Every pack
+  family (Prospect, Scouting, Salami, Coaching) now has **Normal / Jumbo (5, pick 1) / Mega
+  (5, pick 2)** sizes (`PACKS` has all 12; `rollShop` rolls a size per family, weighted by
+  round). Sealed packs are now **tall card-pack art** (`.pk-wrap` art window + label band +
+  Jumbo/Mega ribbon), and opening plays a **tear-open burst** (`.pack-burst`) then deals the
+  cards out.
+- **Roadmap (later phases, NOT yet built):** run restructure to 8 antes x 3 frames + Extra
+  Innings (endless); 5 baseball **editions** (All-Star/Silver Slugger/Gold Glove/Hall of
+  Fame/Legendary); **action-leveling** pack (Celestial-equiv, levels Swing/Power/Work the
+  Count/Bunt/Steal); **15 lineups x 5 stakes** with carousel select; 100 coaches; 32 tiered
+  Front Office vouchers (base + upgrade gating, one per ante for 3 frames); 24 skip tags.

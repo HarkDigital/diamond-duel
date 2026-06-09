@@ -1582,9 +1582,9 @@
     `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> - the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
     `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot - bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
     `<section><h3>Innings &amp; bosses</h3><p>Nine innings across three phases - <b>Early</b>, <b>Middle</b>, <b>Late</b> - and the third of each is a <b>Boss</b> with a nasty rule, telegraphed on the linescore so you can prepare for it. Beat the boss to move on to the next phase.</p></section>`,
-    `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Charcuterie Board</b> pack in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
+    `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
     `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, and <b>Front Office</b> voucher: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
-    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose one</b> of what is inside, or <b>skip</b> it. A <b>Prospect</b> or <b>Free Agent</b> pack offers players, a <b>Charcuterie Board</b> offers Salami cards, a <b>Front Office Memo</b> offers analytics and scouting, and a <b>booster</b> pack rounds things out. Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
+    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, and a <b>Coaching Pack</b> offers coaches. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
   const HOWTO_PAGES = [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]];
@@ -1696,16 +1696,20 @@
     const upPool = UPGRADES.filter((u) => run.upgradesOwned.indexOf(u.fx) < 0);
     sh.upgrades = rng.sample(upPool, 1).map((u) => ({ kind: "upgrade", item: u, cost: priceOf(u.cost) }));
 
-    // everything else is a sealed pack you drag open: a player pack, a Salami pack,
-    // an analytics/scouting pack, and a wildcard booster.
-    const getPack = (id) => PACKS.find((p) => p.id === id);
-    const packIds = [
-      round >= 1 ? "pk_player_big" : "pk_player",
-      "pk_salami",
-      "pk_frontoffice",
-      rng.pick(["pk_coach", "pk_scout"]),
-    ];
-    sh.packs = packIds.map((id) => { const p = getPack(id); return { kind: "pack", item: p, cost: priceOf(p.cost) }; });
+    // everything else is a sealed pack you drag open: one of each family (Prospect,
+    // Scouting, Salami, Coaching), each rolled to a size (Normal / Jumbo / Mega).
+    // Bigger packs get more likely the deeper into the run you are.
+    const sizeRoll = () => rng.weighted([
+      { v: "",      w: 100 },
+      { v: "jumbo", w: 18 + round * 9 },
+      { v: "mega",  w: 5 + round * 6 },
+    ]);
+    const packFor = (k) => {
+      const size = sizeRoll();
+      const p = PACKS.find((x) => x.kind === k && x.size === size) || PACKS.find((x) => x.kind === k && !x.size);
+      return { kind: "pack", item: p, cost: priceOf(p.cost) };
+    };
+    sh.packs = ["player", "scouting", "charm", "coach"].map(packFor);
 
     // direct card / consumable / charm slots are retired in favor of packs
     sh.cards = []; sh.consumables = []; sh.charms = [];
@@ -1717,6 +1721,9 @@
     const eco = CONFIG.economy;
     return Math.max(1, eco.rerollBase + eco.rerollStep * STATE.shop.reroll - (STATE.run.rerollDiscount || 0));
   }
+  // shared pack styling helpers (used by the shop and the opening overlay)
+  function packIcon(kind) { return ({ player: "bat", charm: "sparkle", analytics: "barChart", scouting: "eye", coach: "medal" })[kind] || "layers"; }
+  function packLabel(kind) { return ({ player: "PROSPECT", charm: "SALAMI", analytics: "SCOUTING", scouting: "SCOUTING", coach: "COACHING" })[kind] || "PACK"; }
 
   function renderShop() {
     const run = STATE.run, sh = STATE.shop;
@@ -1743,15 +1750,19 @@
     const coaches = sh.coaches.map((s, i) => slotHTML(s, i, "coach")).join("") || emptyRow();
     const ups = sh.upgrades.map((s, i) => slotHTML(s, i, "up")).join("") || emptyRow();
 
-    const packIcon = (kind) => ({ player: "bat", charm: "sparkle", analytics: "barChart", scouting: "eye", coach: "medal" })[kind] || "layers";
     const packHTML = (slot, i) => {
       const it = slot.item;
       const owned = sh.bought["pack" + i];
       const aff = run.payroll >= slot.cost && !owned;
+      const size = it.size || "";
+      const choose = it.choose > 1 ? `PICK ${it.choose} OF ${it.count}` : `PICK 1 OF ${it.count}`;
       return `
-        <div class="shop-pack kind-${it.kind} ${owned ? "opened" : ""} ${aff ? "" : "cant"}" data-packslot="${i}" data-tip="<b>${it.name}</b><br>${it.text}">
-          <div class="pk-card"><span class="pk-ico">${icon(packIcon(it.kind))}</span><span class="pk-seal">${it.count}</span></div>
-          <div class="pk-name">${it.name}</div>
+        <div class="shop-pack kind-${it.kind} ${size ? "sz-" + size : ""} ${owned ? "opened" : ""} ${aff ? "" : "cant"}" data-packslot="${i}" data-tip="<b>${it.name}</b><br>${it.text}">
+          <div class="pk-wrap kind-${it.kind}">
+            <div class="pk-art"><span class="pk-ico">${icon(packIcon(it.kind))}</span><span class="pk-shine"></span></div>
+            ${size ? `<span class="pk-size">${size === "mega" ? "MEGA" : "JUMBO"}</span>` : ""}
+            <div class="pk-band"><span class="pk-band-name">${packLabel(it.kind)}</span><span class="pk-band-sub">${choose}</span></div>
+          </div>
           <div class="pk-cost">${owned ? "Opened" : "$" + slot.cost}</div>
         </div>`;
     };
@@ -1936,7 +1947,7 @@
     if (pack.kind === "player") {
       const round = Math.floor(run.gameIndex / GAMES_PER_ROUND);
       let rar = ["common", "star"];
-      if (pack.id === "pk_player_big") rar = ["star", "allstar"];
+      if (round >= 1 || pack.size) rar.push("allstar");   // jumbo/mega packs can roll stronger cards
       if (round >= 2) rar.push("legend");
       const pool = PLAYERS.filter((p) => rar.indexOf(p.rarity) >= 0);
       options = rng.sample(pool, pack.count).map((p) => ({ kind: "card", item: p }));
@@ -1944,13 +1955,12 @@
       const ownedFx = new Set(run.dugout.map((c) => c.fx));
       const pool = COACHES.filter((c) => !ownedFx.has(c.fx));
       options = rng.sample(pool, pack.count).map((c) => ({ kind: "coach", item: c }));
-    } else if (pack.kind === "scouting") {
-      options = rng.sample(SCOUTING, pack.count).map((c) => ({ kind: "scouting", item: c }));
-    } else if (pack.kind === "charm") {
-      options = rng.sample(CHARMS, pack.count).map((c) => ({ kind: "charm", item: c }));
-    } else if (pack.kind === "analytics") {
+    } else if (pack.kind === "scouting" || pack.kind === "analytics") {
+      // a Scouting pack mixes analytics and scouting reports
       const pool = ANALYTICS.concat(SCOUTING);
       options = rng.sample(pool, pack.count).map((c) => ({ kind: c.kind, item: c }));
+    } else if (pack.kind === "charm") {
+      options = rng.sample(CHARMS, pack.count).map((c) => ({ kind: "charm", item: c }));
     }
     STATE._pack = { pack, options, picksLeft: pack.choose, onDone, picked: [] };
     renderPackOverlay();
@@ -1958,6 +1968,8 @@
   function renderPackOverlay() {
     const ctx = STATE._pack;
     if (!ctx) return;
+    const firstOpen = !ctx.opened;            // play the tear-open + deal animation only once
+    ctx.opened = true;
     const opts = ctx.options.map((o, i) => {
       const picked = ctx.picked.indexOf(i) >= 0;
       let body;
@@ -1967,11 +1979,13 @@
     }).join("");
     const left = ctx.picksLeft;
     const btnLabel = left === 0 ? "Done " + icon("check") : (ctx.picked.length ? "Skip rest" : "Skip pack");
+    const burst = firstOpen ? `<div class="pack-burst kind-${ctx.pack.kind}"><span class="pk-ico">${icon(packIcon(ctx.pack.kind))}</span></div>` : "";
     overlay(`
-      <div class="ov-card pack-ov">
+      <div class="ov-card pack-ov ${firstOpen ? "pk-opening" : ""}">
+        ${burst}
         <h2><span class="h2-ico">${icon("layers")}</span> ${ctx.pack.name}</h2>
         <div class="ov-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}.${left > 0 ? " (" + left + " left)" : ""}</div>
-        <div class="pack-grid pack-deal">${opts}</div>
+        <div class="pack-grid ${firstOpen ? "pack-deal" : ""}">${opts}</div>
         <button class="btn ${left === 0 ? "btn-gold" : "btn-ghost"}" data-act="pack-done">${btnLabel}</button>
       </div>`);
   }
@@ -2549,9 +2563,10 @@
     const dx = e.clientX - _pdrag.x0, dy = e.clientY - _pdrag.y0;
     if (!_pdrag.moved && Math.hypot(dx, dy) > 6) {
       _pdrag.moved = true;
-      const card = _pdrag.el.querySelector(".pk-card");
+      const card = _pdrag.el.querySelector(".pk-wrap");
       const g = card ? card.cloneNode(true) : document.createElement("div");
       g.classList.add("pack-ghost");
+      g.classList.add("kind-" + (STATE.shop.packs[_pdrag.i].item.kind));
       document.body.appendChild(g);
       _pdrag.ghost = g;
       _pdrag.el.classList.add("pack-dragging");
