@@ -62,16 +62,20 @@
     // Bag values
     bag: { BB: 1, HBP: 1, "1B": 2, "2B": 3, "3B": 4, HR: 5 },
 
-    // Per-INNING target curve (innings 1..9, idx 0..8). Boss innings are idx 2,5,8.
-    // Early innings are clearable with the starting deck; late innings require a build.
-    targets: [10, 13, 18, 23, 30, 40, 52, 67, 86],
+    // Target curve. Each frame's target = round(base * inningGrowth^inning * frameMult[frame]),
+    // where inning is 0-based and frame is 0(Top)/1(Middle)/2(Boss). This ramps the 24 frames of
+    // the main run and keeps escalating forever into Extra Innings. Early frames are clearable
+    // with the starting deck; later frames demand a real build.
+    target: { base: 7, inningGrowth: 1.46, frameMult: [1, 1.35, 1.8] },
 
-    // Pitcher scaling across the 9 innings (idx 0..8). "PerGame" = per inning here.
+    // Pitcher scaling. Stuff/Command grow per inning, with a small bump per frame inside an
+    // inning (Top < Middle < Boss) and a flat boss bonus on top.
     pitcher: {
-      baseStuff: 34,
-      stuffPerGame: 2.2,
-      baseCommand: 38,
-      commandPerGame: 2.0,
+      baseStuff: 32,
+      baseCommand: 36,
+      stuffPerInning: 3.1,
+      commandPerInning: 2.7,
+      framePenalty: 2.0,
       bossStuffBonus: 6,
       bossCommandBonus: 5,
     },
@@ -576,13 +580,13 @@
   /* -------------------------------------------------------- */
   /* BRACKET STRUCTURE                                        */
   /* -------------------------------------------------------- */
-  // 3 phases of 3 innings = a 9-inning game. The 3rd inning of each phase is a boss.
-  const ROUNDS = [
-    { id: "early", name: "Early Innings" },
-    { id: "middle", name: "Middle Innings" },
-    { id: "late", name: "Late Innings" },
-  ];
-  const GAMES_PER_ROUND = 3; // innings per phase; the 3rd (idx 2) is a boss inning
+  // A run is 8 innings (Balatro antes). Each inning has 3 frames (Top / Middle / Boss);
+  // the 3rd frame is a Boss pitcher with a rule. Beat inning 8's boss to win the World
+  // Series, then continue into Extra Innings (endless, exponentially escalating).
+  const INNINGS_TO_WIN = 8;
+  const GAMES_PER_ROUND = 3; // frames per inning; frame idx 2 is the Boss
+  const ROUNDS = [];
+  for (let _i = 1; _i <= INNINGS_TO_WIN; _i++) ROUNDS.push({ id: "inn" + _i, name: "Inning " + _i });
 
   /* -------------------------------------------------------- */
   /* RARITY metadata (colors handled in CSS via class)        */

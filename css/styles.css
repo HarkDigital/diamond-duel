@@ -273,18 +273,24 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .map-head{text-align:center; margin-bottom:18px}
 .map-head h2{font-size:1.8rem; font-weight:900; letter-spacing:1px}
 .map-sub{color:var(--ink-dim); margin-top:4px}
-.bracket{display:grid; grid-template-columns:repeat(3,minmax(0,300px)); justify-content:center; gap:18px; margin:0 auto 22px}
-.bracket-round{background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:12px}
-.br-name{text-align:center; font-weight:800; font-size:.85rem; color:var(--gold); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px}
-.br-games{display:flex; flex-direction:column; gap:8px}
-.bracket-game{display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border-radius:10px; border:1px solid var(--line); background:#0c1828; font-size:.85rem}
-.bracket-game.done{opacity:.5; border-color:var(--good)}
-.bracket-game.done .bg-label::after{content:""; display:inline-block; width:5px; height:9px; margin-left:7px; vertical-align:1px; border:solid var(--good); border-width:0 2px 2px 0; transform:rotate(45deg)}
-.bracket-game.current{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,203,71,.3); background:#16233a}
-.bracket-game.boss{background:rgba(255,107,107,.08); border-color:rgba(255,107,107,.35)}
-.bracket-game.boss .bg-label{color:var(--bad); font-weight:900}
-.bracket-game.current.boss{box-shadow:0 0 0 2px rgba(255,107,107,.5)}
-.bg-label{font-weight:700} .bg-target{color:var(--ink-faint); font-variant-numeric:tabular-nums}
+/* compact linescore: 8 inning columns (+ an Extra column), each 3 frame target cells */
+.linescore{display:flex; gap:7px; justify-content:center; flex-wrap:wrap; margin:0 auto 20px}
+.ls-inning{display:flex; flex-direction:column; align-items:center; gap:5px}
+.ls-num{font-size:.74rem; font-weight:800; color:var(--ink-faint)}
+.ls-inning.ls-now .ls-num{color:var(--gold)}
+.ls-frames{display:flex; flex-direction:column; gap:4px}
+.ls-frame{width:54px; height:26px; border-radius:7px; border:1px solid var(--line); background:#0c1828; display:flex; align-items:center; justify-content:center; gap:3px;
+  font-size:.74rem; font-variant-numeric:tabular-nums; color:var(--ink-dim); transition:transform .1s}
+.ls-frame .ico{width:11px; height:11px}
+.ls-frame.done{opacity:.55; border-color:var(--good); color:var(--good)}
+.ls-frame.current{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,203,71,.35); background:#16233a; color:#fff; transform:scale(1.06)}
+.ls-frame.boss{border-color:rgba(255,107,107,.4); color:var(--bad); font-weight:800}
+.ls-frame.boss .ico{color:var(--bad)}
+.ls-frame.current.boss{box-shadow:0 0 0 2px rgba(255,107,107,.55)}
+.ls-frame.boss.future{color:var(--gold-2); border-color:var(--gold-deep)}
+.ls-inning.ls-extra .ls-num{color:var(--gold-2)}
+.ls-inning.ls-extra .ls-frame{border-color:var(--gold-deep)}
+.ls-extra-tag{font-size:.6rem; font-weight:900; letter-spacing:1.5px; color:#1a1206; background:linear-gradient(180deg,#ffd24a,#e8a92a); padding:2px 8px; border-radius:6px; vertical-align:middle; margin-left:8px}
 
 .map-next{display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; background:linear-gradient(180deg,var(--panel),var(--panel-2)); border:1px solid var(--line); border-radius:16px; padding:18px 22px}
 .mn-round{font-size:.8rem; color:var(--gold); text-transform:uppercase; letter-spacing:2px; font-weight:800; margin-bottom:8px}
@@ -425,14 +431,16 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .pm-final-top b i{ color:var(--ink-faint); font-style:normal; font-weight:600; margin:0 2px; }
 .pm-bar{ height:8px; border-radius:6px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:5px; }
 .pm-bar-fill{ height:100%; border-radius:6px; background:linear-gradient(90deg,var(--bad),var(--gold)); }
-.pm-strip{ display:flex; gap:6px; justify-content:center; margin:14px 0; flex-wrap:wrap; }
-.pm-pip{ width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.82rem;
+.pm-strip{ display:flex; gap:4px; justify-content:center; margin:14px auto; flex-wrap:wrap; max-width:460px; }
+.pm-pip{ width:20px; height:20px; border-radius:5px; display:flex; align-items:center; justify-content:center;
   background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--ink-faint); }
-.pm-pip .ico{ width:14px; height:14px; }
-.pm-pip.done{ background:linear-gradient(180deg,rgba(90,209,122,.25),rgba(90,209,122,.1)); border-color:var(--good); color:var(--good); }
-.pm-pip.lost{ background:linear-gradient(180deg,rgba(255,107,107,.3),rgba(255,107,107,.12)); border-color:var(--bad); color:#ffd9d9; box-shadow:0 0 14px rgba(255,107,107,.5); }
-.pm-pip.boss{ border-width:2px; }
+.pm-pip .ico{ width:12px; height:12px; }
+.pm-pip:nth-child(3n){ margin-right:7px; }   /* a small gap after each inning's Boss */
+.pm-pip.done{ background:linear-gradient(180deg,rgba(90,209,122,.3),rgba(90,209,122,.12)); border-color:var(--good); color:var(--good); }
+.pm-pip.lost{ background:linear-gradient(180deg,rgba(255,107,107,.35),rgba(255,107,107,.14)); border-color:var(--bad); color:#ffd9d9; box-shadow:0 0 12px rgba(255,107,107,.5); }
+.pm-pip.boss{ border-width:2px; border-radius:7px; }
 .pm-pip.boss.future{ color:var(--gold-2); border-color:var(--gold-deep); }
+.pm-pip.extra{ border-style:dashed; }
 .pm-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin:14px 0 18px; }
 .pm-grid .stat-cell{ text-align:center; }
 .seed-hidden{ color:var(--ink-faint); font-style:italic; font-size:.8rem; }
@@ -610,7 +618,7 @@ body{ position:fixed; inset:0; margin:0; }
 /* ---------------- MAP ---------------- */
 .map-screen{ justify-content:center; gap:20px; padding:30px 60px; }
 .map-head{ margin-bottom:6px; }
-.bracket{ margin-bottom:0; }
+.linescore{ margin-bottom:0; }
 
 /* ---------------- GAME ---------------- */
 .game-screen{ gap:10px; padding:14px 28px 16px; }

@@ -18,8 +18,8 @@ GitHub Pages.
   URL and compare `shasum` of changed files to local.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=13`,
-`js/app.js?v=13`. **Bump every `?v=N` in `index.html` on each deploy** so returning
+`index.html` loads assets with a version query, e.g. `css/styles.css?v=14`,
+`js/app.js?v=14`. **Bump every `?v=N` in `index.html` on each deploy** so returning
 players' browsers fetch fresh CSS/JS instead of stale cached copies. (A stale CSS cache
 is what made the field-diagram fix appear "not to work" once.)
 
@@ -63,9 +63,16 @@ via a CSS `left/top` transition.
 
 ## Game model (important for "runs"/"innings" questions)
 
-- A **run** is the whole roguelike attempt: **9 innings** (`ROUNDS.length * GAMES_PER_ROUND`),
-  every 3rd is a **Boss**.
-- Each **"game"** object (`STATE.game`) is **one inning vs one pitcher**, with **3 outs**
+- A **run** is **8 innings** (Balatro antes; `ROUNDS.length`), each with **3 frames**
+  (`GAMES_PER_ROUND`): **Top / Middle / Boss**. So **24 frames** main, then **Extra Innings**
+  (endless). `gameIndex` 0..23 main, 24+ extra. Helpers: `inningOf`/`frameOf`/`isBossInning`/
+  `isExtraInnings`/`roundName`/`gameLabel`. Beat inning 8's Boss (frame 24) -> `showVictory`
+  with a "Play Extra Innings" continue (`run.wonWS`); leaving keeps the run continuable.
+- Targets come from a **formula** `targetFor(gi)` = `round(base * inningGrowth^(inning-1) *
+  frameMult[frame])` (`CONFIG.target`), so it extends into Extra Innings. Pitcher stuff/command
+  scale per inning + per frame (`CONFIG.pitcher`). Bosses pre-rolled for 8 innings, extras via
+  `bossFor` on demand.
+- Each **"game"** object (`STATE.game`) is **one frame vs one pitcher**, with **3 outs**
   (`CONFIG.outsPerGame`; the Closer boss gives 2; the Second Wind seed adds 1).
 - **`g.score` / target** ("0 / 10") is the roguelike currency = sum of **Bag value × Rally**.
   Rally starts ×1.0 and climbs +0.5 per safe play; an out persists rally (resets at inning end).
@@ -126,8 +133,14 @@ via a CSS `left/top` transition.
   round). Sealed packs are now **tall card-pack art** (`.pk-wrap` art window + label band +
   Jumbo/Mega ribbon), and opening plays a **tear-open burst** (`.pack-burst`) then deals the
   cards out.
-- **Roadmap (later phases, NOT yet built):** run restructure to 8 antes x 3 frames + Extra
-  Innings (endless); 5 baseball **editions** (All-Star/Silver Slugger/Gold Glove/Hall of
-  Fame/Legendary); **action-leveling** pack (Celestial-equiv, levels Swing/Power/Work the
-  Count/Bunt/Steal); **15 lineups x 5 stakes** with carousel select; 100 coaches; 32 tiered
-  Front Office vouchers (base + upgrade gating, one per ante for 3 frames); 24 skip tags.
+- **Balatro 1:1 - Phase 2 (run structure):** restructured to **8 innings x 3 frames** (Top /
+  Middle / Boss) = 24 frames, then **Extra Innings** (endless). Targets/pitchers are formulas
+  that extend forever (`targetFor`, `CONFIG.target`/`pitcher`). Win inning 8's Boss -> World
+  Series victory with a "Play Extra Innings" continue. Compact **linescore** (`.linescore`,
+  8 inning columns + extra), post-mortem 24-frame strip, labels reworked.
+- **Roadmap (remaining phases):** 5 baseball **editions** (All-Star/Silver Slugger/Gold
+  Glove/Hall of Fame/Legendary) on cards + coaches; **action-leveling** pack (Celestial-equiv,
+  levels Swing/Power/Work the Count/Bunt/Steal); **15 lineups x 5 stakes** with carousel
+  select; 100 coaches; 32 tiered Front Office vouchers (base + upgrade gating, one per inning);
+  24 skip tags. (Pack art/sizes from Phase 1 and the 8x3 structure from Phase 2 are the
+  foundation these build on.)

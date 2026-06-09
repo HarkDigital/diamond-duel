@@ -138,10 +138,15 @@
   function pickBoss(run, round) {
     const rng = makeRNG(run.seed + ":bosspick:" + round);
     let pool;
-    if (round <= 0) pool = BOSSES.filter((b) => b.tier === 1);
-    else if (round === 1) pool = BOSSES.filter((b) => b.tier <= 2);
+    if (round <= 2) pool = BOSSES.filter((b) => b.tier === 1);
+    else if (round <= 4) pool = BOSSES.filter((b) => b.tier <= 2);
     else pool = BOSSES.filter((b) => b.tier === 2);
     return rng.pick(pool);
+  }
+  // boss for a given 0-based inning; rolls + caches Extra-Innings bosses on demand
+  function bossFor(run, inningIdx) {
+    while (run.bosses.length <= inningIdx) run.bosses.push(pickBoss(run, run.bosses.length));
+    return run.bosses[inningIdx];
   }
 
   /* ---------------- pitcher factory ---------------- */
@@ -149,16 +154,16 @@
   const PLAST = ["Brennan", "Voss", "Carmody", "Pruitt", "Okafor", "Salazar", "Mathers", "Dolan", "Renko", "Kasprzak", "Ibarra", "Stenhouse", "Vance", "Nakai", "Quill"];
 
   function makePitcher(run, gameIndex) {
-    const round = Math.floor(gameIndex / GAMES_PER_ROUND);
-    const gir = gameIndex % GAMES_PER_ROUND;
-    const isBoss = gir === GAMES_PER_ROUND - 1;
+    const inning = Math.floor(gameIndex / GAMES_PER_ROUND);    // 0-based inning
+    const frame = gameIndex % GAMES_PER_ROUND;                 // 0=Top, 1=Middle, 2=Boss
+    const isBoss = frame === GAMES_PER_ROUND - 1;
     const rng = makeRNG(run.seed + ":pitcher:" + gameIndex);
     const pc = CONFIG.pitcher;
-    let stuff = pc.baseStuff + pc.stuffPerGame * gameIndex + rng.range(-4, 4);
-    let command = pc.baseCommand + pc.commandPerGame * gameIndex + rng.range(-4, 4);
+    let stuff = pc.baseStuff + pc.stuffPerInning * inning + frame * pc.framePenalty + rng.range(-3, 3);
+    let command = pc.baseCommand + pc.commandPerInning * inning + frame * (pc.framePenalty * 0.8) + rng.range(-3, 3);
     let rule = null, name, boss = null;
     if (isBoss) {
-      boss = run.bosses[round];
+      boss = bossFor(run, inning);
       rule = boss.rule;
       stuff += pc.bossStuffBonus;
       command += pc.bossCommandBonus;
@@ -188,7 +193,7 @@
 
     let outs = CONFIG.outsPerGame;
     if (pitcher.rule === "closer") outs = 2; // the Closer: only 2 outs this inning
-    const baseTarget = CONFIG.targets[gi] || CONFIG.targets[CONFIG.targets.length - 1];
+    const baseTarget = targetFor(gi);
     const target = Math.round(baseTarget * pitcher.targetMultiplier);
 
     const deck = run.deck.map((c) => c); // reference copies (prospect growth persists to run.deck)
@@ -230,7 +235,7 @@
     STATE.screen = "game";
     render();
     // little intro flash
-    pushLog(`${icon("chevronR")} ${roundName(gi)} · ${gameLabel(gi)} - facing ${pitcher.name}. Target ${target}.`, "neutral");
+    pushLog(`${icon("chevronR")} ${gameLabel(gi)} - facing ${pitcher.name}. Target ${target}.`, "neutral");
     saveGame();
   }
 
@@ -562,12 +567,17 @@
     META.bestGame = Math.max(META.bestGame || 0, g.gameIndex);
     saveMeta();
 
-    // advance bracket
+    // advance the bracket
     run.gameIndex += 1;
     saveRun();
-    clearGameSave(); // the inning is over; the next one starts fresh on Play Ball
+    clearGameSave(); // the frame is over; the next one starts fresh on Play Ball
 
-    if (run.gameIndex >= ROUNDS.length * GAMES_PER_ROUND) {
+    // beat inning 8's Boss for the first time -> World Series; then you may push into Extra Innings
+    if (run.gameIndex === ROUNDS.length * GAMES_PER_ROUND && !run.wonWS) {
+      run.wonWS = true;
+      META.wins += 1;
+      META.franchisesWon[run.franchiseId] = true;
+      saveMeta(); checkCareerAch(); saveRun();
       return showVictory();
     }
     showWinOverlay(g, breakdown, total);
@@ -731,7 +741,7 @@
     if (STATE.screen !== "game") return;
     const g = STATE.game, run = STATE.run;
     const gi = g.gameIndex;
-    setText("sb-round", `${roundName(gi)} · ${gameLabel(gi)}`);
+    setText("sb-round", gameLabel(gi));
     setText("sb-vs", "NOW PITCHING");
     setText("sb-pitcher", `${g.pitcher.name}  ·  ${g.pitcher.bats}HP  ·  Stuff ${g.pitcher.stuff} / Cmd ${g.pitcher.command}`);
     const ruleEl = $("#sb-rule");
@@ -745,7 +755,7 @@
     const pct = Math.min(100, (g.score / g.target) * 100);
     const pf = $("#sb-progress"); if (pf) pf.style.width = pct + "%";
     renderOutPips(g);
-    setText("res-inning", gi + 1);
+    setText("res-inning", isExtraInnings(gi) ? "+" + (inningOf(gi) - ROUNDS.length) : inningOf(gi));
     setRally(g.rally, false);
     setText("payroll-amt", run.payroll);
     renderDiamond();
@@ -1275,34 +1285,39 @@
     SFX.lose && SFX.lose();
     const run = STATE.run;
     const fr = FRANCHISES.find((f) => f.id === run.franchiseId);
-    const total = ROUNDS.length * GAMES_PER_ROUND;          // 9 innings
-    const cleared = Math.max(0, Math.min(total, run.stat.gamesWon != null ? run.stat.gamesWon : g.gameIndex));
-    // a linescore strip: every inning, cleared / lost / still ahead, bosses marked
+    const total = ROUNDS.length * GAMES_PER_ROUND;          // 24 frames in the main run
+    const cleared = (run.stat.gamesWon != null ? run.stat.gamesWon : g.gameIndex);  // frames won
+    const inningReached = inningOf(g.gameIndex);
+    const stripN = Math.max(total, g.gameIndex + 1);
+    // a frame-by-frame strip: cleared / lost / ahead, bosses are diamonds, extras flagged
     let strip = "";
-    for (let i = 0; i < total; i++) {
+    for (let i = 0; i < stripN; i++) {
       const boss = isBossInning(i);
-      const cls = i < cleared ? "done" : (i === g.gameIndex ? "lost" : "future");
-      strip += `<span class="pm-pip ${cls}${boss ? " boss" : ""}" title="${gameLabel(i)}">${boss ? icon("diamond") : (i + 1)}</span>`;
+      let cls = i < cleared ? "done" : (i === g.gameIndex ? "lost" : "future");
+      if (i >= total) cls += " extra";
+      strip += `<span class="pm-pip ${cls}${boss ? " boss" : ""}" title="${gameLabel(i)}">${boss ? icon("diamond") : ""}</span>`;
     }
-    const flavor = cleared >= 8 ? "One inning from the ring. Agonizing."
-      : cleared >= 6 ? "Deep into the late innings. So close."
-      : cleared >= 3 ? "A real run, cut short."
-      : cleared >= 1 ? "The makings of something here."
+    const flavor = g.gameIndex >= total ? "A champion, undone deep in Extra Innings. What a run."
+      : inningReached >= 8 ? "One frame from the title. Brutal."
+      : inningReached >= 6 ? "Deep into the late innings. So close."
+      : inningReached >= 3 ? "A real run, cut short."
+      : inningReached >= 2 ? "The makings of something here."
       : "Every dynasty starts with a loss.";
     const pct = Math.min(100, Math.round((g.score / g.target) * 100));
+    const clearedLabel = cleared >= total ? total + " + " + (cleared - total) + " extra" : cleared + " / " + total;
     overlay(`
       <div class="ov-card lose-ov postmortem">
         <div class="pm-burst">${icon("close")}</div>
         <h2>GAME OVER</h2>
-        <div class="ov-sub">${fr ? fr.name : "Your club"} fell to <b>${g.pitcher.name}</b> in the <b>${ordinal(g.gameIndex + 1)} inning</b>.<br><span class="pm-flavor">${flavor}</span></div>
+        <div class="ov-sub">${fr ? fr.name : "Your club"} fell to <b>${g.pitcher.name}</b> in <b>${gameLabel(g.gameIndex)}</b>.<br><span class="pm-flavor">${flavor}</span></div>
         <div class="pm-final">
           <div class="pm-final-top"><span>Final line</span><b>${g.score} <i>/</i> ${g.target}</b></div>
           <div class="pm-bar"><div class="pm-bar-fill" style="width:${pct}%"></div></div>
         </div>
         <div class="pm-strip">${strip}</div>
         <div class="pm-grid">
-          ${statCell("Innings cleared", cleared + " / " + total)}
-          ${statCell("Best inning", run.stat.bestScore || g.score)}
+          ${statCell("Frames cleared", clearedLabel)}
+          ${statCell("Best frame", run.stat.bestScore || g.score)}
           ${statCell("Coaches", run.dugout.length)}
           ${statCell("Deck size", run.deck.length + " cards")}
           ${statCell("Payroll banked", "$" + run.payroll)}
@@ -1316,21 +1331,19 @@
       </div>`, true);
   }
 
+  // shown once, after beating inning 8's Boss. The run is NOT cleared: you can push into Extra Innings.
   function showVictory() {
-    META.wins += 1;
-    if (STATE.run) META.franchisesWon[STATE.run.franchiseId] = true;
-    saveMeta(); checkCareerAch();
-    clearSave();
     SFX.win();
+    const run = STATE.run;
     overlay(`
       <div class="ov-card victory-ov">
         <div class="ov-burst big">${icon("trophy")}</div>
         <h2>WORLD SERIES CHAMPIONS</h2>
-        <div class="ov-sub">You ran the entire gauntlet with ${FRANCHISES.find(f => f.id === STATE.run.franchiseId).name}.<br>Seed: ${seedChip(STATE.run.seed)}</div>
-        <div class="ov-stat">Games won: ${STATE.run.stat.gamesWon} · Best game score: ${STATE.run.stat.bestScore}</div>
+        <div class="ov-sub">You ran the gauntlet with ${FRANCHISES.find(f => f.id === run.franchiseId).name} and won it all.<br>Keep going into <b>Extra Innings</b> to see how far your build can climb, or call it a championship.</div>
+        <div class="ov-stat">Frames won: ${run.stat.gamesWon} · Best frame score: ${run.stat.bestScore} · Seed: ${seedChip(run.seed)}</div>
         <div class="ov-actions">
-          <button class="btn btn-secondary" data-act="replay-seed">${icon("replay")} Replay Seed</button>
-          <button class="btn btn-big btn-gold" data-act="retry-run">New Run</button>
+          <button class="btn btn-big btn-gold" data-act="extra-innings">${icon("fastForward")} Play Extra Innings</button>
+          <button class="btn btn-secondary" data-act="retry-run">New Run</button>
           <button class="btn btn-ghost" data-act="to-title">Main Menu</button>
         </div>
       </div>`, true);
@@ -1371,9 +1384,7 @@
 
   function showStats() {
     const m = META;
-    const furthest = (m.bestGame != null && m.bestGame >= 0)
-      ? `${ROUNDS[Math.floor(m.bestGame / GAMES_PER_ROUND)].name} · ${gameLabel(m.bestGame)}`
-      : "-";
+    const furthest = (m.bestGame != null && m.bestGame >= 0) ? gameLabel(m.bestGame) : "-";
     let runHTML = "";
     if (STATE.run) {
       const r = STATE.run;
@@ -1382,7 +1393,7 @@
         <h3>Current run</h3>
         <div class="stat-grid">
           ${statCell("Franchise", fr ? fr.name : "-")}
-          ${statCell("Now playing", `${roundName(r.gameIndex)} · ${gameLabel(r.gameIndex)}`)}
+          ${statCell("Now playing", gameLabel(r.gameIndex))}
           ${statCell("Games won", r.stat.gamesWon)}
           ${statCell("Payroll", "$" + r.payroll)}
           ${statCell("Deck size", r.deck.length + " cards")}
@@ -1573,7 +1584,7 @@
   }
 
   const HOWTO_SECTIONS = [
-    `<section><h3>The goal</h3><p>A run is one <b>9-inning game</b>. Each inning, pile up <b>Score</b> to beat that inning's <b>Target</b> before you make your <b>3rd out</b>. Clear all nine innings to win - the third inning of every three is a tougher <b>Boss</b>. Come up short in any inning and the run is over.</p></section>`,
+    `<section><h3>The goal</h3><p>A run is <b>8 innings</b>, and each inning has <b>3 frames</b> (Top, Middle, and a <b>Boss</b>). In every frame, pile up <b>Score</b> to beat its <b>Target</b> before you make your <b>3rd out</b>. Clear inning 8's Boss to win the <b>World Series</b>, then push your luck in <b>Extra Innings</b> for as long as your build holds up. Come up short in any frame and the run is over.</p></section>`,
     `<section><h3>Sending a batter up</h3><p>Your hand is your lineup. <b>Drag a card into the "Drop batter here" box</b> (or press <b>1-8</b>) to send that batter to the plate. The box highlights as you drag over it. Once they step up, the swing buttons appear in the bar above the box, and you can hit <b>Cancel</b> there to put the batter back. You draw a fresh card after every at-bat.</p></section>`,
     `<section><h3>Choosing a swing</h3><ul><li><b>Swing Away</b> - balanced; your natural swing.</li><li><b>Power Swing</b> - more homers &amp; extra-base hits, but more strikeouts.</li><li><b>Work the Count</b> - lots of walks, few strikeouts, little power.</li></ul><p>With runners on, you can also <b>Bunt</b> or <b>Send</b> a runner from the same bar.</p></section>`,
     `<section class="howto-rally"><h3>The Rally - the heart of it</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value:</b> Walk 1, Single 2, Double 3, Triple 4, Home Run 5 - plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> starts at <b>×1.0</b> and climbs <b>+0.5</b> each time you reach base safely - but an <b>out resets it to ×1.0</b>.</li></ul><p>Land your big bats while the rally is high.</p></section>`,
@@ -1581,7 +1592,7 @@
     `<section><h3>Baserunning</h3><p>Hits move runners around the diamond, and a runner on 2nd or 3rd is <b>in scoring position</b> (each drives in +1 bag value). When the path is clear you can <b>Send</b> a runner to steal the next base - but getting caught costs a precious out. A <b>Bunt</b> trades an out to push your runners up.</p></section>`,
     `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> - the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
     `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot - bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
-    `<section><h3>Innings &amp; bosses</h3><p>Nine innings across three phases - <b>Early</b>, <b>Middle</b>, <b>Late</b> - and the third of each is a <b>Boss</b> with a nasty rule, telegraphed on the linescore so you can prepare for it. Beat the boss to move on to the next phase.</p></section>`,
+    `<section><h3>Innings, frames &amp; bosses</h3><p>Each of the 8 innings has three frames: <b>Top</b>, <b>Middle</b>, and <b>Boss</b>, with the target climbing each step. The <b>Boss</b> frame is a special pitcher with a nasty rule, telegraphed on the linescore so you can prepare. You shop between every frame. Win inning 8's Boss for the title, then <b>Extra Innings</b> scale up forever.</p></section>`,
     `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
     `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, and <b>Front Office</b> voucher: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
     `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, and a <b>Coaching Pack</b> offers coaches. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
@@ -1627,40 +1638,41 @@
   function renderMap() {
     const run = STATE.run;
     const gi = run.gameIndex;
-    const rounds = ROUNDS.map((rd, ri) => {
-      const games = [];
-      for (let gj = 0; gj < GAMES_PER_ROUND; gj++) {
-        const idx = ri * GAMES_PER_ROUND + gj;
-        const isBossGame = gj === GAMES_PER_ROUND - 1;
-        let cls = "bracket-game";
-        if (idx < gi) cls += " done";
-        else if (idx === gi) cls += " current";
-        else cls += " future";
-        if (isBossGame) cls += " boss";
-        const label = "Inn " + (idx + 1) + (isBossGame ? " " + icon("diamond", "ico-boss") : "");
-        const tgt = Math.round((CONFIG.targets[idx] || 0) * (isBossGame && run.bosses[ri].rule === "ace" ? (CONFIG.aceTargetMult || 1.25) : 1));
-        games.push(`<div class="${cls}" title="Target ${tgt}"><span class="bg-label">${label}</span><span class="bg-target">${tgt}</span></div>`);
+    // a compact linescore: 8 inning columns, each with 3 frame cells (Top / Middle / Boss target)
+    const inningCol = (ri, extra) => {
+      const frames = [];
+      for (let f = 0; f < GAMES_PER_ROUND; f++) {
+        const idx = ri * GAMES_PER_ROUND + f;
+        const boss = f === GAMES_PER_ROUND - 1;
+        let cls = "ls-frame";
+        cls += idx < gi ? " done" : (idx === gi ? " current" : " future");
+        if (boss) cls += " boss";
+        const tgt = Math.round(targetFor(idx) * (boss && bossFor(run, ri).rule === "ace" ? (CONFIG.aceTargetMult || 1.25) : 1));
+        frames.push(`<div class="${cls}" title="${gameLabel(idx)} - target ${tgt}">${boss ? icon("diamond") : ""}<span class="lsf-t">${tgt}</span></div>`);
       }
-      return `<div class="bracket-round"><div class="br-name">${rd.name}</div><div class="br-games">${games.join("")}</div></div>`;
-    }).join("");
+      const now = (ri === inningOf(gi) - 1);
+      return `<div class="ls-inning ${extra ? "ls-extra" : ""} ${now ? "ls-now" : ""}"><div class="ls-num">${extra ? "+" + (ri - ROUNDS.length + 1) : (ri + 1)}</div><div class="ls-frames">${frames.join("")}</div></div>`;
+    };
+    let cols = ROUNDS.map((rd, ri) => inningCol(ri, false)).join("");
+    if (isExtraInnings(gi)) cols += inningCol(inningOf(gi) - 1, true);
 
     const pitcher = makePitcher(run, gi);
     const isBoss = pitcher.isBoss;
-    const target = Math.round((CONFIG.targets[gi] || 0) * pitcher.targetMultiplier);
+    const target = Math.round(targetFor(gi) * pitcher.targetMultiplier);
     const telegraph = isBoss
       ? `<div class="boss-telegraph"><div class="bt-tag">BOSS PITCHER</div><h3>${pitcher.name}</h3><p>${pitcher.boss.text}</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`
-      : `<div class="match-telegraph"><h3>${pitcher.name}</h3><p>Ordinary starter - ${pitcher.bats}HP.</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`;
+      : `<div class="match-telegraph"><h3>${pitcher.name}</h3><p>${pitcher.bats}HP starter.</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`;
 
     return `
     <div class="screen map-screen">
       <div class="map-head">
-        <h2>The Linescore</h2>
+        <h2>The Linescore ${isExtraInnings(gi) ? `<span class="ls-extra-tag">EXTRA INNINGS</span>` : ""}</h2>
         <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b></div>
       </div>
-      <div class="bracket">${rounds}</div>
+      <div class="linescore">${cols}</div>
       <div class="map-next">
         <div class="mn-left">
-          <div class="mn-round">${roundName(gi)} · ${gameLabel(gi)}</div>
+          <div class="mn-round">${gameLabel(gi)}</div>
           ${telegraph}
         </div>
         <div class="mn-right">
@@ -1773,7 +1785,7 @@
     return `
     <div class="screen shop-screen">
       <div class="shop-head">
-        <div class="shop-title">The Shop <span class="shop-round">${roundName(run.gameIndex)} · before ${gameLabel(run.gameIndex)}</span></div>
+        <div class="shop-title">The Shop <span class="shop-round">before ${gameLabel(run.gameIndex)}</span></div>
         <div class="shop-money">
           <div class="payroll-big">$<span id="shop-payroll">${run.payroll}</span></div>
           <button class="btn btn-reroll" data-act="reroll">Reroll ($${rerollCost()})</button>
@@ -2110,9 +2122,18 @@
      utilities
      ============================================================ */
   function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
-  function roundName(gi) { return ROUNDS[Math.floor(gi / GAMES_PER_ROUND)].name; }
-  function isBossInning(gi) { return (gi % GAMES_PER_ROUND) === GAMES_PER_ROUND - 1; }
-  function gameLabel(gi) { return "Inning " + (gi + 1) + (isBossInning(gi) ? " · Boss" : ""); }
+  const FRAME_NAMES = ["Top", "Middle", "Boss"];
+  function inningOf(gi) { return Math.floor(gi / GAMES_PER_ROUND) + 1; }        // 1-based inning (ante)
+  function frameOf(gi) { return gi % GAMES_PER_ROUND; }                          // 0=Top, 1=Middle, 2=Boss
+  function isBossInning(gi) { return frameOf(gi) === GAMES_PER_ROUND - 1; }      // the Boss frame
+  function isExtraInnings(gi) { return inningOf(gi) > ROUNDS.length; }           // past inning 8
+  function roundName(gi) { return isExtraInnings(gi) ? "Extra Innings " + (inningOf(gi) - ROUNDS.length) : "Inning " + inningOf(gi); }
+  function gameLabel(gi) { return roundName(gi) + " · " + (isBossInning(gi) ? "Boss" : FRAME_NAMES[frameOf(gi)]); }
+  // target for a frame: base * growth^(inning-1) * frameMult[frame]; extends into Extra Innings.
+  function targetFor(gi) {
+    const t = CONFIG.target;
+    return Math.max(1, Math.round(t.base * Math.pow(t.inningGrowth, inningOf(gi) - 1) * (t.frameMult[frameOf(gi)] || 1)));
+  }
   function ordinal(n) { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 
   /* ============================================================
@@ -2202,6 +2223,7 @@
       case "reroll": doReroll(); break;
       case "leave-shop": STATE.screen = "map"; saveRun(); render(); break;
       case "to-shop": closeOverlay(); enterShop(); break;
+      case "extra-innings": closeOverlay(); saveRun(); enterShop(); break;   // continue a won run into Extra Innings
       // menu system
       case "open-menu": showMenu(); break;
       case "menu-resume": closeOverlay(); break;
