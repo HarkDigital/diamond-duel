@@ -92,7 +92,10 @@
   const DELUXE_COACH_AURA = { allstar: 0.1, slugger: 0.15, goldglove: 0.2, hof: 0.25, legendary: 0.2 };
   function dugoutUsed(run) { return run.dugout.filter((c) => c.deluxe !== "legendary").length; }   // Legendary coaches take no slot
   function applyDeluxeToCoach(coach, ed) { coach.deluxe = ed; coach.aura = (coach.aura || 0) + (DELUXE_COACH_AURA[ed] || 0); }
-  function rollDeluxe(rng) { return rng.chance(CONFIG.editionSpawnChance) ? rng.weighted(EDITION_WEIGHTS) : null; }
+  function rollDeluxe(rng) {
+    const boost = (STATE.run && STATE.run.editionBoost) ? STATE.run.editionBoost * 0.07 : 0;
+    return rng.chance(CONFIG.editionSpawnChance + boost) ? rng.weighted(EDITION_WEIGHTS) : null;
+  }
 
   /* ---------------- run setup ---------------- */
   // a fuller roster: the franchise's signature 12, padded out to the full roster size
@@ -129,6 +132,8 @@
       extraCardSlots: 0,
       rerollDiscount: 0,
       interestCap: CONFIG.economy.interestCap,
+      editionBoost: 0,       // Sabermetrics vouchers: extra edition spawn chance
+      lastVoucherInning: -1, // a Front Office voucher can be bought once per inning
       shopBuys: 0,
       actionLevels: { swing: 1, power: 1, contact: 1, bunt: 1, steal: 1 },  // Spring Training
       stat: { gamesWon: 0, homers: 0, bestInning: 0, bestScore: 0 },
@@ -1790,9 +1795,15 @@
     const coachPool = COACHES.filter((c) => !ownedFx.has(c.fx));
     sh.coaches = rng.sample(coachPool, CONFIG.shop.coachSlots).map((c) => ({ kind: "coach", item: c, cost: priceOf(c.cost) }));
 
-    // one Front Office voucher not owned (direct buy)
-    const upPool = UPGRADES.filter((u) => run.upgradesOwned.indexOf(u.fx) < 0);
-    sh.upgrades = rng.sample(upPool, 1).map((u) => ({ kind: "upgrade", item: u, cost: priceOf(u.cost) }));
+    // One Front Office voucher per inning, held steady across all 3 frames (seeded by
+    // inning, independent of reroll). A tier-2 upgrade only appears once its base voucher
+    // is owned; once you buy a voucher this inning, the slot stays empty until next inning.
+    const ownedUp = new Set(run.upgradesOwned);
+    const vPool = UPGRADES.filter((u) => !ownedUp.has(u.id) && (!u.requires || ownedUp.has(u.requires)));
+    const vrng = makeRNG(run.seed + ":voucher:" + round);
+    sh.upgrades = (run.lastVoucherInning === round || !vPool.length)
+      ? []
+      : vrng.sample(vPool, 1).map((u) => ({ kind: "upgrade", item: u, cost: priceOf(u.cost) }));
 
     // everything else is a sealed pack you drag open: one of each family (Prospect,
     // Scouting, Salami, Coaching), each rolled to a size (Normal / Jumbo / Mega).
@@ -1934,7 +1945,8 @@
       finishBuy(slot, key); render();
     } else if (group === "up") {
       applyUpgrade(slot.item);
-      run.upgradesOwned.push(slot.item.fx);
+      run.upgradesOwned.push(slot.item.id);
+      run.lastVoucherInning = Math.floor(run.gameIndex / GAMES_PER_ROUND);
       discover(slot.item.id);
       finishBuy(slot, key); render();
     } else if (group === "cons") {
@@ -1962,6 +1974,7 @@
 
   function applyUpgrade(u) {
     const run = STATE.run;
+    // legacy fx vouchers (the 7 originals)
     switch (u.fx) {
       case "dugoutSlot": run.dugoutSlots += 1; break;
       case "handSize": run.handSize += 1; break;
@@ -1970,6 +1983,26 @@
       case "rerollCheap": run.rerollDiscount += 1; break;
       case "startRally": run.startRally = 1.5; break;
       case "interest": run.interestCap = 8; break;
+    }
+    // data-driven mods (tier-2 upgrades + the new base vouchers)
+    const m = u.mods;
+    if (m) {
+      if (m.dugoutSlots) run.dugoutSlots += m.dugoutSlots;
+      if (m.handSize) run.handSize += m.handSize;
+      if (m.discount) run.discount += m.discount;
+      if (m.extraCardSlots) { run.extraCardSlots += m.extraCardSlots; rollShopKeepBought(); }
+      if (m.rerollDiscount) run.rerollDiscount += m.rerollDiscount;
+      if (m.charmSlots) run.charmSlots += m.charmSlots;
+      if (m.payroll) run.payroll += m.payroll;
+      if (m.interestCap) run.interestCap += m.interestCap;
+      if (m.interestCapAbs) run.interestCap = m.interestCapAbs;
+      if (m.startRally) run.startRally = m.startRally;
+      if (m.startRallyAdd) run.startRally += m.startRallyAdd;
+      if (m.editionBoost) run.editionBoost = (run.editionBoost || 0) + m.editionBoost;
+      if (m.springLevel) { for (const k in run.actionLevels) run.actionLevels[k] = Math.max(run.actionLevels[k], m.springLevel); }
+      if (m.deckStat) run.deck.forEach((c) => {
+        ["contact", "power", "eye", "speed"].forEach((s) => { if (typeof c[s] === "number") c[s] = Math.min(140, c[s] + m.deckStat); });
+      });
     }
     toast(`${u.name} acquired.`);
   }

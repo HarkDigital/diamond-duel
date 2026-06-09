@@ -367,6 +367,16 @@
       if (batter.trait === "acekiller" && pitcher.isBoss) bag += 1;
       // deluxe edition: extra Bag value (All-Star / Hall of Fame / Legendary)
       if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].bag) { bag += C.editionFx[batter.deluxe].bag; ev.triggers.push("deluxe:" + batter.deluxe); }
+      // generic coaches: data-driven Bag bonuses (`gen.at === "bag"`)
+      for (let _gi = 0; _gi < run.dugout.length; _gi++) {
+        const _c = run.dugout[_gi], gg = _c.gen;
+        if (!gg || gg.at !== "bag") continue;
+        let ok = false;
+        if (gg.out) ok = gg.out === "hit" ? isHit : gg.out === "xbh" ? (finalOutcome === "2B" || finalOutcome === "3B" || finalOutcome === "HR") : gg.out === "walk" ? (finalOutcome === "BB" || finalOutcome === "HBP") : finalOutcome === gg.out;
+        else if (gg.tag) ok = isHit && batter.tags.indexOf(gg.tag) >= 0;
+        else if (gg.deck) ok = isHit && tagCount(run, gg.deck) >= (gg.min || 1);
+        if (ok) { bag += gg.amt; ev.triggers.push("coach:" + _c.id); }
+      }
     }
 
     /* ---------- event rally bonus (applies to scoring THIS event only) ---------- */
@@ -384,6 +394,17 @@
       if (batter.trait === "acekiller" && pitcher.isBoss) { eventRallyBonus += 1.0; ev.triggers.push("trait:acekiller"); }
       // deluxe edition: extra Rally (Silver Slugger / Hall of Fame / Legendary)
       if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].rally) eventRallyBonus += C.editionFx[batter.deluxe].rally;
+      // generic coaches: data-driven event Rally bonuses (`gen.at === "rally"`)
+      for (let _gi = 0; _gi < run.dugout.length; _gi++) {
+        const _c = run.dugout[_gi], gg = _c.gen;
+        if (!gg || gg.at !== "rally") continue;
+        let ok;
+        if (gg.out) ok = gg.out === "hit" ? isHit : gg.out === "xbh" ? (finalOutcome === "2B" || finalOutcome === "3B" || finalOutcome === "HR") : gg.out === "walk" ? (finalOutcome === "BB" || finalOutcome === "HBP") : gg.out === "safe" ? true : finalOutcome === gg.out;
+        else if (gg.tag) ok = batter.tags.indexOf(gg.tag) >= 0;
+        else if (gg.cond) ok = gg.cond === "risp" ? rispBefore : gg.cond === "twoout" ? outsThisInning === 2 : gg.cond === "leadoff" ? (game.inningPA === 0) : gg.cond === "firston" ? runnerOnFirst : false;
+        else ok = true; // flat aura
+        if (ok) { eventRallyBonus += gg.amt; ev.triggers.push("coach:" + _c.id); }
+      }
     }
 
     /* ---------- score the event ---------- */
@@ -463,6 +484,17 @@
     if (finalOutcome === "HR") {
       eachCoach(run, "hotStreak", (c) => { c.state.homerThisGame = true; });
       eachCoach(run, "goldGloveAgent", () => { ev.payrollGained += 1; ev.triggers.push("coach:gold_glove_agent"); });
+    }
+    // generic coaches: data-driven economy (`gen.at === "econ"`), any matching outcome
+    for (let _gi = 0; _gi < run.dugout.length; _gi++) {
+      const _c = run.dugout[_gi], gg = _c.gen;
+      if (!gg || gg.at !== "econ") continue;
+      const ok = !gg.out ? true
+        : gg.out === "hit" ? isHit
+        : gg.out === "xbh" ? (finalOutcome === "2B" || finalOutcome === "3B" || finalOutcome === "HR")
+        : gg.out === "walk" ? (finalOutcome === "BB" || finalOutcome === "HBP")
+        : finalOutcome === gg.out;
+      if (ok) { ev.payrollGained += gg.amt; ev.triggers.push("coach:" + _c.id); }
     }
 
     // per-batter hot/cold streak (hits heat up, outs cool down; walks are neutral)

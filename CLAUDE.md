@@ -156,5 +156,16 @@ via a CSS `left/top` transition.
   (`.has-dx.dx-*` + `.dx-badge`). **Action leveling** (Spring Training packs, kind "action"):
   `run.actionLevels` {swing/power/contact/bunt/steal}; each level adds `CONFIG.actionLevelRally`
   to that action's safe plays (engine) and shows a `Lv` badge on the swing buttons.
-- **Roadmap (remaining - Phase 5):** 100 coaches; 32 tiered Front Office vouchers (base +
-  upgrade gating, one per inning); 24 skip tags.
+- **Balatro 1:1 - Phase 5a (coaches + vouchers):** **100 coaches** (`COACHES`). The 79 new
+  ones are pure data: each carries a `gen` descriptor read by three generic dispatchers in
+  `engine.js` - Bag (`gen.at:"bag"` matching `out`/`tag`/`deck`), Rally (`gen.at:"rally"`
+  matching `out`/`tag`/`cond:risp|twoout|leadoff|firston`/aura), and Econ (`gen.at:"econ"`,
+  pays `$amt` into `ev.payrollGained`). So new coaches need no hand-coded engine function.
+  **32 Front Office vouchers** (`UPGRADES`): **16 base + 16 upgrades**. The 7 originals keep
+  their `fx` switch; the rest are data-driven via `mods` (charmSlots/payroll/interestCap[Abs]/
+  startRally[Add]/editionBoost/springLevel/deckStat/...) applied in `applyUpgrade`. Each
+  upgrade has `requires: <baseId>` and the shop only offers it once the base is owned. The
+  shop shows **one voucher per inning**, seeded by inning so it holds steady across the 3
+  frames and ignores rerolls; buying it sets `run.lastVoucherInning` so the slot stays empty
+  until the next inning. `run.upgradesOwned` now stores voucher **ids** (was `fx`).
+- **Roadmap (remaining - Phase 5b):** 24 skip tags (earned by skipping a frame).
