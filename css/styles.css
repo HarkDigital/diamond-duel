@@ -931,11 +931,12 @@ body.portrait #toast{ display:none !important; }
 .approach-btn.ap-contact:hover{ border-color:var(--eye); }
 .atbat-cancel{ margin-top:9px; background:none; border:none; color:var(--ink-faint); font:inherit; font-size:.82rem; cursor:pointer; }
 .atbat-cancel:hover{ color:var(--ink); }
-/* hand "picking a swing" state - selected batter lifts & glows, others dim */
-.hand.picking .card{ opacity:.45; }
-.hand.picking .card:hover{ opacity:.8; transform:translateY(-6px); }
-.hand.picking .card.selected{ opacity:1; transform:translateY(-14px) scale(1.06);
-  box-shadow:0 20px 40px rgba(0,0,0,.55), 0 0 0 3px var(--gold); border-color:var(--gold-2); }
+/* hand "picking a swing" state - selected batter brightens & glows in place, others dim.
+   No upward lift: a raised card used to poke into the swing buttons above it. */
+.hand.picking .card{ opacity:.4; filter:saturate(.85); transition:opacity .15s, filter .15s, box-shadow .15s; }
+.hand.picking .card:hover{ opacity:.75; filter:none; }
+.hand.picking .card.selected{ opacity:1; filter:none; transform:scale(1.03); z-index:4;
+  box-shadow:0 12px 26px rgba(0,0,0,.5), 0 0 0 3px var(--gold), 0 0 22px rgba(255,203,71,.55); border-color:var(--gold-2); }
 
 /* ===== traits & hot/cold streaks ===== */
 .card-trait{ font-size:.96rem; line-height:1; flex:none; cursor:help; }
@@ -1495,17 +1496,19 @@ body.portrait #toast{ display:none !important; }
 .card .dx-badge{ pointer-events:auto; }
 
 /* --- outcome stamp: punches in, color-coded, scale-bounce --- */
-.outcome-stamp{ position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); z-index:60; pointer-events:none;
-  font-weight:900; font-size:5.2rem; letter-spacing:2px; text-transform:uppercase; white-space:nowrap;
-  -webkit-text-stroke:3px rgba(0,0,0,.6); text-shadow:0 6px 26px rgba(0,0,0,.6); animation:stampPunch .82s cubic-bezier(.2,1.5,.3,1) forwards; }
+/* clean drop-shadow typography (no -webkit-text-stroke; it distorted the glyphs under scale) */
+.outcome-stamp{ position:absolute; left:50%; top:36%; transform:translate(-50%,-50%); z-index:60; pointer-events:none;
+  font-family:inherit; font-weight:900; font-size:5rem; letter-spacing:1px; text-transform:uppercase; white-space:nowrap;
+  text-shadow:0 2px 0 rgba(0,0,0,.4), 0 0 3px rgba(0,0,0,.45), 0 9px 30px rgba(0,0,0,.55);
+  animation:stampPunch calc(.82s * var(--gs,1)) cubic-bezier(.2,1.5,.3,1) forwards; }
 .outcome-stamp.os-good{ color:#7ce0a0; } .outcome-stamp.os-great{ color:#74c0ff; }
 .outcome-stamp.os-ok{ color:#cdd6e6; } .outcome-stamp.os-bad{ color:#ff7a72; }
-.outcome-stamp.os-huge,.outcome-stamp.os-hr{ color:#ffd24a; font-size:6.4rem; -webkit-text-stroke:4px rgba(60,30,0,.55); }
-.outcome-stamp.os-grand{ color:#ff8a3c; font-size:7rem; }
-@keyframes stampPunch{ 0%{ opacity:0; transform:translate(-50%,-50%) scale(2.4) rotate(-8deg); }
-  18%{ opacity:1; transform:translate(-50%,-50%) scale(.92) rotate(-2deg); }
-  32%{ transform:translate(-50%,-50%) scale(1.06) rotate(0); } 70%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
-  100%{ opacity:0; transform:translate(-50%,-58%) scale(1.04); } }
+.outcome-stamp.os-huge,.outcome-stamp.os-hr{ color:#ffd24a; font-size:6.2rem; }
+.outcome-stamp.os-grand{ color:#ff8a3c; font-size:6.8rem; }
+@keyframes stampPunch{ 0%{ opacity:0; transform:translate(-50%,-50%) scale(1.8) rotate(-5deg); }
+  20%{ opacity:1; transform:translate(-50%,-50%) scale(.94) rotate(-1deg); }
+  34%{ transform:translate(-50%,-50%) scale(1.05) rotate(0); } 72%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  100%{ opacity:0; transform:translate(-50%,-56%) scale(1.03); } }
 
 /* --- screen shake: a third, bigger tier for homers/grand slams --- */
 #app.shake-huge{ animation:shakeHuge .62s cubic-bezier(.36,.07,.19,.97); }
@@ -1530,17 +1533,21 @@ body.portrait #toast{ display:none !important; }
 .coach-icon.trigger::after{ content:""; position:absolute; inset:-5px; border-radius:inherit; border:2px solid var(--gold); opacity:0; animation:coachRing .62s ease-out; pointer-events:none; }
 @keyframes coachRing{ 0%{ opacity:.9; transform:scale(.8) } 100%{ opacity:0; transform:scale(1.5) } }
 
-/* --- ball flight: a ball arcs from the plate onto the field --- */
-.ball-fly{ position:absolute; left:50%; top:80%; width:13px; height:13px; margin:-6px 0 0 -6px; border-radius:50%; z-index:8; pointer-events:none;
-  background:radial-gradient(circle at 35% 30%, #fff, #ece4d2 65%, #c9b68d); box-shadow:0 0 9px rgba(255,255,255,.8), 0 0 3px rgba(255,160,60,.7); }
-.bf-1B{ animation:bf1 .72s ease-out forwards; } .bf-2B{ animation:bf2 .74s ease-out forwards; }
-.bf-3B{ animation:bf3 .76s ease-out forwards; } .bf-HR{ animation:bfHR .94s cubic-bezier(.3,.5,.5,1) forwards; }
-@keyframes bf1{ 0%{ left:50%; top:80%; transform:scale(.6) } 50%{ top:48%; transform:scale(1) } 100%{ left:64%; top:44%; transform:scale(.85); opacity:.5 } }
-@keyframes bf2{ 0%{ left:50%; top:80%; transform:scale(.6) } 45%{ top:26%; transform:scale(1.05) } 100%{ left:74%; top:22%; transform:scale(.8); opacity:.5 } }
-@keyframes bf3{ 0%{ left:50%; top:80%; transform:scale(.6) } 45%{ top:18%; left:34%; transform:scale(1.05) } 100%{ left:20%; top:15%; transform:scale(.8); opacity:.5 } }
-@keyframes bfHR{ 0%{ left:50%; top:80%; transform:scale(.6) } 45%{ top:14%; transform:scale(1.25) } 100%{ left:50%; top:-24%; transform:scale(.45); opacity:0 } }
-.hr-flash{ position:absolute; left:50%; top:-6%; width:60%; height:34%; transform:translateX(-50%); z-index:7; pointer-events:none; border-radius:50%;
-  background:radial-gradient(circle, rgba(255,210,90,.9), rgba(255,140,40,0) 68%); animation:hrFlash .8s ease-out forwards; }
+/* --- ball flight: a bright ball with a comet trail arcs from the plate onto the field.
+   Paths stay inside the diamond [0..100]% so col-field's overflow:hidden never clips them. --- */
+.ball-fly{ position:absolute; left:50%; top:82%; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; z-index:9; pointer-events:none;
+  background:radial-gradient(circle at 36% 30%, #fff, #ffe9c2 55%, #e6ad5c 92%);
+  box-shadow:0 0 16px rgba(255,255,255,.95), 0 0 7px rgba(255,185,90,.95), 0 11px 12px rgba(255,210,140,.5), 0 22px 18px rgba(255,180,90,.24); }
+.bf-1B{ animation:bf1 calc(.78s * var(--gs,1)) ease-out forwards; }
+.bf-2B{ animation:bf2 calc(.82s * var(--gs,1)) ease-out forwards; }
+.bf-3B{ animation:bf3 calc(.86s * var(--gs,1)) ease-out forwards; }
+.bf-HR{ animation:bfHR calc(1s * var(--gs,1)) cubic-bezier(.3,.5,.5,1) forwards; }
+@keyframes bf1{ 0%{ left:50%; top:82%; transform:scale(.5) } 50%{ top:50%; transform:scale(1.1) } 100%{ left:66%; top:44%; transform:scale(.9); opacity:.35 } }
+@keyframes bf2{ 0%{ left:50%; top:82%; transform:scale(.5) } 45%{ top:30%; transform:scale(1.2) } 100%{ left:76%; top:24%; transform:scale(.85); opacity:.35 } }
+@keyframes bf3{ 0%{ left:50%; top:82%; transform:scale(.5) } 45%{ top:20%; left:30%; transform:scale(1.2) } 100%{ left:18%; top:16%; transform:scale(.85); opacity:.35 } }
+@keyframes bfHR{ 0%{ left:50%; top:82%; transform:scale(.5) } 40%{ top:30%; transform:scale(1.4) } 80%{ top:8%; transform:scale(1.05) } 100%{ left:50%; top:4%; transform:scale(.7); opacity:0 } }
+.hr-flash{ position:absolute; left:50%; top:2%; width:66%; height:30%; transform:translateX(-50%); z-index:8; pointer-events:none; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,226,120,.95), rgba(255,150,50,0) 66%); animation:hrFlash calc(.9s * var(--gs,1)) ease-out forwards; }
 @keyframes hrFlash{ 0%{ opacity:0; transform:translateX(-50%) scale(.4) } 40%{ opacity:1; transform:translateX(-50%) scale(1) } 100%{ opacity:0; transform:translateX(-50%) scale(1.4) } }
 
 /* --- confetti + trophy flourish on winning a run --- */
@@ -1564,3 +1571,29 @@ body.portrait #toast{ display:none !important; }
 .ms-btn:hover{ transform:translateY(-2px); border-color:var(--gold-2); color:#fff; }
 .ms-btn.sel{ background:linear-gradient(180deg,var(--gold),var(--gold-2)); color:#2a1c00; border-color:var(--gold-deep); box-shadow:0 4px 14px rgba(245,166,35,.3); }
 .menu-speed .ms-hint{ font-size:.72rem; color:var(--ink-faint); width:100%; text-align:center; }
+
+/* ============================================================
+   PHASE 7: game-speed (--gs) scales every gameplay animation so the whole
+   game paces 1x..4x - card load-in, base running, and all the juice. The
+   `--gs` var is set on #stage from JS (= speedScale(): 1 at 4x, 4 at 1x).
+   Interaction feedback (hover / press / drag) is intentionally NOT scaled.
+   ============================================================ */
+/* hand cards deal in; a played card lifts off (scoped to the in-game hand) */
+.hand .card{ animation-duration: calc(.35s * var(--gs,1)); }
+.hand .card.playing{ animation-duration: calc(.5s * var(--gs,1)); }
+/* base running: the runner token glides between bases (paired with LEG_MS in JS) */
+.rtok{ transition-duration: calc(.23s * var(--gs,1)), calc(.23s * var(--gs,1)), calc(.25s * var(--gs,1)), calc(.25s * var(--gs,1)); }
+/* run / score pops */
+.run-pop{ animation-duration: calc(1.1s * var(--gs,1)); }
+.float-text{ animation-duration: calc(.9s * var(--gs,1)); }
+#sb-score.score-bump{ animation-duration: calc(.4s * var(--gs,1)); }
+/* Phase 6 juice: shake tiers, rally grow, coach trigger */
+#app.shake-sm{ animation-duration: calc(.36s * var(--gs,1)); }
+#app.shake-big{ animation-duration: calc(.56s * var(--gs,1)); }
+#app.shake-huge{ animation-duration: calc(.62s * var(--gs,1)); }
+.sb-rally-num.rally-grow{ animation-duration: calc(.5s * var(--gs,1)); }
+.coach-icon.trigger,.coach-chip.trigger{ animation-duration: calc(.62s * var(--gs,1)); }
+.coach-icon.trigger::after{ animation-duration: calc(.62s * var(--gs,1)); }
+/* pack opening tear + deal */
+.pack-deal .pack-opt{ animation-duration: calc(.4s * var(--gs,1)); }
+.pkb-top,.pkb-bot,.pkb-rip,.pkb-flash{ animation-duration: calc(.58s * var(--gs,1)); }

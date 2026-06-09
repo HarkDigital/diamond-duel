@@ -202,3 +202,13 @@ via a CSS `left/top` transition.
   = fastest/the original pacing): `speedScale() = 4/speed` is the delay multiplier applied in
   `sleep()` (so every gameplay pause scales) and in `tickNumber` (score count-up). The menu has a
   1x/2x/3x/4x selector (`.menu-speed`/`data-speed` -> `setSpeed`); verified 1x runs ~4x slower.
+- **Speed scales ALL animations + juice fixes:** speed now drives a `--gs` CSS var on `#stage`
+  (`applySpeedVar()` = `speedScale()`); gameplay durations are `calc(base * var(--gs,1))` so card
+  load-in, base running (`.rtok` + `LEG_MS`), shake, stamp, ball, rally, pack tear all rescale
+  (interaction feedback is excluded). JS timeouts go through `pace(ms)` (LEG_MS, setReadout display,
+  popRuns, floatText, flashScreen, juice removals). **Ball flight** made visible: bigger (18px) +
+  glow trail + higher z, and every arc kept inside the diamond `[0..100]%` so `col-field`'s
+  `overflow:hidden` no longer clips it (the HR no longer flies to `top:-24%`). **Outcome stamp**
+  typography fixed: dropped `-webkit-text-stroke` (it distorted glyphs under scale) for a clean
+  drop-shadow. **Selected batter card** no longer lifts (`translateY` removed) into the swing
+  buttons; differentiation is now full-opacity + gold ring + glow + subtle scale vs dimmed others.

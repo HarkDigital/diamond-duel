@@ -12,6 +12,13 @@
   // pause flows through sleep(), so one scale here paces the whole game.
   function speedScale() { return 4 / ((typeof META !== "undefined" && META && META.speed) ? META.speed : 4); }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms * speedScale()));
+  const pace = (ms) => Math.round(ms * speedScale());   // scale a UI timeout to match the speed setting
+  // Publish the speed multiplier as a CSS var so every gameplay animation/transition scales too
+  // (calc(... * var(--gs))). Interaction feedback (hovers, button presses) deliberately ignores it.
+  function applySpeedVar() {
+    const root = document.getElementById("stage") || document.documentElement;
+    if (root) root.style.setProperty("--gs", speedScale().toFixed(3));
+  }
   const SAVE_KEY = "diamondduel.run.v1";
   const GAME_KEY = "diamondduel.game.v1";
   const META_KEY = "diamondduel.meta.v1";
@@ -561,7 +568,7 @@
     const cls = "shake-" + lvl;
     ["shake-sm", "shake-big", "shake-huge"].forEach((c) => el.classList.remove(c));
     void el.offsetWidth; el.classList.add(cls);
-    setTimeout(() => el.classList.remove(cls), 620);
+    setTimeout(() => el.classList.remove(cls), pace(620));
   }
   // a big color-coded outcome word that punches onto the screen with a scale-bounce
   function stampOutcome(label, cls, outcome, grand) {
@@ -570,7 +577,7 @@
     d.className = "outcome-stamp os-" + cls + (outcome === "HR" ? " os-hr" : "") + (grand ? " os-grand" : "");
     d.textContent = grand && outcome === "HR" ? "GRAND SLAM" : label;
     host.appendChild(d);
-    setTimeout(() => d.remove(), outcome === "HR" ? 1150 : 820);
+    setTimeout(() => d.remove(), pace(outcome === "HR" ? 1150 : 820));
   }
   // a ball arcs from the plate out onto the field; the path/height scales with the hit
   function ballFlight(outcome) {
@@ -583,9 +590,9 @@
       const flash = document.createElement("div");
       flash.className = "hr-flash";
       dia.appendChild(flash);
-      setTimeout(() => flash.remove(), 900);
+      setTimeout(() => flash.remove(), pace(900));
     }
-    setTimeout(() => b.remove(), outcome === "HR" ? 1000 : 760);
+    setTimeout(() => b.remove(), pace(outcome === "HR" ? 1100 : 900));
   }
   // confetti + a little trophy pop, for winning a run (the World Series)
   function confettiBurst(n) {
@@ -627,7 +634,7 @@
     let f = $("#screen-flash");
     if (!f) { f = document.createElement("div"); f.id = "screen-flash"; const st = document.getElementById("stage"); (st || document.body).appendChild(f); }
     f.className = "show " + (kind || "");
-    setTimeout(() => { f.className = ""; }, 400);
+    setTimeout(() => { f.className = ""; }, pace(400));
   }
 
   /* ---------------- win / lose ---------------- */
@@ -1010,7 +1017,7 @@
       tok.style.left = xy[0] + "%";
       tok.style.top = xy[1] + "%";
       tok.setAttribute("data-stop", cur);
-      tok._stepTimer = setTimeout(step, LEG_MS);
+      tok._stepTimer = setTimeout(step, LEG_MS * speedScale());
     }
     step();
   }
@@ -1065,7 +1072,7 @@
         tok.classList.add("leaving"); // scored - round the remaining bases to home, then fade
         animateTokenTo(tok, 4, () => {
           tok.classList.add("crossed");
-          setTimeout(() => { if (tok.parentNode) tok.parentNode.removeChild(tok); }, 260);
+          setTimeout(() => { if (tok.parentNode) tok.parentNode.removeChild(tok); }, pace(260));
         });
       }
     });
@@ -1396,7 +1403,7 @@
       </div>`;
     r.classList.remove("show"); void r.offsetWidth; r.classList.add("show");
     clearTimeout(setReadout._t);
-    setReadout._t = setTimeout(() => { r.classList.remove("show"); }, 1700);
+    setReadout._t = setTimeout(() => { r.classList.remove("show"); }, pace(1700));
   }
 
   function bumpScore(amt) {
@@ -1453,7 +1460,7 @@
     d.className = "run-pop";
     d.textContent = n === 1 ? "RUN!" : n + " RUNS!";
     layer.appendChild(d);
-    setTimeout(() => d.remove(), 1100);
+    setTimeout(() => d.remove(), pace(1100));
   }
 
   function floatText(anchorEl, text, cls) {
@@ -1463,7 +1470,7 @@
     d.className = "float-text " + (cls || "");
     d.textContent = text;
     host.appendChild(d);
-    setTimeout(() => d.remove(), 900);
+    setTimeout(() => d.remove(), pace(900));
   }
 
   function flashPayrollGain(amt) {
@@ -1616,6 +1623,7 @@
   function setSpeed(n) {
     if (!(n >= 1 && n <= 4)) return;
     META.speed = n; saveMeta();
+    applySpeedVar();   // update the CSS speed multiplier so animations rescale immediately
     if (SFX && SFX.click) SFX.click();
     showMenu();   // re-render so the selected button updates
   }
@@ -3030,6 +3038,7 @@
 
   function boot() {
     SFX.setEnabled(META.sound);
+    applySpeedVar();   // seed the CSS speed multiplier from the saved setting
     fitStage();
     window.addEventListener("resize", fitStage);
     window.addEventListener("orientationchange", fitStage);
