@@ -2548,7 +2548,7 @@
       <div class="pack-stage ${firstOpen ? "pk-opening" : ""}">
         ${burst}
         <h2 class="ps-title"><span class="h2-ico">${icon("layers")}</span> ${ctx.pack.name}</h2>
-        <div class="ps-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}.${left > 0 ? " (" + left + " left)" : ""}</div>
+        <div class="ps-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}.${left > 0 ? " (" + left + " left)" : ""}${ctx.pack.kind !== "player" && left > 0 ? ` <span class="ps-hint">tap a card, or drag it up into its row</span>` : ""}</div>
         <div class="pack-grid ${firstOpen ? "pack-deal" : ""}">${opts}</div>
         <button class="btn btn-big ${left === 0 ? "btn-gold" : "btn-ghost"} ps-done" data-act="pack-done">${btnLabel}</button>
       </div>`;
@@ -2772,7 +2772,10 @@
       const sellEl = e.target.closest("[data-sell]");
       const sendEl = e.target.closest("[data-send]");
 
-      if (packpickEl) { packPick(parseInt(packpickEl.getAttribute("data-packpick"), 10)); return; }
+      if (packpickEl) {
+        if (_suppressOptClick) { _suppressOptClick = false; return; }   // a drag already claimed it
+        packPick(parseInt(packpickEl.getAttribute("data-packpick"), 10)); return;
+      }
       if (dotEl) { STATE._pickIndex = parseInt(dotEl.getAttribute("data-lineup-dot"), 10); if (SFX.click) SFX.click(); render(); return; }
       if (stakeEl) { const s = parseInt(stakeEl.getAttribute("data-stake"), 10); if (s <= (META.maxStake || 1)) { STATE._pickStake = s; if (SFX.click) SFX.click(); render(); } else if (SFX.error) SFX.error(); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
@@ -3177,6 +3180,68 @@
     } else if (SFX && SFX.error) { SFX.error(); }
   }
 
+  /* ---------- pack stage: drag a non-player option up into its row to claim it ----------
+     Coaches drop on the DUGOUT row; Salami / scouting / analytics / training drop on the
+     SALAMI row. A drop is exactly a pick (same make-room flow when slots are full).
+     Player cards stay tap-to-take (they join the deck, which has no slot row). */
+  let _odrag = null, _suppressOptClick = false;
+  function optRowSel(kind) { return kind === "coach" ? "#dugout" : "#powerups"; }
+  function onOptPointerDown(e) {
+    _suppressOptClick = false;
+    if (!STATE._pack || STATE.screen !== "shop") return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const el = e.target.closest(".pack-stage .pack-opt[data-packpick]");
+    if (!el) return;
+    const i = parseInt(el.getAttribute("data-packpick"), 10);
+    const ctx = STATE._pack;
+    const o = ctx.options[i];
+    if (!o || o.kind === "card") return;                          // players: tap to add to the deck
+    if (ctx.picked.indexOf(i) >= 0 || ctx.picksLeft <= 0) return;
+    _odrag = { i, kind: o.kind, el, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, over: false };
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+  function onOptPointerMove(e) {
+    if (!_odrag) return;
+    const dx = e.clientX - _odrag.x0, dy = e.clientY - _odrag.y0;
+    if (!_odrag.moved && Math.hypot(dx, dy) > 7) {
+      _odrag.moved = true;
+      const g = _odrag.el.cloneNode(true);
+      g.classList.add("opt-ghost");
+      g.style.width = _odrag.el.getBoundingClientRect().width + "px";
+      document.body.appendChild(g);
+      _odrag.ghost = g;
+      _odrag.el.classList.add("opt-dragging");
+      const row = $(optRowSel(_odrag.kind));
+      if (row) row.classList.add("row-armed");
+    }
+    if (_odrag.moved) {
+      _odrag.ghost.style.left = e.clientX + "px";
+      _odrag.ghost.style.top = e.clientY + "px";
+      const row = $(optRowSel(_odrag.kind));
+      let over = false;
+      if (row) {
+        const r = row.getBoundingClientRect();
+        over = e.clientX >= r.left - 24 && e.clientX <= r.right + 24 && e.clientY >= r.top - 28 && e.clientY <= r.bottom + 28;
+        row.classList.toggle("row-hover", over);
+      }
+      _odrag.over = over;
+    }
+  }
+  function onOptPointerUp() {
+    if (!_odrag) return;
+    const d = _odrag; _odrag = null;
+    if (d.ghost) d.ghost.remove();
+    d.el.classList.remove("opt-dragging");
+    const row = $(optRowSel(d.kind));
+    if (row) row.classList.remove("row-armed", "row-hover");
+    if (d.moved) {
+      _suppressOptClick = true;                  // a drag must not also fire the tap handler
+      if (d.over) packPick(d.i);
+      else if (SFX && SFX.click) SFX.click();    // released in open space: snaps back
+    }
+    // a plain tap (no movement) falls through to the click handler -> packPick()
+  }
+
   /* ---------- shop: drag a sealed pack onto the open slot to open it ---------- */
   let _pdrag = null, _suppressPackClick = false;
   function packSlotHit(x, y) {
@@ -3245,6 +3310,10 @@
     document.addEventListener("pointermove", onPackPointerMove);
     document.addEventListener("pointerup", onPackPointerUp);
     document.addEventListener("pointercancel", onPackPointerUp);
+    document.addEventListener("pointerdown", onOptPointerDown);
+    document.addEventListener("pointermove", onOptPointerMove);
+    document.addEventListener("pointerup", onOptPointerUp);
+    document.addEventListener("pointercancel", onOptPointerUp);
   }
 
   function boot() {
