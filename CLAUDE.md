@@ -136,6 +136,12 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   achievement). Caught = an out.
 - **Lineups & stakes:** 15 `FRANCHISES` (themed deck + `mods` deltas applied in `newRun`)
   x 5 `STAKES` (cumulative `stakeMods`). Home screen carousel + per-lineup `crestSVG`.
+- **Rosters have NO duplicate players.** `rosterIdsFor(fr)` builds each franchise's 30:
+  the signature 12 plus a themed bench of unique fill players (scored by role-tag match,
+  commons preferred, legends never auto-fill; deterministic per franchise, not per run).
+  Prospect packs filter out players already in the deck (falling back to the full pool
+  only if it runs dry), so the ONLY duplication path is the Clone Project scouting card.
+  The carousel/popup stat bars average the full 30-man roster via the same helper.
 - **Front Office vouchers** (`UPGRADES`, 16 base + 16 tier-2 gated by `requires`): one per
   inning in the shop (seeded by inning, survives rerolls); a Voucher Tag **appends** an
   extra one. `run.extraCardSlots` (Scouting Network line + The Scouts lineup) adds **+1

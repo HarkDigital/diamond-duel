@@ -109,14 +109,35 @@
   }
 
   /* ---------------- run setup ---------------- */
-  // a fuller roster: the franchise's signature 12, padded out to the full roster size
-  // by cloning copies (depth chart) so you draw your bombs less often - thinning matters.
-  function buildStartingDeck(fr) {
+  // Role tags that define a franchise's identity (positions/handedness excluded).
+  const ROSTER_ROLE_TAGS = ["slugger", "contact", "speedster", "table-setter", "utility", "veteran", "rookie"];
+  // A franchise's full roster: its signature players plus a themed bench of UNIQUE
+  // fill players. No duplicate human beings on a starting roster - the only way to own
+  // two of the same player is the Clone Project scouting card. The bench is scored by
+  // how well each free agent matches the franchise's role mix (commons preferred,
+  // legends never auto-fill) and is deterministic PER FRANCHISE, same every run.
+  function rosterIdsFor(fr) {
+    const target = CONFIG.startingDeckSize || fr.deck.length;
     const ids = fr.deck.slice();
-    const target = CONFIG.startingDeckSize || ids.length;
-    const out = [];
-    for (let i = 0; out.length < target; i++) out.push(cloneCard(getPlayer(ids[i % ids.length])));
-    return out;
+    const have = new Set(ids);
+    if (ids.length >= target) return ids.slice(0, target);
+    const rng = makeRNG("roster:" + fr.id);
+    const tagW = {};
+    ids.forEach((id) => { const p = getPlayer(id); if (p) p.tags.forEach((t) => { if (ROSTER_ROLE_TAGS.indexOf(t) >= 0) tagW[t] = (tagW[t] || 0) + 1; }); });
+    const bench = PLAYERS
+      .filter((p) => !have.has(p.id) && p.rarity !== "legend")
+      .map((p) => {
+        let s = rng.float() * 3;                               // stable tie-break jitter
+        p.tags.forEach((t) => { s += (tagW[t] || 0); });       // theme match
+        s += p.rarity === "common" ? 6 : p.rarity === "star" ? 2 : 0;   // benches skew common
+        return { id: p.id, s };
+      })
+      .sort((a, b) => b.s - a.s);
+    while (ids.length < target && bench.length) ids.push(bench.shift().id);
+    return ids;
+  }
+  function buildStartingDeck(fr) {
+    return rosterIdsFor(fr).map((id) => cloneCard(getPlayer(id)));
   }
   function newRun(franchiseId, seed, stake) {
     const fr = FRANCHISES.find((f) => f.id === franchiseId) || FRANCHISES[0];
@@ -865,7 +886,7 @@
     const stake = STATE._pickStake || 1;
     const maxStake = META.maxStake || 1;
     const coach = f.signatureCoach ? getCoach(f.signatureCoach) : null;
-    const ids = f.deck;
+    const ids = rosterIdsFor(f);   // average the FULL 30-man roster (starters + bench), not just the stars
     const totals = ids.reduce((a, id) => { const p = getPlayer(id); a.c += p.contact; a.p += p.power; a.e += p.eye; a.s += p.speed; return a; }, { c: 0, p: 0, e: 0, s: 0 });
     const n = ids.length, mini = (v) => Math.round(v / n);
     const bestStake = META.lineupWins[f.id] || 0;
@@ -1858,7 +1879,7 @@
     if (SFX && SFX.click) SFX.click();
     STATE._pendingFranchise = id;
     const coach = f.signatureCoach ? getCoach(f.signatureCoach) : null;
-    const ids = f.deck;
+    const ids = rosterIdsFor(f);
     const totals = ids.reduce((a, pid) => { const p = getPlayer(pid); a.c += p.contact; a.p += p.power; a.e += p.eye; a.s += p.speed; return a; }, { c: 0, p: 0, e: 0, s: 0 });
     const n = ids.length, mini = (v) => Math.round(v / n);
     const hasSave = !!localStorage.getItem(SAVE_KEY);
@@ -2346,7 +2367,11 @@
       let rar = ["common", "star"];
       if (round >= 1 || pack.size) rar.push("allstar");   // jumbo/mega packs can roll stronger cards
       if (round >= 2) rar.push("legend");
-      const pool = PLAYERS.filter((p) => rar.indexOf(p.rarity) >= 0);
+      // never offer a player you already employ (duplicates only via Clone Project);
+      // fall back to the full pool if the deck has grown so large the filter runs dry
+      const owned = new Set(run.deck.map((c) => c.id));
+      let pool = PLAYERS.filter((p) => rar.indexOf(p.rarity) >= 0 && !owned.has(p.id));
+      if (pool.length < count) pool = PLAYERS.filter((p) => rar.indexOf(p.rarity) >= 0);
       options = rng.sample(pool, count).map((p) => ({ kind: "card", item: p, deluxe: rollDeluxe(rng) }));
     } else if (pack.kind === "coach") {
       const ownedFx = new Set(run.dugout.map((c) => c.fx));

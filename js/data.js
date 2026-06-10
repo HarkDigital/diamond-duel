@@ -139,7 +139,8 @@
     dugoutSlots: 8,
     // Salami Cards (consumable powerups, Balatro-Arcana style)
     charmSlots: 4,
-    // Roster: each franchise's deck is padded to this many cards
+    // Roster: each franchise's 12 signature players are filled out to this many UNIQUE
+    // players with a themed bench (no duplicates; see rosterIdsFor in app.js)
     startingDeckSize: 30,
 
     // Card-treatment effects (applied by Scouting reports)
