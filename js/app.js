@@ -868,7 +868,6 @@
         ${(typeof logoSVG === "function")
           ? `<div class="logo logo-svg">${logoSVG()}</div>`
           : `<div class="logo"><span class="logo-diamond">${icon("diamond")}</span><h1>DIAMOND<span>DUEL</span></h1></div>`}
-        <p class="tagline">A baseball roguelike deckbuilder. Build a lineup, stack the rally, out-score the ace.</p>
       </div>
       ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
       <h2 class="pick-h">Choose your lineup</h2>
@@ -904,7 +903,7 @@
       return `<button class="stake-btn st-${s.id} ${sel ? "sel" : ""} ${locked ? "locked" : ""}" data-stake="${s.id}" title="${s.name}">${locked ? icon("lock") : s.id}</button>`;
     }).join("");
     const cur = STAKES[stake - 1];
-    const unlockHint = (stake === maxStake && maxStake < STAKES.length) ? ` <span class="stake-unlock">Win the World Series here to unlock ${STAKES[stake].name}.</span>` : "";
+    const unlockHint = (stake === maxStake && maxStake < STAKES.length) ? `<div class="stake-unlock">Win the World Series here to unlock ${STAKES[stake].name}.</div>` : "";
     return `
       <div class="lineup-carousel">
         <button class="lc-arrow" data-act="prev-lineup" aria-label="Previous lineup">${icon("chevronL")}</button>
@@ -927,7 +926,8 @@
         <div class="stake-btns">${stakeBtns}</div>
         <span class="stake-name st-${stake}">${cur.name}</span>
       </div>
-      <div class="stake-desc">${cur.text}${unlockHint}</div>
+      <div class="stake-desc">${cur.text}</div>
+      ${unlockHint}
       <div class="lc-start">
         <div class="lc-seed"><label>Seed <span>(optional)</span></label><input id="fr-seed" class="seed-input" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="random" value="${STATE._replaySeed ? escAttr(STATE._replaySeed) : ""}" /></div>
         <button class="btn btn-big btn-gold" data-act="confirm-start">Play Ball ${icon("chevronR")}</button>

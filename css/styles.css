@@ -124,7 +124,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .stake-name{font-weight:900; font-size:1rem; min-width:96px}
 .stake-name.st-1{color:#9bb6c4} .stake-name.st-2{color:#5ad17a} .stake-name.st-3{color:#60a5fa} .stake-name.st-4{color:#c084fc} .stake-name.st-5{color:#ff6b6b}
 .stake-desc{text-align:center; color:var(--ink-dim); font-size:.84rem; max-width:520px; margin:4px auto 0; min-height:34px}
-.stake-unlock{color:var(--gold-2); font-weight:700}
+.stake-unlock{display:block; color:var(--gold-2); font-weight:700; text-align:center; font-size:.84rem; max-width:520px; margin:4px auto 0}
 .lc-start{display:flex; align-items:flex-end; justify-content:center; gap:14px; margin:14px auto 0; max-width:520px}
 .lc-seed{display:flex; flex-direction:column; gap:4px; text-align:left}
 .lc-seed label{font-size:.68rem; text-transform:uppercase; letter-spacing:1px; color:var(--ink-faint); font-weight:700}
