@@ -959,12 +959,12 @@
         </div>
 
         <div class="col-powerups">
-          <div class="pw-title">SALAMI</div>
+          <button class="pw-title panel-btn" data-act="open-salami" title="Open the Salami pouch (sell any time)">SALAMI <span class="pt-n" id="pt-salami"></span>${icon("chevronR", "ico-sm")}</button>
           <div class="powerups" id="powerups"></div>
         </div>
 
         <div class="col-dugout">
-          <div class="dugout-title">DUGOUT</div>
+          <button class="dugout-title panel-btn" data-act="open-dugout" title="Open the Dugout (sell any time)">DUGOUT <span class="pt-n" id="pt-dugout"></span>${icon("chevronR", "ico-sm")}</button>
           <div class="dugout" id="dugout"></div>
         </div>
 
@@ -1169,6 +1169,7 @@
       else slots.push(`<div class="coach-icon empty">+</div>`);
     }
     d.innerHTML = slots.join("");
+    setText("pt-dugout", `${dugoutUsed(run)}/${run.dugoutSlots}`);
   }
   // Compact dugout badge - just the coach's icon; the full rule lives in the tap/hover tooltip.
   function coachIconHTML(c) {
@@ -1190,6 +1191,7 @@
       else slots.push(`<div class="charm-badge empty">+</div>`);
     }
     el.innerHTML = slots.join("");
+    setText("pt-salami", `${run.charms.length}/${run.charmSlots}`);
   }
   function charmBadgeHTML(c, i) {
     const how = c.target === "immediate" ? "Tap to use" : (c.target === "coach" ? "Drag onto a coach" : "Drag onto a player");
@@ -1230,6 +1232,31 @@
     saveRun();
     if (STATE.screen === "game") { renderPowerups(); setText("payroll-amt", run.payroll); }
     if (STATE.screen === "shop") render();
+  }
+  // The Salami pouch, inspectable (and sellable) from ANY screen - mirrors openDugoutView.
+  function openSalamiView() {
+    const run = STATE.run;
+    if (!run) return;
+    const cells = run.charms.map((id, i) => {
+      const c = getCharm(id);
+      if (!c) return "";
+      const how = c.target === "immediate" ? "Tap it in the SALAMI panel during play to use it."
+        : c.target === "coach" ? "Drag it onto a dugout coach during play."
+        : "Drag it onto a player in your hand during play.";
+      return `<div class="mr-item rar-${c.rarity}">
+          <span class="mr-ico">${icon(c.icon)}</span>
+          <div class="mr-txt"><b>${c.name}</b><span>${c.text}</span><span class="mr-how">${how}</span></div>
+          <button class="btn btn-sell" data-pouchsell="${i}">Sell +$${charmRefund(c)}</button>
+        </div>`;
+    }).join("") || `<div class="shop-empty">No Salami Cards yet. Pull them from Salami Packs or earn them with feats.</div>`;
+    const free = Math.max(0, run.charmSlots - run.charms.length);
+    overlay(`
+      <div class="ov-card salami-view">
+        <h2><span class="h2-ico">${icon("sparkle")}</span> Salami Pouch (${run.charms.length}/${run.charmSlots})</h2>
+        <div class="ov-sub">One-shot powerups. Sell any for half cost, any time.${free ? ` ${free} slot${free === 1 ? "" : "s"} open.` : " The pouch is full."}</div>
+        <div class="mr-list">${cells}</div>
+        <button class="btn btn-gold" data-act="close-ov">Close</button>
+      </div>`);
   }
   // when a pack pick can't fit (pouch/dugout full), let the player SELL to make room instead of
   // being forced to skip the card they wanted (Balatro-style). `retry` re-runs the blocked pick.
@@ -1617,6 +1644,9 @@
         <h2>Menu</h2>
         <div class="menu-grid">
           ${inRun ? tile("menu-resume", icon("chevronR"), "Resume", "back to the game", "tile-resume") : ""}
+          ${inRun ? tile("open-deck", icon("layers"), "Deck", "your roster") : ""}
+          ${inRun ? tile("open-dugout", icon("medal"), "Dugout", "coaches · sell anytime") : ""}
+          ${inRun ? tile("open-salami", icon("sparkle"), "Salami", "powerups · sell anytime") : ""}
           ${tile("open-stats", icon("stats"), "Stats", "career &amp; run")}
           ${tile("howto", icon("help"), "How to Play", "the rules")}
           ${tile("toggle-sound-menu", META.sound ? icon("soundOn") : icon("soundOff"), "Sound: " + (META.sound ? "On" : "Off"), "toggle audio")}
@@ -1957,7 +1987,11 @@
             <div class="tag-chip rar-${t.rarity || "common"}" data-tip="<b>${t.name}</b><br>${t.text}"><span class="tag-ic">${icon(t.icon)}</span><span class="tag-nm">${t.name}</span></div>
             <button class="btn btn-secondary skip-btn" data-act="skip-frame" data-tip="Skip this frame (no win reward, no shop) and take the tag instead.">Skip frame ${icon("fastForward")}</button>
           </div>`; })() : ""}
-          <button class="btn btn-secondary" data-act="open-deck">View Deck (${run.deck.length})</button>
+          <div class="mn-views">
+            <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
+            <button class="btn btn-secondary" data-act="open-dugout">Dugout (${dugoutUsed(run)}/${run.dugoutSlots})</button>
+            <button class="btn btn-secondary" data-act="open-salami">Salami (${run.charms.length}/${run.charmSlots})</button>
+          </div>
           <button class="btn btn-big btn-gold" data-act="play-game">Play Ball ${icon("chevronR")}</button>
         </div>
       </div>
@@ -2138,6 +2172,7 @@
           <button class="btn btn-reroll" data-act="reroll">Reroll (${rerollCost() === 0 ? "Free" : "$" + rerollCost()})</button>
           <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
           <button class="btn btn-secondary" data-act="open-dugout">Dugout (${dugoutUsed(run)}/${run.dugoutSlots})</button>
+          <button class="btn btn-secondary" data-act="open-salami">Salami (${run.charms.length}/${run.charmSlots})</button>
           <button class="btn btn-big btn-gold" data-act="leave-shop">Proceed ${icon("chevronR")}</button>
         </div>
       </div>
@@ -2178,7 +2213,8 @@
     if (run.payroll < slot.cost) { SFX.error(); shake(`.shop-item[data-group="${group}"][data-i="${i}"]`); return; }
 
     if (group === "coach") {
-      if (dugoutUsed(run) >= run.dugoutSlots) { SFX.error(); toast("Dugout is full - sell a coach first."); return; }
+      // full dugout no longer blocks the buy: offer to sell a coach to make room (Balatro-style)
+      if (dugoutUsed(run) >= run.dugoutSlots) { openMakeRoom("coach", () => { closeOverlay(); buy(group, i); }); return; }
       run.dugout.push(cloneCoach(slot.item));
       discover(slot.item.id);
       finishBuy(slot, key); render();
@@ -2608,6 +2644,7 @@
       case "deck-prev": openDeckView((STATE._deckPage || 0) - 1); break;
       case "deck-next": openDeckView((STATE._deckPage || 0) + 1); break;
       case "open-dugout": openDugoutView(); break;
+      case "open-salami": openSalamiView(); break;
       case "charm-confirm": { const ctx = STATE._charm; if (ctx && applyImmediateCharm(ctx.charm)) { closeOverlay(); consumeCharm(ctx.index); saveGame(); } STATE._charm = null; break; }
       case "cancel-charm": closeOverlay(); STATE._charm = null; break;
       case "reroll": doReroll(); break;
@@ -2656,8 +2693,10 @@
       const packpick = e.target.closest("[data-packpick]");
       const sellEl = e.target.closest("[data-sell]");
       const mrsellEl = e.target.closest("[data-mrsell]");
+      const pouchSellEl = e.target.closest("[data-pouchsell]");
       const speedEl = e.target.closest("[data-speed]");
       if (pick) { applyScouting(parseInt(pick.getAttribute("data-pick"), 10)); return; }
+      if (pouchSellEl) { sellCharm(parseInt(pouchSellEl.getAttribute("data-pouchsell"), 10)); openSalamiView(); return; }
       if (packpick) { packPick(parseInt(packpick.getAttribute("data-packpick"), 10)); return; }
       if (mrsellEl) { makeRoomSell(mrsellEl.getAttribute("data-mrsell")); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }

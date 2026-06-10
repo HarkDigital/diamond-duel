@@ -1700,3 +1700,24 @@ body.portrait #toast{ display:none !important; }
 /* ---- title hero: a touch more marquee ---- */
 .logo h1{ text-shadow:0 3px 0 rgba(0,0,0,.28), 0 12px 34px rgba(0,0,0,.45); }
 .lc-card{ box-shadow:0 16px 38px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); }
+
+/* ============================================================
+   ALWAYS-ON ACCESS - the Dugout and Salami pouch are inspectable
+   (and sellable) from every screen: tappable in-game panel headers,
+   Deck/Dugout/Salami buttons on the map + shop, menu tiles, and a
+   dedicated Salami Pouch overlay that mirrors the Dugout view.
+   ============================================================ */
+.panel-btn{ background:none; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+  font:inherit; padding:2px 6px; border-radius:7px; transition:color .12s, background .12s, transform .1s; }
+.panel-btn:hover{ color:var(--gold) !important; background:rgba(255,203,71,.12); transform:translateY(-1px); }
+.panel-btn .ico{ width:.95em; height:.95em; opacity:.85; }
+.pt-n{ font-weight:800; letter-spacing:0; opacity:.85; font-variant-numeric:tabular-nums; }
+.col-powerups .panel-btn{ align-self:flex-start; }
+.col-dugout .panel-btn{ align-self:center; }
+/* map: the Deck / Dugout / Salami button row above Play Ball */
+.mn-views{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.mn-views .btn{ padding:9px 13px; font-size:.9rem; }
+/* salami pouch overlay (reuses the make-room list styling) */
+.salami-view{ max-width:560px; width:min(560px,94vw); }
+.salami-view .mr-list{ text-align:left; max-height:56vh; }
+.mr-how{ color:var(--gold-2) !important; font-style:italic; }

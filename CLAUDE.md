@@ -122,8 +122,15 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   `aura` and a `deluxe` edition; sell anytime for half cost (`sellCoach`).
 - **Salami Cards** (`CHARMS`, 12 one-shots): `target` player/coach cards are **drag-only**
   (`onCharmPointerDown/Move/Up` -> `applyCharmToTarget`); `immediate` ones are tapped
-  (confirm -> `applyImmediateCharm`). Sell anytime (`.cb-sell` -> `sellCharm`); when a
-  pack pick can't fit, `openMakeRoom()` lets you sell to make room.
+  (confirm -> `applyImmediateCharm`). Sell anytime (`.cb-sell` -> `sellCharm`).
+- **Always-on access:** `openDugoutView()` + `openSalamiView()` (both with Sell buttons)
+  are reachable from EVERY screen: tappable in-game panel headers (`.panel-btn` on the
+  DUGOUT/SALAMI titles, with live `x/y` counts), Deck/Dugout/Salami buttons on the map
+  (`.mn-views`) and in the shop header, and Deck/Dugout/Salami tiles in the in-run menu.
+- **Make-room instead of blocking:** whenever adding a coach/Salami would overflow its
+  slots (a pack pick OR a direct shop coach buy), `openMakeRoom()` offers selling a held
+  item to take the new one; the blocked action retries after the sale. Player decks have
+  no cap, so player-card picks never block.
 - **Steals:** Send a runner from 1st/2nd (`Engine.attemptSteal`), or gamble a **steal of
   HOME** from 3rd (`fromBase 2`: long odds, scores a literal run, fuels the `steal_home`
   achievement). Caught = an out.
