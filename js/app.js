@@ -35,7 +35,6 @@
   function defaultMeta() {
     return {
       sound: true, speed: 4, wins: 0, runs: 0, bestGame: 0, bestScore: 0,
-      unlocked: ["sandlot", "bashers", "smallball", "moneyball", "speed"],
       // profile / achievement tracking
       ach: {},                 // unlocked achievement ids
       career: { homers: 0, hits: 0, walks: 0, steals: 0, bossWins: 0, seedsUsed: 0, bestRally: 1, bestInningScore: 0 },
@@ -181,9 +180,11 @@
   }
 
   function randomSeed() {
-    // deterministic-ish from time, but only used to seed; gameplay stays reproducible from this string
-    const t = (performance.now() * 1000) | 0;
-    return "DD" + t.toString(36).toUpperCase();
+    // real entropy is fine HERE (it only generates the seed string); the run itself
+    // stays fully reproducible from the resulting seed.
+    const t = Date.now().toString(36).toUpperCase().slice(-6);
+    const r = Math.floor(Math.random() * 46656).toString(36).toUpperCase().padStart(3, "0");
+    return "DD" + t + r;
   }
 
   function pickBoss(run, round) {
@@ -192,7 +193,10 @@
     if (round <= 2) pool = BOSSES.filter((b) => b.tier === 1);
     else if (round <= 4) pool = BOSSES.filter((b) => b.tier <= 2);
     else pool = BOSSES.filter((b) => b.tier === 2);
-    return rng.pick(pool);
+    // no repeat bosses within a run until the pool is exhausted (Balatro-style)
+    const used = new Set((run.bosses || []).map((b) => b.id));
+    const fresh = pool.filter((b) => !used.has(b.id));
+    return rng.pick(fresh.length ? fresh : pool);
   }
   // boss for a given 0-based inning; rolls + caches Extra-Innings bosses on demand
   function bossFor(run, inningIdx) {
@@ -283,7 +287,6 @@
       result: null,
     };
     // reset per-game scaling coach flags
-    Engine && null;
     for (const c of run.dugout) {
       if (c.fx === "hotStreak" && c.state) c.state.homerThisGame = false;
     }
@@ -332,10 +335,12 @@
   function cancelAtBat() { STATE.atBat = null; markPicking(); renderAtBatBar(); }
 
   // rough steal success % (mirrors the engine) for the Send button label
-  function stealOdds(runner) {
+  function stealOdds(runner, fromBase) {
     const burner = runner.card && runner.card.trait === "burner";
-    let p = (runner.speed - 50) * 0.013 + 0.25 + (burner ? 0.22 : 0);
-    return Math.round(Math.max(0.35, Math.min(0.97, p)) * 100);
+    let p = (runner.speed - 50) * 0.013 + 0.25;
+    if (fromBase === 2) p = Math.max(0.05, Math.min(0.55, p - 0.42 + (burner ? 0.18 : 0)));   // steal of home: long odds
+    else p = Math.max(0.35, Math.min(0.97, p + (burner ? 0.22 : 0)));
+    return Math.round(p * 100);
   }
   // the swing controls shown inline in the at-bat bar once a batter has stepped up
   function atBatControlsHTML(card) {
@@ -349,7 +354,14 @@
     const runnersOn = g.bases.some(Boolean);
     const buntBtn = runnersOn ? `<button class="tactic-btn ap-bunt" data-approach="bunt" title="Sacrifice - trade an out to push your runners up a base. Fast hitters sometimes beat it out.">${icon("chevronsDown")} Bunt${lvBadge("bunt")}</button>` : "";
     let sends = "";
-    [0, 1].forEach((fb) => { const r = g.bases[fb]; if (r && !g.bases[fb + 1]) sends += `<button class="tactic-btn send-btn" data-send="${fb}" title="Steal ${fb === 0 ? "second" : "third"} - caught = an out!">${icon("arrowUpRight")} Send ${shortName(r.name)} <b>${stealOdds(r)}%</b>${lvBadge("steal")}</button>`; });
+    [0, 1, 2].forEach((fb) => {
+      const r = g.bases[fb];
+      if (!r) return;
+      if (fb < 2 && g.bases[fb + 1]) return;   // next base must be open (home is always "open")
+      const label = fb === 2 ? "Steal HOME" : "Send " + shortName(r.name);
+      const tip = fb === 2 ? "Steal home - the ultimate gamble. It scores a run, but caught = an out!" : `Steal ${fb === 0 ? "second" : "third"} - caught = an out!`;
+      sends += `<button class="tactic-btn send-btn${fb === 2 ? " send-home" : ""}" data-send="${fb}" title="${tip}">${icon("arrowUpRight")} ${label} <b>${stealOdds(r, fb)}%</b>${lvBadge("steal")}</button>`;
+    });
     // Cancel lives with the tactics (under Bunt / Send) instead of a corner X.
     const cancelBtn = `<button class="tactic-btn ab-cancel-btn" data-act="cancel-atbat" title="Put this batter back and pick someone else">${icon("close")} Cancel</button>`;
     const tactics = `<div class="tactics-row">${buntBtn}${sends}${cancelBtn}</div>`;
@@ -388,33 +400,37 @@
     if (STATE.busy || !STATE.game || STATE.game.ended) return;
     const g = STATE.game, run = STATE.run;
     STATE.busy = true;
-    const res = Engine.attemptSteal(g, run, STATE.rng, fromBase);
-    if (res && res.ok) {
-      SFX.steal();
-      renderDiamond();
-      if (res.caught) {
-        SFX.out();
-        pushLog(`${icon("out")} Caught stealing - ${res.runner.name} is out!`, "bad");
-        setReadout("CAUGHT STEALING", "bad", { batterName: res.runner.name, platoon: "neutral" }, "Out on the basepaths.");
-      } else {
-        const to = res.to === 1 ? "2nd" : res.to === 2 ? "3rd" : "home";
-        pushLog(`${icon("arrowUpRight")} ${res.runner.name} steals ${to}!`, "steal");
-        if (res.rallyBonus) animateRally({ rallyDelta: res.rallyBonus });
-        (res.triggers || []).forEach(flashCoachByFx);
-        g.steals = (g.steals || 0) + 1; if (!runIsSeeded()) META.career.steals++;
-        if (g.steals >= 3) awardAchievement("thief");
-        if (res.to === 3) awardAchievement("steal_home");
-        saveMeta(); checkCareerAch();
+    try {
+      const res = Engine.attemptSteal(g, run, STATE.rng, fromBase);
+      if (res && res.ok) {
+        SFX.steal();
+        renderDiamond();
+        if (res.caught) {
+          SFX.out();
+          pushLog(`${icon("out")} Caught stealing - ${res.runner.name} is out!`, "bad");
+          setReadout("CAUGHT STEALING", "bad", { batterName: res.runner.name, platoon: "neutral" }, "Out on the basepaths.");
+        } else {
+          const to = res.to === 1 ? "2nd" : res.to === 2 ? "3rd" : "HOME";
+          pushLog(`${icon("arrowUpRight")} ${res.runner.name} steals ${to}!`, "steal");
+          if (res.runs) { popRuns(res.runs); stampOutcome("STOLE HOME", "huge", "SB", false); screenShake("big"); }
+          if (res.rallyBonus) animateRally({ rallyDelta: res.rallyBonus });
+          (res.triggers || []).forEach(flashCoachByFx);
+          g.steals = (g.steals || 0) + 1; if (!runIsSeeded()) META.career.steals++;
+          if (g.steals >= 3) awardAchievement("thief");
+          if (res.to === 3) awardAchievement("steal_home");
+          saveMeta(); checkCareerAch();
+        }
+        await sleep(380);
+        renderGame();
+        if (g.outsRemaining <= 0) {
+          await sleep(220);
+          return g.score >= g.target ? onWin() : onLose();
+        }
+        saveGame();
       }
-      await sleep(380);
-      renderGame();
-      if (g.outsRemaining <= 0) {
-        await sleep(220);
-        return g.score >= g.target ? onWin() : onLose();
-      }
-      saveGame();
+    } finally {
+      STATE.busy = false;
     }
-    STATE.busy = false;
     refreshAtBat();
   }
   // highlight the chosen batter in the hand (and dim the rest) while the popup is open
@@ -442,29 +458,33 @@
     const idx = g.hand.indexOf(card);
     if (idx < 0) { STATE.atBat = null; renderGame(); return; }
     STATE.busy = true;
-    STATE.atBat = null;
-    markPicking();
-    renderAtBatBar();
+    try {
+      STATE.atBat = null;
+      markPicking();
+      renderAtBatBar();
 
-    // remove from hand -> discard (fly the card toward the plate for a little juice)
-    const cardEl = $(`#hand .card[data-uid="${card.uid}"]`);
-    if (cardEl) { cardEl.classList.add("playing"); }
-    g.hand.splice(idx, 1);
-    g.discard.push(card);
-    await sleep(110);
+      // remove from hand -> discard (fly the card toward the plate for a little juice)
+      const cardEl = $(`#hand .card[data-uid="${card.uid}"]`);
+      if (cardEl) { cardEl.classList.add("playing"); }
+      g.hand.splice(idx, 1);
+      g.discard.push(card);
+      await sleep(110);
 
-    // resolve with the chosen approach
-    const ev = Engine.resolveAtBat(card, g.pitcher, g, run, STATE.rng, approach || "swing");
-    await animateResult(ev, card);
+      // resolve with the chosen approach
+      const ev = Engine.resolveAtBat(card, g.pitcher, g, run, STATE.rng, approach || "swing");
+      await animateResult(ev, card);
 
-    drawToHand();
-    Engine.maybeAdvanceInning(g);
-    renderGame();
+      drawToHand();
+      Engine.maybeAdvanceInning(g);
+      renderGame();
 
-    if (g.score >= g.target) { await sleep(250); return onWin(); }
-    if (g.outsRemaining <= 0) { await sleep(250); return onLose(); }
-    saveGame();
-    STATE.busy = false;
+      if (g.score >= g.target) { await sleep(250); return onWin(); }
+      if (g.outsRemaining <= 0) { await sleep(250); return onLose(); }
+      saveGame();
+    } finally {
+      // never leave the table soft-locked, even if something above throws
+      STATE.busy = false;
+    }
   }
 
   // convenience for debug/auto-play: select + commit in one shot.
@@ -475,8 +495,6 @@
     STATE.atBat = { card };
     return commitAtBat(approach || "swing");
   }
-
-  function snapshotRunner(r) { return r ? { name: r.name, speed: r.speed } : null; }
 
   /* ---------------- result animation ---------------- */
   const OUTCOME_LABEL = {
@@ -523,8 +541,8 @@
       if (g.walks >= 3) awardAchievement("patient_eye");
     }
     if (ev.scoreGained >= 15 * (CONFIG.scoreScale || 1)) awardAchievement("big_swing");
-    if (g.rally > (META.career.bestRally || 1)) META.career.bestRally = g.rally;
-    if (!runIsSeeded() && g.score > (META.career.bestInningScore || 0)) META.career.bestInningScore = g.score;
+    if (!seeded && g.rally > (META.career.bestRally || 1)) META.career.bestRally = g.rally;
+    if (!seeded && g.score > (META.career.bestInningScore || 0)) META.career.bestInningScore = g.score;
     saveMeta(); checkCareerAch();
 
     // readout
@@ -746,8 +764,11 @@
      ============================================================ */
   function isSkippable(gi) { return !isBossInning(gi); }   // Top & Middle skippable; a Boss must be played
   function tagFor(gi) {
-    // deterministic per frame, so the previewed tag is exactly the one you earn
-    return makeRNG(STATE.run.seed + ":tag:" + gi).pick(TAGS);
+    // deterministic per frame, so the previewed tag is exactly the one you earn.
+    // weighted by rarity so the legendary tags actually feel legendary.
+    const W = { common: 100, star: 45, allstar: 16, legendary: 4 };
+    const pool = TAGS.map((t) => ({ v: t, w: W[t.rarity] || 40 }));
+    return makeRNG(STATE.run.seed + ":tag:" + gi).weighted(pool);
   }
   function skipFrame() {
     const run = STATE.run, gi = run.gameIndex;
@@ -861,6 +882,7 @@
         <div class="lc-card">
           ${bestStake ? `<div class="lc-best" title="Best stake won">${icon("trophy")} ${STAKES[bestStake - 1].name}</div>` : ""}
           <div class="lc-num">${idx + 1} / ${FRANCHISES.length}</div>
+          ${(typeof crestSVG === "function") ? `<div class="lc-crest">${crestSVG(f)}</div>` : ""}
           <h3>${f.name}</h3>
           <p class="lc-tag">${f.tagline}</p>
           <div class="fr-stats lc-stats">
@@ -883,30 +905,6 @@
       </div>`;
   }
 
-  function franchiseCardHTML(f) {
-    const coach = f.signatureCoach ? getCoach(f.signatureCoach) : null;
-    const ids = f.deck;
-    const totals = ids.reduce((a, id) => {
-      const p = getPlayer(id); a.c += p.contact; a.p += p.power; a.e += p.eye; a.s += p.speed; return a;
-    }, { c: 0, p: 0, e: 0, s: 0 });
-    const n = ids.length;
-    const mini = (v) => Math.round(v / n);
-    const isReplayTarget = STATE._replaySeed && STATE._replayFranchise === f.id;
-    return `
-      <button class="franchise-card${isReplayTarget ? " fr-replay-target" : ""}" data-franchise="${f.id}">
-        ${isReplayTarget ? `<div class="fr-replay-badge">${icon("replay")} original</div>` : ""}
-        <div class="fr-head"><h3>${f.name}</h3></div>
-        <p class="fr-tag">${f.tagline}</p>
-        <div class="fr-stats">
-          ${miniStat("CON", mini(totals.c))}
-          ${miniStat("POW", mini(totals.p))}
-          ${miniStat("EYE", mini(totals.e))}
-          ${miniStat("SPD", mini(totals.s))}
-        </div>
-        <div class="fr-bonus">${coach ? `<span class="fr-star">${icon(coach.icon)}</span> ${coach.name}` : "-"}</div>
-        <div class="fr-sub">${f.bonusText}</div>
-      </button>`;
-  }
   function miniStat(label, v) {
     return `<div class="mini-stat"><span class="ms-l">${label}</span><div class="ms-bar"><div class="ms-fill ${barClass(label)}" style="width:${v}%"></div></div><span class="ms-v">${v}</span></div>`;
   }
@@ -1100,6 +1098,11 @@
     });
   }
 
+  // procedural artwork helpers (js/art.js); every fall back to the old look if art is unavailable
+  function cardArt(c) { return (typeof portraitSVG === "function") ? `<div class="card-art">${portraitSVG(c)}</div>` : ""; }
+  function coachArt(c) { return (typeof coachPortraitSVG === "function") ? `<div class="coach-art">${coachPortraitSVG(c)}</div>` : (c.icon ? `<span class="sc-ico">${icon(c.icon)}</span>` : ""); }
+  function packArt(kind) { return (typeof packArtSVG === "function") ? packArtSVG(kind) : `<span class="pk-ico">${icon(packIcon(kind))}</span>`; }
+
   function cardHTML(c, idx, opts) {
     opts = opts || {};
     const ed = c.edition ? `<div class="edition ed-${c.edition}">${editionLabel(c.edition)}</div>` : "";
@@ -1120,6 +1123,7 @@
           <div class="bats bats-${c.bats}">${c.bats}</div>
           <div class="card-name">${shortName(c.name)}</div>
         </div>
+        ${cardArt(c)}
         ${ed}${dx}${streakBadge}
         <div class="card-stats">
           ${statBar("C", c.contact, "b-contact")}
@@ -1173,17 +1177,6 @@
     const dxTip = c.deluxe ? `<br><span class='tip-use'>${(getEdition(c.deluxe) || {}).name}${c.deluxe === "legendary" ? " (no slot)" : " coach: +" + (DELUXE_COACH_AURA[c.deluxe] || 0) + " Rally aura"}</span>` : "";
     return `<div class="coach-icon rar-${c.rarity} ${c.deluxe ? "has-dx dx-" + c.deluxe : ""}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}${dxTip}"><span class="ci-glyph">${glyph}</span>${scale}</div>`;
   }
-  function coachChipHTML(c, opts) {
-    opts = opts || {};
-    let sub = "";
-    if (c.state && c.state.bonus) sub = `<span class="coach-scale">+${c.state.bonus.toFixed(1)}</span>`;
-    const glyph = c.icon ? `<span class="coach-chip-ico">${icon(c.icon)}</span>` : "";
-    return `<div class="coach-chip rar-${c.rarity}" data-coach="${c.id}" data-uid="${c.uid}" title="${c.text}">
-      ${glyph}<div class="coach-chip-body"><div class="coach-name">${c.name}${sub}</div>
-      <div class="coach-text">${c.text}</div></div>
-    </div>`;
-  }
-
   /* ---------- CHARMS (consumable powerups) ---------- */
   function renderPowerups() {
     const run = STATE.run;
@@ -1322,52 +1315,6 @@
     }
     return false;
   }
-  function openCharmPicker(c, index) {
-    const run = STATE.run;
-    let items = "";
-    if (c.target === "player") {
-      items = run.deck.map((card, i) => `<div class="pick-card" data-charmpick="${i}">${cardHTML(card, null)}</div>`).join("");
-    } else if (c.target === "coach") {
-      items = run.dugout.map((coach, i) => `<div class="pick-coach" data-charmpick="${i}">${coachChipHTML(coach)}</div>`).join("") || `<div class="shop-empty">No coaches to copy.</div>`;
-    }
-    overlay(`
-      <div class="ov-card picker charm-picker">
-        <h2><span class="h2-ico">${icon(c.icon)}</span> ${c.name}</h2>
-        <div class="ov-sub">${c.text} - choose ${c.target === "coach" ? "a coach" : "a player"}.</div>
-        <div class="picker-grid">${items}</div>
-        <button class="btn btn-ghost" data-act="cancel-charm">Cancel</button>
-      </div>`);
-    STATE._charm = { charm: c, index };
-  }
-  function applyCharmTo(targetIndex) {
-    const ctx = STATE._charm;
-    if (!ctx) return;
-    const c = ctx.charm, run = STATE.run;
-    let ok = true;
-    if (c.target === "player") {
-      const card = run.deck[targetIndex];
-      if (!card) return;
-      if (c.op === "bump") card[c.arg] = Math.min(140, card[c.arg] + c.amt);
-      else if (c.op === "allup") ["contact", "power", "eye", "speed"].forEach((k) => { card[k] = Math.min(140, card[k] + c.amt); });
-      else if (c.op === "trait") card.trait = c.arg;
-      toast(`${c.name} applied to ${shortName(card.name)}.`);
-    } else if (c.target === "coach") {
-      if (c.op === "copycoach") {
-        if (dugoutUsed(run) >= run.dugoutSlots) { toast("Dugout is full - sell a coach first."); ok = false; }
-        else { const coach = run.dugout[targetIndex]; if (coach && getCoach(coach.id)) { run.dugout.push(cloneCoach(getCoach(coach.id))); toast(`Copied ${coach.name}.`); } else ok = false; }
-      } else if (c.op === "aura") {
-        const coach = run.dugout[targetIndex];
-        if (coach) { coach.aura = +(((coach.aura || 0) + c.amt).toFixed(2)); toast(`${coach.name} mentored: +${c.amt} Rally aura.`); } else ok = false;
-      }
-    }
-    if (ok) {
-      closeOverlay();
-      consumeCharm(ctx.index);
-      STATE._charm = null;
-      if (STATE.screen === "game") renderGame();
-    }
-  }
-
   /* ---------- achievements: feats that gift a Charm ---------- */
   // unlock an achievement in the career profile (once ever) + a banner
   // a run started from a typed/replayed seed earns no unlocks (anti-cheese, Balatro-style)
@@ -1426,8 +1373,8 @@
     if (c.bestRally >= 5) unlockAchievement("rally_5");
     if (c.bestRally >= 10) unlockAchievement("rally_10");
     if (c.bestRally >= 20) unlockAchievement("rally_20");
-    if (c.bestInningScore >= 50) unlockAchievement("inning_50");
-    if (c.bestInningScore >= 100) unlockAchievement("inning_100");
+    if (c.bestInningScore >= 50 * (CONFIG.scoreScale || 1)) unlockAchievement("inning_50");
+    if (c.bestInningScore >= 100 * (CONFIG.scoreScale || 1)) unlockAchievement("inning_100");
     if (META.runs >= 50) unlockAchievement("runs_50");
     const played = Object.keys(META.franchisesPlayed || {}).length;
     if (played >= FRANCHISES.length) unlockAchievement("all_franchises");
@@ -1593,7 +1540,7 @@
     SFX.lose && SFX.lose();
     const run = STATE.run;
     const fr = FRANCHISES.find((f) => f.id === run.franchiseId);
-    const total = ROUNDS.length * GAMES_PER_ROUND;          // 24 frames in the main run
+    const total = ROUNDS.length * GAMES_PER_ROUND;          // 27 frames in the main run
     const cleared = (run.stat.gamesWon != null ? run.stat.gamesWon : g.gameIndex);  // frames won
     const inningReached = inningOf(g.gameIndex);
     const stripN = Math.max(total, g.gameIndex + 1);
@@ -1606,8 +1553,8 @@
       strip += `<span class="pm-pip ${cls}${boss ? " boss" : ""}" title="${gameLabel(i)}">${boss ? icon("diamond") : ""}</span>`;
     }
     const flavor = g.gameIndex >= total ? "A champion, undone deep in Extra Innings. What a run."
-      : inningReached >= 8 ? "One frame from the title. Brutal."
-      : inningReached >= 6 ? "Deep into the late innings. So close."
+      : inningReached >= 9 ? "Fell in the 9th. One swing from history."
+      : inningReached >= 7 ? "Deep into the late innings. So close."
       : inningReached >= 3 ? "A real run, cut short."
       : inningReached >= 2 ? "The makings of something here."
       : "Every dynasty starts with a loss.";
@@ -1909,18 +1856,18 @@
   }
 
   const HOWTO_SECTIONS = [
-    `<section><h3>The goal</h3><p>A run is <b>8 innings</b>, and each inning has <b>3 frames</b> (Top, Middle, and a <b>Boss</b>). In every frame, pile up <b>Score</b> to beat its <b>Target</b> before you make your <b>3rd out</b>. Clear inning 8's Boss to win the <b>World Series</b>, then push your luck in <b>Extra Innings</b> for as long as your build holds up. Come up short in any frame and the run is over.</p></section>`,
+    `<section><h3>The goal</h3><p>A run is <b>9 innings</b>, and each inning has <b>3 frames</b> (Top, Middle, and a <b>Boss</b>). In every frame, pile up <b>Score</b> to beat its <b>Target</b> before you make your <b>3rd out</b>. Clear inning 9's Boss to win the <b>World Series</b>, then push your luck in <b>Extra Innings</b> for as long as your build holds up. Come up short in any frame and the run is over.</p></section>`,
     `<section><h3>Lineups &amp; difficulty</h3><p>Pick a <b>lineup</b> on the home screen (use the arrows to flip through all 15). Each one starts you with a different roster and a unique perk: extra cash, a bigger dugout, a roomier hand, a free Salami card, and more. Then choose a <b>difficulty stake</b> (Rookie up to Cooperstown). Each stake stacks a harder rule on the one below it (higher targets, tougher pitchers, pricier shops), and you <b>unlock the next stake</b> by winning the World Series at the current one.</p></section>`,
-    `<section><h3>Sending a batter up</h3><p>Your hand is your lineup. <b>Drag a card into the "Drop batter here" box</b> (or press <b>1-8</b>) to send that batter to the plate. The box highlights as you drag over it. Once they step up, the swing buttons appear in the bar above the box, and you can hit <b>Cancel</b> there to put the batter back. You draw a fresh card after every at-bat.</p></section>`,
+    `<section><h3>Sending a batter up</h3><p>Your hand is your lineup. <b>Drag a card into the "Drop batter here" box</b> (or press <b>1-9</b>) to send that batter to the plate. The box highlights as you drag over it. Once they step up, the swing buttons appear in the bar above the box, and you can hit <b>Cancel</b> there to put the batter back. You draw a fresh card after every at-bat.</p></section>`,
     `<section><h3>Choosing a swing</h3><ul><li><b>Swing Away</b> - balanced; your natural swing.</li><li><b>Power Swing</b> - more homers &amp; extra-base hits, but more strikeouts.</li><li><b>Work the Count</b> - lots of walks, few strikeouts, little power.</li></ul><p>With runners on, you can also <b>Bunt</b> or <b>Send</b> a runner from the same bar.</p></section>`,
-    `<section class="howto-rally"><h3>The Rally - the heart of it</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value:</b> Walk 1, Single 2, Double 3, Triple 4, Home Run 5 - plus <b>+1</b> for every runner who scores.</li><li><b>Rally</b> starts at <b>×1.0</b> and climbs <b>+0.5</b> each time you reach base safely - but an <b>out resets it to ×1.0</b>.</li></ul><p>Land your big bats while the rally is high.</p></section>`,
+    `<section class="howto-rally"><h3>The Rally - the heart of it</h3><p>Every scoring play is worth <b>Bag value × Rally</b>.</p><ul><li><b>Bag value:</b> Walk 100, Single 200, Double 300, Triple 400, Home Run 500 - plus <b>+100</b> for every runner who scores.</li><li><b>Rally</b> starts at <b>×1.0</b> and climbs <b>+0.5</b> each time you reach base safely. An out does <b>not</b> reset it - the rally holds for the whole inning - but outs are your clock: three and the frame is over.</li></ul><p>Build the rally with table-setters, then land your big bats while it's high.</p></section>`,
     `<section><h3>Reading a card</h3><p>Four stats (0-100): <b class='s-c'>Contact</b> (singles, fewer strikeouts), <b class='s-p'>Power</b> (extra-base hits &amp; homers), <b class='s-e'>Eye</b> (walks), <b class='s-s'>Speed</b> (steals &amp; extra bases). The <b>L / R / S</b> badge is handedness - opposite hands earn a <b>platoon</b> boost; switch-hitters never lose it. Tap the <b>?</b> on any card for a full readout.</p></section>`,
     `<section><h3>Baserunning</h3><p>Hits move runners around the diamond, and a runner on 2nd or 3rd is <b>in scoring position</b> (each drives in +1 bag value). When the path is clear you can <b>Send</b> a runner to steal the next base - but getting caught costs a precious out. A <b>Bunt</b> trades an out to push your runners up.</p></section>`,
     `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> - the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
     `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot - bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
-    `<section><h3>Innings, frames &amp; bosses</h3><p>Each of the 8 innings has three frames: <b>Top</b>, <b>Middle</b>, and <b>Boss</b>, with the target climbing each step. The <b>Boss</b> frame is a special pitcher with a nasty rule, telegraphed on the linescore so you can prepare. You shop between every frame. Win inning 8's Boss for the title, then <b>Extra Innings</b> scale up forever.</p></section>`,
+    `<section><h3>Innings, frames &amp; bosses</h3><p>Each of the 9 innings has three frames: <b>Top</b>, <b>Middle</b>, and <b>Boss</b>, with the target climbing each step. The <b>Boss</b> frame is a special pitcher with a nasty rule, telegraphed on the linescore so you can prepare. You shop between every frame, or <b>skip</b> a Top/Middle frame to pocket a Tag instead. Win inning 9's Boss for the title, then <b>Extra Innings</b> scale up forever.</p></section>`,
     `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (the panel beside the play log). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
-    `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, and <b>Front Office</b> voucher: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
+    `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, <b>Front Office</b> voucher, and <b>Skip Tag</b>: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
     `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, a <b>Coaching Pack</b> offers coaches, and a <b>Spring Training</b> pack levels up your at-bat actions. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
     `<section><h3>Editions &amp; Spring Training</h3><p>Cards and coaches in packs can roll a shiny <b>edition</b>: <b>All-Star</b> (+2 Bag), <b>Silver Slugger</b> (+1.0 Rally), <b>Gold Glove</b> (that play scores at x1.5 Rally), <b>Hall of Fame</b> (+2 Bag and +0.5 Rally), and the rare <b>Legendary</b> (the biggest boost, and on a coach it takes no dugout slot). An edition fires whenever that card scores. Separately, <b>Spring Training</b> packs <b>level up an action</b> (Swing Away, Power Swing, Work the Count, Bunt, Steal), so every safe play with that action builds your Rally faster. Levels show right on the swing buttons.</p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
@@ -1986,9 +1933,10 @@
     const pitcher = makePitcher(run, gi);
     const isBoss = pitcher.isBoss;
     const target = Math.round(targetFor(gi) * pitcher.targetMultiplier);
+    const tArt = (typeof pitcherPortraitSVG === "function") ? `<div class="tele-art${isBoss ? " boss" : ""}">${pitcherPortraitSVG(pitcher)}</div>` : "";
     const telegraph = isBoss
-      ? `<div class="boss-telegraph"><div class="bt-tag">BOSS PITCHER</div><h3>${pitcher.name}</h3><p>${pitcher.boss.text}</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`
-      : `<div class="match-telegraph"><h3>${pitcher.name}</h3><p>${pitcher.bats}HP starter.</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div>`;
+      ? `<div class="boss-telegraph with-art">${tArt}<div class="tele-body"><div class="bt-tag">BOSS PITCHER</div><h3>${pitcher.name}</h3><p>${pitcher.boss.text}</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div></div>`
+      : `<div class="match-telegraph with-art">${tArt}<div class="tele-body"><h3>${pitcher.name}</h3><p>${pitcher.bats}HP starter.</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div></div>`;
 
     return `
     <div class="screen map-screen">
@@ -2074,7 +2022,8 @@
     if (!fx) return;
     if (fx.freeCoaches && fx.freeCoaches.length) sh.coaches = sh.coaches.concat(fx.freeCoaches);
     if (fx.freePacks && fx.freePacks.length) sh.packs = sh.packs.concat(fx.freePacks);
-    if (fx.voucherItem && (!sh.upgrades || !sh.upgrades.length)) sh.upgrades = [fx.voucherItem];
+    // the Voucher Tag ADDS a voucher (it must never be silently lost to the inning's natural one)
+    if (fx.voucherItem) sh.upgrades = (sh.upgrades && sh.upgrades.length) ? sh.upgrades.concat([fx.voucherItem]) : [fx.voucherItem];
     if (fx.coupon) { sh.coaches.forEach((s) => { s.cost = 0; }); (sh.upgrades || []).forEach((s) => { s.cost = 0; }); }
   }
 
@@ -2119,9 +2068,6 @@
     sh.packs = [];
     for (let i = 0; i < nPacks; i++) sh.packs.push(packFor(rng.weighted(famPool)));
 
-    // direct card / consumable / charm slots are retired in favor of packs
-    sh.cards = []; sh.consumables = []; sh.charms = [];
-
     sh.bought = sh.bought || {}; // keys of consumed slots
     applyTagFxToShop();          // fold in free coaches/packs/voucher + coupon from skip tags
   }
@@ -2143,9 +2089,7 @@
       const it = slot.item;
       const aff = run.payroll >= slot.cost && !owned;
       let body = "";
-      if (slot.kind === "card") body = cardHTML(cloneCardPreview(it), null);
-      else if (slot.kind === "coach") body = `<div class="shop-coach">${it.icon ? `<span class="sc-ico">${icon(it.icon)}</span>` : ""}<div class="sc-name">${it.name}</div><div class="sc-text">${it.text}</div></div>`;
-      else if (slot.kind === "charm") body = `<div class="shop-misc shop-charm">${it.icon ? `<span class="sc-ico charm-ico">${icon(it.icon)}</span>` : ""}<div class="sm-name">${it.name}</div><div class="sm-text">${it.text}</div></div>`;
+      if (slot.kind === "coach") body = `<div class="shop-coach">${coachArt(it)}<div class="sc-name">${it.name}</div><div class="sc-text">${it.text}</div></div>`;
       else body = `<div class="shop-misc shop-${slot.kind}"><div class="sm-name">${it.name}</div><div class="sm-text">${it.text}</div></div>`;
       // a coach / seed / voucher you've never acquired before is flagged for the Collection
       const collectible = group === "coach" || group === "charm" || group === "up";
@@ -2173,7 +2117,7 @@
           <div class="pk-wrap kind-${it.kind}">
             <span class="pk-crimp pk-crimp-top"></span>
             <span class="pk-foil"></span>
-            <div class="pk-art"><span class="pk-ico">${icon(packIcon(it.kind))}</span></div>
+            <div class="pk-art">${packArt(it.kind)}</div>
             <div class="pk-band"><span class="pk-band-name">${packLabel(it.kind)}</span><span class="pk-band-sub">PACK</span></div>
             <span class="pk-crimp pk-crimp-bot"></span>
             ${size ? `<span class="pk-size">${size === "mega" ? "MEGA" : "JUMBO"}</span>` : ""}
@@ -2228,9 +2172,6 @@
     if (sh.bought[key]) return;
     let slot;
     if (group === "coach") slot = sh.coaches[i];
-    else if (group === "card") slot = sh.cards[i];
-    else if (group === "cons") slot = sh.consumables[i];
-    else if (group === "charm") slot = sh.charms[i];
     else if (group === "up") slot = sh.upgrades[i];
     else if (group === "pack") slot = sh.packs[i];
     if (!slot) return;
@@ -2241,31 +2182,17 @@
       run.dugout.push(cloneCoach(slot.item));
       discover(slot.item.id);
       finishBuy(slot, key); render();
-    } else if (group === "charm") {
-      if (run.charms.length >= run.charmSlots) { SFX.error(); toast("Salami pouch is full. Use one first."); return; }
-      run.charms.push(slot.item.id);
-      discover(slot.item.id);
-      finishBuy(slot, key); toast(`${slot.item.name} added to your charms.`); render();
-    } else if (group === "card") {
-      run.deck.push(cloneCard(slot.item));
-      finishBuy(slot, key); render();
     } else if (group === "up") {
       applyUpgrade(slot.item);
       run.upgradesOwned.push(slot.item.id);
       run.lastVoucherInning = Math.floor(run.gameIndex / GAMES_PER_ROUND);
       discover(slot.item.id);
       finishBuy(slot, key); render();
-    } else if (group === "cons") {
-      const it = slot.item;
-      if (it.kind === "analytics") {
-        run.analytics[it.key] = (run.analytics[it.key] || 0) + 1;
-        finishBuy(slot, key); toast(`${it.name} applied.`); render();
-      } else {
-        // scouting - needs a target (except none?) open picker
-        openScoutingPicker(it, () => { finishBuy(slot, key); render(); });
-      }
     } else if (group === "pack") {
-      openPack(slot.item, () => { finishBuy(slot, key); render(); });
+      // pay on open (Balatro-style): the cost is committed before you see the cards,
+      // so refreshing mid-pack can't refund it.
+      finishBuy(slot, key);
+      openPack(slot.item, () => { render(); });
     }
   }
   function finishBuy(slot, key) {
@@ -2285,9 +2212,9 @@
       case "dugoutSlot": run.dugoutSlots += 1; break;
       case "handSize": run.handSize += 1; break;
       case "discount": run.discount += 1; break;
-      case "shopSlot": run.extraCardSlots += 1; rollShopKeepBought(); break;
+      case "shopSlot": run.extraCardSlots += 1; break;
       case "rerollCheap": run.rerollDiscount += 1; break;
-      case "startRally": run.startRally = 1.5; break;
+      case "startRally": run.startRally = Math.max(run.startRally, 1.5); break;
       case "interest": run.interestCap = 8; break;
     }
     // data-driven mods (tier-2 upgrades + the new base vouchers)
@@ -2296,13 +2223,13 @@
       if (m.dugoutSlots) run.dugoutSlots += m.dugoutSlots;
       if (m.handSize) run.handSize += m.handSize;
       if (m.discount) run.discount += m.discount;
-      if (m.extraCardSlots) { run.extraCardSlots += m.extraCardSlots; rollShopKeepBought(); }
+      if (m.extraCardSlots) run.extraCardSlots += m.extraCardSlots;
       if (m.rerollDiscount) run.rerollDiscount += m.rerollDiscount;
       if (m.charmSlots) run.charmSlots += m.charmSlots;
       if (m.payroll) run.payroll += m.payroll;
       if (m.interestCap) run.interestCap += m.interestCap;
-      if (m.interestCapAbs) run.interestCap = m.interestCapAbs;
-      if (m.startRally) run.startRally = m.startRally;
+      if (m.interestCapAbs) run.interestCap = Math.max(run.interestCap, m.interestCapAbs);
+      if (m.startRally) run.startRally = Math.max(run.startRally, m.startRally);
       if (m.startRallyAdd) run.startRally += m.startRallyAdd;
       if (m.editionBoost) run.editionBoost = (run.editionBoost || 0) + m.editionBoost;
       if (m.springLevel) { for (const k in run.actionLevels) run.actionLevels[k] = Math.max(run.actionLevels[k], m.springLevel); }
@@ -2312,12 +2239,6 @@
     }
     toast(`${u.name} acquired.`);
   }
-  function rollShopKeepBought() {
-    const bought = STATE.shop.bought;
-    rollShop();
-    STATE.shop.bought = bought;
-  }
-
   function doReroll() {
     const run = STATE.run, sh = STATE.shop;
     let cost = rerollCost();
@@ -2381,6 +2302,8 @@
   function openPack(pack, onDone) {
     const run = STATE.run;
     const rng = makeRNG(run.seed + ":pack:" + run.gameIndex + ":" + run.shopBuys);
+    // Scouting Network vouchers + The Scouts lineup widen every pack you open
+    const count = pack.count + (run.extraCardSlots || 0);
     let options = [];
     if (pack.kind === "player") {
       const round = Math.floor(run.gameIndex / GAMES_PER_ROUND);
@@ -2388,20 +2311,20 @@
       if (round >= 1 || pack.size) rar.push("allstar");   // jumbo/mega packs can roll stronger cards
       if (round >= 2) rar.push("legend");
       const pool = PLAYERS.filter((p) => rar.indexOf(p.rarity) >= 0);
-      options = rng.sample(pool, pack.count).map((p) => ({ kind: "card", item: p, deluxe: rollDeluxe(rng) }));
+      options = rng.sample(pool, count).map((p) => ({ kind: "card", item: p, deluxe: rollDeluxe(rng) }));
     } else if (pack.kind === "coach") {
       const ownedFx = new Set(run.dugout.map((c) => c.fx));
       const pool = COACHES.filter((c) => !ownedFx.has(c.fx));
-      options = rng.sample(pool, pack.count).map((c) => ({ kind: "coach", item: c, deluxe: rollDeluxe(rng) }));
+      options = rng.sample(pool, count).map((c) => ({ kind: "coach", item: c, deluxe: rollDeluxe(rng) }));
     } else if (pack.kind === "scouting" || pack.kind === "analytics") {
       // a Scouting pack mixes analytics and scouting reports
       const pool = ANALYTICS.concat(SCOUTING);
-      options = rng.sample(pool, pack.count).map((c) => ({ kind: c.kind, item: c }));
+      options = rng.sample(pool, count).map((c) => ({ kind: c.kind, item: c }));
     } else if (pack.kind === "charm") {
-      options = rng.sample(CHARMS, pack.count).map((c) => ({ kind: "charm", item: c }));
+      options = rng.sample(CHARMS, count).map((c) => ({ kind: "charm", item: c }));
     } else if (pack.kind === "action") {
-      // Spring Training: each option levels up an at-bat action
-      options = rng.sample(ACTIONS, pack.count).map((a) => ({ kind: "action", item: a }));
+      // Spring Training: each option levels up an at-bat action (max 5 distinct actions)
+      options = rng.sample(ACTIONS, count).map((a) => ({ kind: "action", item: a }));
     }
     STATE._pack = { pack, options, picksLeft: pack.choose, onDone, picked: [] };
     renderPackOverlay();
@@ -2419,6 +2342,8 @@
       else if (o.kind === "action") {
         const lvl = (run.actionLevels && run.actionLevels[o.item.id]) || 1;
         body = `<div class="shop-coach action-opt"><span class="sc-ico">${icon(actionIcon(o.item.id))}</span><div class="sc-name">${o.item.name} <span class="act-lv">Lv ${lvl} -&gt; ${lvl + 1}</span></div><div class="sc-text">${o.item.text}</div></div>`;
+      } else if (o.kind === "coach") {
+        body = `<div class="shop-coach ${o.deluxe ? "has-dx dx-" + o.deluxe : ""}">${coachArt(o.item)}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div>${o.deluxe ? `<div class="dx-badge dx-${o.deluxe}" data-tip="<b>${getEdition(o.deluxe).name} edition</b><br>${getEdition(o.deluxe).text}">${getEdition(o.deluxe).name}</div>` : ""}</div>`;
       } else {
         body = `<div class="shop-coach ${o.deluxe ? "has-dx dx-" + o.deluxe : ""}">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div>${o.deluxe ? `<div class="dx-badge dx-${o.deluxe}" data-tip="<b>${getEdition(o.deluxe).name} edition</b><br>${getEdition(o.deluxe).text}">${getEdition(o.deluxe).name}</div>` : ""}</div>`;
       }
@@ -2469,6 +2394,7 @@
     ctx.picked.push(i);
     ctx.picksLeft -= 1;
     SFX.buy();
+    saveRun();   // a pick is permanent the moment it's made (refresh-proof)
     renderPackOverlay();
     if (ctx.picksLeft === 0) {
       setTimeout(() => packDone(), 350);
@@ -2594,8 +2520,6 @@
     // round to a clean multiple of 5 so the grand numbers read nicely
     return Math.max(1, Math.round(raw / 5) * 5);
   }
-  function ordinal(n) { const s = ["th","st","nd","rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
-
   /* ============================================================
      SAVE / LOAD
      ============================================================ */
@@ -2647,7 +2571,6 @@
         useCharm(parseInt(charmEl.getAttribute("data-charm"), 10)); return;
       }
       const act = e.target.closest("[data-act]");
-      const fr = e.target.closest("[data-franchise]");
       const dotEl = e.target.closest("[data-lineup-dot]");
       const stakeEl = e.target.closest("[data-stake]");
       const buyEl = e.target.closest("[data-buy]");
@@ -2656,7 +2579,6 @@
       const sellEl = e.target.closest("[data-sell]");
       const sendEl = e.target.closest("[data-send]");
 
-      if (fr) { startFromFranchise(fr.getAttribute("data-franchise")); return; }
       if (dotEl) { STATE._pickIndex = parseInt(dotEl.getAttribute("data-lineup-dot"), 10); if (SFX.click) SFX.click(); render(); return; }
       if (stakeEl) { const s = parseInt(stakeEl.getAttribute("data-stake"), 10); if (s <= (META.maxStake || 1)) { STATE._pickStake = s; if (SFX.click) SFX.click(); render(); } else if (SFX.error) SFX.error(); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
@@ -2731,13 +2653,11 @@
       }
       const act = e.target.closest("[data-act]");
       const pick = e.target.closest("[data-pick]");
-      const charmpick = e.target.closest("[data-charmpick]");
       const packpick = e.target.closest("[data-packpick]");
       const sellEl = e.target.closest("[data-sell]");
       const mrsellEl = e.target.closest("[data-mrsell]");
       const speedEl = e.target.closest("[data-speed]");
       if (pick) { applyScouting(parseInt(pick.getAttribute("data-pick"), 10)); return; }
-      if (charmpick) { applyCharmTo(parseInt(charmpick.getAttribute("data-charmpick"), 10)); return; }
       if (packpick) { packPick(parseInt(packpick.getAttribute("data-packpick"), 10)); return; }
       if (mrsellEl) { makeRoomSell(mrsellEl.getAttribute("data-mrsell")); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
@@ -2772,7 +2692,21 @@
     if (r.lastVoucherInning == null) r.lastVoucherInning = -1;
     // resume an in-progress inning if one was saved (refresh mid-game)
     const snap = loadGameSnap();
+    // uid hygiene: the uid counter resets on reload, so raise it past every saved uid
+    // (otherwise the first new clone would collide with a loaded card and Salami drags
+    // could buff the wrong object).
+    const maxUid = (arrs) => { let m = 0; arrs.forEach((a) => (a || []).forEach((o) => { const n = o && o.uid ? parseInt(String(o.uid).split("_").pop(), 10) : 0; if (n > m) m = n; })); return m; };
+    uid.bump(maxUid([r.deck, r.dugout, snap && snap.game && snap.game.deck, snap && snap.game && snap.game.hand, snap && snap.game && snap.game.discard]));
     if (snap && snap.game && !snap.game.ended && snap.gi === r.gameIndex) {
+      // re-link the snapshot's cards (deep JSON copies) back to the run.deck objects by uid,
+      // so Salami buffs / Prospect growth / streaks stay shared after a refresh.
+      const byUid = {};
+      r.deck.forEach((c) => { byUid[c.uid] = c; });
+      const relink = (a) => (a || []).map((c) => (c && byUid[c.uid]) || c);
+      snap.game.deck = relink(snap.game.deck);
+      snap.game.hand = relink(snap.game.hand);
+      snap.game.discard = relink(snap.game.discard);
+      (snap.game.bases || []).forEach((b) => { if (b && b.card && byUid[b.card.uid]) b.card = byUid[b.card.uid]; });
       STATE.game = snap.game;
       STATE.rng = makeRNG(r.seed + ":game:" + r.gameIndex, snap.rng);
       STATE.atBat = null;
@@ -2794,7 +2728,7 @@
     if (STATE.screen !== "game" || STATE.busy) return;
     if (STATE.atBat && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); commitAtBat("swing"); return; }
     if (STATE.atBat && (e.key === "Escape")) { cancelAtBat(); return; }
-    if (e.key >= "1" && e.key <= "8") {
+    if (e.key >= "1" && e.key <= "9") {
       const idx = parseInt(e.key, 10) - 1;
       if (idx < STATE.game.hand.length) selectBatter(idx);
     }
@@ -3116,6 +3050,10 @@
   }
 
   function boot() {
+    // last-resort soft-lock protection: an uncaught error must never leave the
+    // busy latch stuck with every button dead until a refresh.
+    window.addEventListener("error", () => { STATE.busy = false; });
+    window.addEventListener("unhandledrejection", () => { STATE.busy = false; });
     SFX.setEnabled(META.sound);
     applySpeedVar();   // seed the CSS speed multiplier from the saved setting
     fitStage();

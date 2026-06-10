@@ -16,14 +16,28 @@ GitHub Pages.
 - **Deploy:** commit to `main` and `git push` (gh authed as HarkDigital). GitHub Pages
   serves `main` and usually goes live within ~30s. Verify with `curl` against the live
   URL and compare `shasum` of changed files to local.
+- **Headless checks:** `data.js`, `engine.js`, `icons.js`, `art.js`, and `rng.js` run in
+  plain Node with a shim: `node -e "global.window = global; require('./js/data.js'); ..."`.
+  Use this for count checks, art smoke tests, and engine sims before opening a browser.
+- **Debug API (`window.DD`):** `DD.autoPlay(n)` (crude AI plays the current frame),
+  `DD.play(i, approach)`, `DD.win()` (score = target), `DD.give(n)` (payroll),
+  `DD.state()`, `DD.startFranchise(id)`, `DD.render()`. This is how balance gets
+  Monte-Carlo tested in the browser; it ships in production deliberately.
 
 ### Cache-busting (IMPORTANT)
-`index.html` loads assets with a version query, e.g. `css/styles.css?v=22`,
-`js/app.js?v=22` (7 tags total; currently **v=22**). **Bump every `?v=N` in `index.html` on
-each deploy** so returning players' browsers fetch fresh CSS/JS instead of stale cached copies.
-(A stale CSS cache is what made the field-diagram fix appear "not to work" once. It also bites
-during preview iteration: a plain reload may serve the cached `?v=N`, so bump the version or
-cache-bust the `<link>` href to force-fetch edited CSS.)
+`index.html` loads every asset with a version query (`css/styles.css?v=N`, all 7 JS tags).
+**Bump every `?v=N` in `index.html` on each deploy** so returning players fetch fresh
+files instead of stale cached copies. This also bites during preview iteration: a plain
+reload may serve the cached `?v=N`, so bump it (or cache-bust the href) to force-fetch
+edited CSS.
+
+### When game rules change, update ALL of these surfaces
+The code has outrun the prose more than once. Any change to run structure, scoring, or a
+mechanic must sweep:
+1. `HOWTO_SECTIONS` in `js/app.js` (the in-game How to Play),
+2. boss `text` / achievement `text` strings in `js/data.js` (players read these),
+3. `README.md` (public on GitHub),
+4. the "Game model" section of this file.
 
 ## Hard conventions
 
@@ -31,23 +45,28 @@ cache-bust the `<link>` href to force-fetch edited CSS.)
   (`icon()` returns an `<svg>` that inherits `currentColor`). To add a glyph, add an entry
   to the `ICONS` map (Feather/Lucide-style stroked paths), then reference it by name.
 - **No em dashes (-) or en dashes (-)** in user-facing text. Use a plain hyphen, comma,
-  colon, or period. The user has asked for these to be removed repeatedly; keep them out.
-- **Everything is seeded.** All randomness flows through `makeRNG(seed)` (`js/rng.js`,
-  xmur3 -> mulberry32) so runs are reproducible. The RNG exposes `state()` for save/resume.
-- Keep the load order in `index.html`: `rng -> audio -> icons -> data -> engine -> app`.
+  colon, or period.
+- **Everything gameplay is seeded.** All game randomness flows through `makeRNG(seed)`
+  (`js/rng.js`, xmur3 -> mulberry32) so runs are reproducible; the RNG exposes `state()`
+  for save/resume. The only sanctioned non-seeded randomness: `randomSeed()` itself
+  (generating the seed string), WebAudio noise, and nothing else. Cosmetic art randomness
+  is hash-derived per item id in `js/art.js` (deterministic, not the game RNG).
+- Keep the load order in `index.html`: `rng -> audio -> icons -> art -> data -> engine -> app`.
 
 ## Files
 
 | File | Role |
 |------|------|
 | `index.html` | shell: `#stage > #app`, splash, rotate hint, versioned asset tags |
-| `js/rng.js` | seeded RNG, resumable via `state()` |
+| `js/rng.js` | seeded RNG, resumable via `state()`; `uid()` counter with `uid.bump()` for resume |
 | `js/audio.js` | WebAudio SFX (`SFX.*`) |
 | `js/icons.js` | inline-SVG icon set; `icon(name[, extraClass])` |
-| `js/data.js` | all content + tuning: `CONFIG` (incl. `scoreScale`, `shop.packWeights`), 15 `FRANCHISES` (lineups), cards, 100 `COACHES`, 12 `CHARMS` (Salami Cards), 32 `UPGRADES` (Front Office vouchers), 24 `TAGS` (skip tags), 49 `ACHIEVEMENTS`, `TRAITS`, `ROUNDS`, 5 `STAKES`, 5 `EDITIONS`, 15 `PACKS`, `ACTIONS` |
-| `js/engine.js` | pure rules: `Engine.resolveAtBat`, steals, rally math, edition hooks, and three generic coach dispatchers (Bag/Rally/Econ) that read each coach's `gen` descriptor |
+| `js/art.js` | **procedural artwork**: `portraitSVG(card)`, `coachPortraitSVG`, `pitcherPortraitSVG`, `packArtSVG(kind)`, `crestSVG(franchise)`; all deterministic from item ids |
+| `js/data.js` | all content + tuning: `CONFIG` (incl. `scoreScale`, `shop.packWeights`), 15 `FRANCHISES`, 60 `PLAYERS`, 100 `COACHES`, 12 `CHARMS` (Salami Cards), 32 `UPGRADES` (vouchers), 24 `TAGS`, 49 `ACHIEVEMENTS`, `TRAITS`, `ROUNDS`, 5 `STAKES`, 5 `EDITIONS`, 15 `PACKS`, `ACTIONS` |
+| `js/engine.js` | pure rules: `Engine.resolveAtBat`, `attemptSteal` (incl. steal of home), rally math, edition hooks, three generic coach dispatchers (Bag/Rally/Econ) reading each coach's `gen` descriptor. Headless: no DOM/SFX calls |
 | `js/app.js` | everything else: state, rendering, screens, shop, drag, save/load, overlays |
 | `css/styles.css` | all styles; responsive via a scale-to-fit stage + media queries |
+| `README.md` | public repo description; keep in sync with the game (see checklist above) |
 
 ## Layout model
 
@@ -60,211 +79,92 @@ The **field diamond** must stay a perfect square or the percentage-positioned ba
 runner tokens drift off the infield corners. It is sized with container-query units:
 `.col-field .diamond-wrap { container-type: size }` and
 `.col-field .diamond { width:100cqmin; height:100cqmin }`. Bases sit at 16%/84%; runner
-tokens (`.rtok`) share the same coordinate space in `#runner-layer` and walk the basepath
-via a CSS `left/top` transition.
+tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
 
 ## Game model (important for "runs"/"innings" questions)
 
-- A **run** is **9 innings** (a full baseball game; Balatro antes; `ROUNDS.length`), each with
-  **3 frames** (`GAMES_PER_ROUND`): **Top / Middle / Boss**. So **27 frames** main, then **Extra
+- A **run** is **9 innings** (Balatro antes; `ROUNDS.length`), each with **3 frames**
+  (`GAMES_PER_ROUND`): **Top / Middle / Boss**. So **27 frames** main, then **Extra
   Innings** (endless). `gameIndex` 0..26 main, 27+ extra. Helpers: `inningOf`/`frameOf`/
-  `isBossInning`/`isExtraInnings`/`roundName`/`gameLabel`. Beat inning 9's Boss (frame 27) ->
-  `showVictory` (confetti) with a "Play Extra Innings" continue (`run.wonWS`); leaving keeps it continuable.
+  `isBossInning`/`isExtraInnings`/`roundName`/`gameLabel`. Beat inning 9's Boss ->
+  `showVictory` with a "Play Extra Innings" continue (`run.wonWS`).
 - Targets come from a **formula** `targetFor(gi)` = `round(base * inningGrowth^(inning-1) *
-  frameMult[frame] * scoreScale)` (`CONFIG.target`/`scoreScale`), rounded to a clean multiple of 5,
-  so it extends into Extra Innings. Pitcher stuff/command scale per inning + per frame
-  (`CONFIG.pitcher`). Bosses pre-rolled for 9 innings, extras via `bossFor` on demand.
+  frameMult[frame] * scoreScale)` (`CONFIG.target`/`scoreScale`), rounded to a clean
+  multiple of 5. Pitcher stuff/command scale per inning + frame (`CONFIG.pitcher`).
+  Bosses pre-rolled for 9 innings **without repeats** until the pool runs dry
+  (`pickBoss` excludes already-rolled ids); extras via `bossFor` on demand.
 - Each **"game"** object (`STATE.game`) is **one frame vs one pitcher**, with **3 outs**
-  (`CONFIG.outsPerGame`; the Closer boss gives 2; the Second Wind seed adds 1).
-- **`g.score` / target** ("0 / 700") is the roguelike currency = sum of **Bag value × Rally**.
-  Bag (after every coach/edition bonus) and the target are both multiplied by `CONFIG.scoreScale`
-  (**100**) so on-screen numbers feel grand; balance is identical (score >= target unchanged).
-  Rally is the un-scaled multiplier: starts ×1.0, climbs +0.5 per safe play; an out persists rally (resets at inning end).
-- **`g.runsScored`** ("Runs this inning") = literal runners who crossed the plate this
-  game/inning. It resets to 0 each new inning (new `STATE.game`). It is **not** the run total
-  and **not** the same as Score.
+  (`CONFIG.outsPerGame`; the Closer boss gives 2; Second Wind adds 1).
+- **`g.score` / target** is the roguelike currency = sum of **Bag value x Rally**. Bag and
+  target are both multiplied by `CONFIG.scoreScale` (**100**) so numbers feel grand;
+  balance is identical. Rally is un-scaled: starts x1.0, +0.5 per safe play; an out does
+  NOT reset it (it resets at inning end). Any new score-threshold (achievements etc.)
+  must multiply by `scoreScale`.
+- **`g.runsScored`** = literal runners across the plate this frame. Not the score.
 
 ## Key systems (all in `js/app.js` unless noted)
 
 - **Save/resume:** `SAVE_KEY` (run) + `GAME_KEY` (mid-inning snapshot incl. RNG `state()`).
-  Refresh + Continue restores screen, score, bases, outs.
+  On resume, `uid.bump()` raises the uid counter past every saved uid, and the snapshot's
+  cards are **re-linked by uid** to the `run.deck` objects so buffs/Prospect growth stay
+  shared after a refresh. Pack picks `saveRun()` immediately and packs charge on open, so
+  refreshing can't un-spend.
+- **Soft-lock guards:** `commitAtBat`/`sendRunner` wrap their bodies in try/finally that
+  clears `STATE.busy`; `boot()` adds window `error`/`unhandledrejection` listeners that
+  also clear it.
 - **Meta/profile:** `META` (localStorage `META_KEY`) holds `ach`, `career`, `discovered`,
-  `franchisesPlayed`/`franchisesWon`, `maxStake`, `lineupWins`, `sound`, and `speed` (1..4,
-  game-speed setting, default 4 = fastest). `defaultMeta()` + `migrateMeta()` back-fill new
-  fields on old saves.
-- **Achievements:** 49 in `ACHIEVEMENTS`. `unlockAchievement` (once ever, banner) and
-  `awardAchievement` (feats that also gift a Salami Card, once per run). **Seeded runs earn
-  nothing:** `runIsSeeded()` (set from a typed/replayed seed via `run.seeded`) gates
-  `unlockAchievement`, all `META.career`/`wins`/`runs`/`bestScore` accrual, and stake/lineup
-  progression.
-- **Coaches** (`COACHES`, the "build"/Jokers): **100 total.** The 21 originals use hand-coded
-  `fx`; the 79 newer ones are pure data carrying a `gen` descriptor read by three generic
-  dispatchers in `engine.js` (Bag / Rally / Econ). A coach may carry a runtime `aura` (flat
-  Rally per safe play, from the Coaching Clinic salami or a deluxe edition), and a `deluxe`
-  edition. Sell a coach for half cost anytime in the dugout view (`sellCoach`).
-- **Salami Cards** (`CHARMS`, 12 one-shot consumables): `target` is `player`, `coach`, or
-  `immediate`.
-  - player/coach cards are **drag-only**: drag onto a hand card or dugout coach mid-round
-    (`onCharmPointerDown/Move/Up` + `applyCharmToTarget`). Tapping just nudges + hints (no
-    picker; `openCharmPicker` is retired).
-  - `immediate` cards (Intentional Walk, Momentum Shift, Second Wind) are **tapped**
-    (a confirm overlay -> `applyImmediateCharm`).
-  - **Sell at all times:** every pouch badge has a corner `.cb-sell` button (`sellCharm`,
-    half cost back). When a pack pick can't fit a full pouch/dugout, `openMakeRoom()` lets you
-    sell a held item and take the card instead of being forced to skip.
-- **Collection** (`showCollection`, Balatro-style): four groups - Coaches, Salami Cards, Front
-  Office vouchers, and Skip Tags - locked (`lock` icon + "???") until `isDiscovered(id)`.
-  `discover(id)` fires when an item is acquired (shop buy, pack, granted salami, signature coach,
-  earned tag). Undiscovered shop items show an "Undiscovered" tag (`.undisc-tag`).
-- **Lineups & stakes:** 15 lineups (`FRANCHISES`, each a themed deck + a `mods` delta object
-  applied in `newRun`) x 5 difficulty `STAKES` (`stakeMods(stake)` -> cumulative target/pitcher/
-  price/hand deltas). Home screen is a carousel (`renderLineupCarousel`). Stakes gate behind
-  `META.maxStake` (win a WS to unlock the next).
-- **Front Office vouchers** (`UPGRADES`, 32 = 16 base + 16 upgrades): an upgrade has `requires:
-  <baseId>` and only appears once the base is owned. The shop offers **one voucher per inning**
-  (seeded by inning, stable across the 3 frames). 7 originals use `fx`; the rest are data-driven
-  via `mods` in `applyUpgrade`. Bought ids live in `run.upgradesOwned`.
-- **Editions** (`EDITIONS`, 5 deluxe: All-Star/Silver Slugger/Gold Glove/Hall of Fame/Legendary)
-  on a card/coach `deluxe` field; `CONFIG.editionFx` drives engine hooks, `applyDeluxeToCoach`
-  the coach aura, Legendary is free (`dugoutUsed`). Roll on pack options (`rollDeluxe`); the
-  `.dx-badge` carries a `data-tip` describing the effect.
-- **Action leveling** (Spring Training packs, kind "action"): `run.actionLevels`
-  {swing/power/contact/bunt/steal}; each level adds `CONFIG.actionLevelRally` in the engine.
-- **Skip Tags** (`TAGS`, 24): skipping a non-Boss frame forfeits its reward + shop and grants a
-  tag (`isSkippable`/`tagFor`/`skipFrame`). `when`: instant (resolve on skip), shop (resolve into
-  free items at the next shop via `consumeTagsIntoShop`/`applyTagFxToShop`), or boss (Investment
-  pays out in `onWin`). Held tags render in `tagTrayHTML`.
-- **Shop & packs:** `rollShop` offers direct-buy coaches + one voucher + `CONFIG.shop.packSlots`
-  (2) **sealed packs**, each a weighted pick from `CONFIG.shop.packWeights` (not every family every
-  shop). Pack art (`.pk-wrap`) is a foil bag with serrated/crimped tearable edges; dragging one
-  onto `#pack-slot` (or tapping) opens it with a tear animation (`.pack-burst` halves), then deals
-  the choices (`openPack`/`renderPackOverlay`/`packPick`). Reroll, sell, and make-room supported.
-- **Game speed:** `META.speed` (1..4, default 4 = fastest). `speedScale()` = `4/speed` scales
-  every `sleep()`/`pace()` timeout (base running `LEG_MS`, result display, juice removals) and a
-  `--gs` CSS var on `#stage` (`applySpeedVar()`) scales gameplay animation durations
-  (`calc(base * var(--gs,1))`). Interaction feedback (hover/press/drag) is excluded. Menu has a
-  1x/2x/3x/4x selector (`setSpeed`).
-- **Juice** (`js/app.js`, plain CSS/JS): `stampOutcome` (outcome word punch-in), tiered
-  `screenShake`, `ballFlight` (a ball arcs onto the field), rally **heat meter** (`--heat` +
-  `rally-warm/hot/blaze`), `flashCoachById` (coach trigger pop), `tickNumber` (score count-up),
-  `confettiBurst` (run win). All scale with `--gs`.
-- **Drag:** card-to-bat, salami-to-target, and pack-to-slot all use document-level pointer
-  handlers. Card drag uses `#bat-zone`; the salami drag builds a `.charm-ghost` and highlights
-  `.charm-zone`/`.charm-hover`; the pack drag (`onPackPointerDown/Move/Up`) builds a `.pack-ghost`
-  and highlights `#pack-slot`.
-- **Seeds (RNG) visibility:** the run seed is **hidden during a run** (map + Stats show
-  "hidden until the run ends", or "seeded run, no unlocks" when `run.seeded`) and revealed only on
-  the run-end screens (victory + the `showGameOver` post-mortem), copyable/replayable via
-  `seedChip`. A typed/replayed seed sets `run.seeded` -> the run earns no achievements/progression.
-- **Tooltips:** custom `TIP` controller; `?`-only hover on cards, tap-to-pin, touch suppression.
+  `franchisesPlayed`/`franchisesWon`, `maxStake`, `lineupWins`, `sound`, `speed` (1..4).
+  `defaultMeta()` + `migrateMeta()` back-fill new fields on old saves.
+- **Seeded runs earn nothing:** `runIsSeeded()` (typed/replayed seed -> `run.seeded`)
+  gates `unlockAchievement` and ALL career/record accrual (incl. `bestRally`).
+- **Coaches** (`COACHES`, 100): 21 originals use hand-coded `fx`; 79 are pure data with a
+  `gen` descriptor read by the engine's Bag/Rally/Econ dispatchers. Coaches may carry an
+  `aura` and a `deluxe` edition; sell anytime for half cost (`sellCoach`).
+- **Salami Cards** (`CHARMS`, 12 one-shots): `target` player/coach cards are **drag-only**
+  (`onCharmPointerDown/Move/Up` -> `applyCharmToTarget`); `immediate` ones are tapped
+  (confirm -> `applyImmediateCharm`). Sell anytime (`.cb-sell` -> `sellCharm`); when a
+  pack pick can't fit, `openMakeRoom()` lets you sell to make room.
+- **Steals:** Send a runner from 1st/2nd (`Engine.attemptSteal`), or gamble a **steal of
+  HOME** from 3rd (`fromBase 2`: long odds, scores a literal run, fuels the `steal_home`
+  achievement). Caught = an out.
+- **Lineups & stakes:** 15 `FRANCHISES` (themed deck + `mods` deltas applied in `newRun`)
+  x 5 `STAKES` (cumulative `stakeMods`). Home screen carousel + per-lineup `crestSVG`.
+- **Front Office vouchers** (`UPGRADES`, 16 base + 16 tier-2 gated by `requires`): one per
+  inning in the shop (seeded by inning, survives rerolls); a Voucher Tag **appends** an
+  extra one. `run.extraCardSlots` (Scouting Network line + The Scouts lineup) adds **+1
+  revealed option to every pack** in `openPack`. `startRally` vouchers use `Math.max`
+  so buy order can't downgrade.
+- **Editions** (`EDITIONS`, 5 deluxe) on a card/coach `deluxe` field; `CONFIG.editionFx`
+  drives engine hooks, `applyDeluxeToCoach` the coach aura; Legendary takes no slot
+  (`dugoutUsed`). Rolled on pack options (`rollDeluxe`).
+- **Action leveling** (Spring Training packs): `run.actionLevels`; each level adds
+  `CONFIG.actionLevelRally` in the engine.
+- **Skip Tags** (`TAGS`, 24): skipping a non-Boss frame grants a tag, **weighted by
+  rarity** (`tagFor`). `when`: instant / shop (resolved by `consumeTagsIntoShop` +
+  re-applied by `applyTagFxToShop` each roll) / boss (pays out in `onWin`).
+- **Shop & packs:** `rollShop` offers direct-buy coaches + voucher(s) +
+  `CONFIG.shop.packSlots` (2) sealed packs, each a weighted pick from
+  `CONFIG.shop.packWeights`. Packs are foil bags with `packArtSVG` scenes; drag onto
+  `#pack-slot` or tap to open (tear animation, then options deal out). **Packs charge on
+  open**, not on pick.
+- **Artwork** (`js/art.js`): all portraits/crests/pack scenes are deterministic SVG from
+  item ids (same id = same face everywhere, incl. deck copies). Player cards render a
+  `.card-art` window (rarity-keyed sky: day/sunset/dusk/golden), coaches get dugout
+  portraits in the shop/packs, the map telegraph shows the pitcher (night game; boss =
+  red menace), lineups get crests. Falls back gracefully if art.js is absent.
+- **Game speed:** `META.speed` (1..4, default 4 = fastest). `speedScale()` scales every
+  `sleep()`/`pace()` timeout and the `--gs` CSS var on `#stage` (`applySpeedVar()`)
+  scales gameplay animation durations. Interaction feedback is excluded.
+- **Juice:** `stampOutcome`, tiered `screenShake`, `ballFlight`, rally heat meter,
+  `flashCoachById`, `tickNumber`, `confettiBurst`. All scale with `--gs`.
+- **Drag:** card-to-bat, salami-to-target, pack-to-slot via document-level pointer
+  handlers (`#bat-zone`, `.charm-ghost`/`.charm-zone`, `.pack-ghost`/`#pack-slot`).
+- **Seeds visibility:** hidden during a run; revealed on run-end screens, copyable /
+  replayable via `seedChip`.
+- **Tooltips:** custom `TIP` controller; `?`-only hover on cards, tap-to-pin, touch
+  suppression.
 
-## Change history (most recent batches)
+## History
 
-- Field-box layout, inline swing bar (no popup), drag-to-bat, abandon confirmation.
-- Charms/powerups system, ?-only card tooltips.
-- **Batch 8:** named the one-shot powerups; 49 achievements + Profile;
-  animated splash; mid-inning save/resume; 8 franchises (4×2); deck/roster 30 with paginated
-  deck view; dugout 2×4; card footer (trait/pos/? lower-right); equal-height shop coaches.
-- Field diagram made square (cqmin); at-bat header simplified (no platoon chip, no "how do
-  you swing?"); corner X replaced by a labeled **Cancel** in the tactics.
-- Hide seed until run ends; spruced post-mortem; removed all em/en dashes; **Collection**
-  screen + discovery tracking + Undiscovered tags; **drag** Salami cards onto players/coaches;
-  coach-affecting card (Coaching Clinic aura); asset cache-busting (`?v=`).
-- Scoreboard score column re-centered (`1.3fr 1.6fr 1.3fr`).
-- Renamed the consumables to **Salami Cards** (panel `SALAMI`, internal identifiers stay
-  `CHARMS`/`charm`); pack-based shop - Coaches and Front Office bought directly, the rest are
-  sealed packs you drag (or tap) to open. `onPackPointerDown/Move/Up` handle the drag.
-- **Balatro 1:1 - Phase 1 (packs):** Analytics & Scouting -> **Scouting Cards/Packs** (one
-  pool of `ANALYTICS`+`SCOUTING`); player cards/packs -> **Prospect Cards/Packs**. Every pack
-  family (Prospect, Scouting, Salami, Coaching) now has **Normal / Jumbo (5, pick 1) / Mega
-  (5, pick 2)** sizes (`PACKS` has all 12; `rollShop` rolls a size per family, weighted by
-  round). Sealed packs are now **tall card-pack art** (`.pk-wrap` art window + label band +
-  Jumbo/Mega ribbon), and opening plays a **tear-open burst** (`.pack-burst`) then deals the
-  cards out.
-- **Balatro 1:1 - Phase 2 (run structure):** restructured to **8 innings x 3 frames** (Top /
-  Middle / Boss) = 24 frames, then **Extra Innings** (endless). Targets/pitchers are formulas
-  that extend forever (`targetFor`, `CONFIG.target`/`pitcher`). Win inning 8's Boss -> World
-  Series victory with a "Play Extra Innings" continue. Compact **linescore** (`.linescore`,
-  8 inning columns + extra), post-mortem 24-frame strip, labels reworked.
-- **Balatro 1:1 - Phase 3 (lineups + stakes):** **15 lineups** (`FRANCHISES`, each with a
-  themed deck + a `mods` object of deltas on already-wired run fields: payroll/dugoutSlots/
-  handSize/charmSlots/extraCardSlots/rerollDiscount/startRally/noInterest/grantSalami, applied
-  in `newRun`). **5 difficulty stakes** (`STAKES`, Rookie..Cooperstown); `stakeMods(stake)` ->
-  cumulative `{targetMult, pitcherBonus, priceBump, handDelta}` applied in `targetFor`/
-  `makePitcher`/`priceOf`/`newRun`. Stakes gate behind `META.maxStake` (win a WS at the current
-  to unlock the next); `META.lineupWins` tracks best stake per lineup. Home screen is now a
-  **carousel** (`renderLineupCarousel`): one lineup at a time with arrows + dots, a 5-stake
-  selector, inline seed, Play Ball. `run.stake` + `run.franchiseId` define a run.
-- **Balatro 1:1 - Phase 4 (editions + action leveling):** 5 deluxe **editions** on a card/
-  coach `deluxe` field - All-Star (+2 Bag), Silver Slugger (+1 Rally), Gold Glove (x1.5 Rally
-  that play), Hall of Fame (+2 Bag +0.5 Rally), Legendary (biggest; coach takes no slot).
-  `CONFIG.editionFx` drives the engine hooks in `resolveAtBat`; coaches use `coach.aura`
-  (`applyDeluxeToCoach`) and Legendary is free (`dugoutUsed`). They roll on pack card/coach
-  options (`rollDeluxe`, `CONFIG.editionSpawnChance`) and render with an animated shimmer
-  (`.has-dx.dx-*` + `.dx-badge`). **Action leveling** (Spring Training packs, kind "action"):
-  `run.actionLevels` {swing/power/contact/bunt/steal}; each level adds `CONFIG.actionLevelRally`
-  to that action's safe plays (engine) and shows a `Lv` badge on the swing buttons.
-- **Balatro 1:1 - Phase 5a (coaches + vouchers):** **100 coaches** (`COACHES`). The 79 new
-  ones are pure data: each carries a `gen` descriptor read by three generic dispatchers in
-  `engine.js` - Bag (`gen.at:"bag"` matching `out`/`tag`/`deck`), Rally (`gen.at:"rally"`
-  matching `out`/`tag`/`cond:risp|twoout|leadoff|firston`/aura), and Econ (`gen.at:"econ"`,
-  pays `$amt` into `ev.payrollGained`). So new coaches need no hand-coded engine function.
-  **32 Front Office vouchers** (`UPGRADES`): **16 base + 16 upgrades**. The 7 originals keep
-  their `fx` switch; the rest are data-driven via `mods` (charmSlots/payroll/interestCap[Abs]/
-  startRally[Add]/editionBoost/springLevel/deckStat/...) applied in `applyUpgrade`. Each
-  upgrade has `requires: <baseId>` and the shop only offers it once the base is owned. The
-  shop shows **one voucher per inning**, seeded by inning so it holds steady across the 3
-  frames and ignores rerolls; buying it sets `run.lastVoucherInning` so the slot stays empty
-  until the next inning. `run.upgradesOwned` now stores voucher **ids** (was `fx`).
-- **Balatro 1:1 - Phase 5b (skip tags):** **24 skip tags** (`TAGS` in `data.js`). Skipping a
-  non-Boss frame (Top/Middle) forfeits that frame's win reward and its shop and grants a tag
-  instead (`isSkippable`/`tagFor`/`skipFrame`; `run.skips` counts them). Each tag has a
-  `when`: **instant** resolves on skip (money, double payroll, level a random action, free
-  common coaches, or a one-frame `handBonusNext`/`rallyBonusNext` consumed in `startGame`);
-  **shop** waits in `run.tags` and is turned into concrete free items on the next shop visit
-  (`consumeTagsIntoShop` -> `STATE.shop.tagFx`, re-applied every roll by `applyTagFxToShop`
-  so free coaches/packs survive rerolls; covers free Uncommon/Rare coaches, the 5 editioned
-  free coaches, a forced voucher, Coupon = coaches/vouchers free, Discount = free rerolls);
-  **boss** (Investment) waits in `run.tags` and pays out in `onWin` when a Boss is beaten
-  (added to the reward breakdown). The map shows the offered tag + a Skip button and a
-  held-tags tray (`tagTrayHTML`); the shop badges granted items **Free**. Tags are the 4th
-  **Collection** group and are discovered on earn. This completes the Balatro 1:1 master list.
-- **Phase 6 (structure + juice):** run extended to **9 innings** (`INNINGS_TO_WIN`), so 27 frames.
-  **100x score scale** (`CONFIG.scoreScale`): the engine multiplies the finished bag by it and
-  `targetFor` multiplies the target (rounded to a clean 5), so numbers are grand and balance is
-  unchanged (economy/rally not scaled; `big_swing` threshold scaled too). **Lineup carousel** cards
-  are a fixed 312px-tall, `flex:1 1 0` uniform card (`overflow:hidden`). **Pack reveal modal**
-  enlarged (`min(1040px,95vw)`, bigger cards, names wrap). **Pack tear-open**: the pack rips into
-  two halves (`.pkb-top`/`.pkb-bot`) with a jagged `.pkb-rip` + flash, then cards deal. **Edition
-  tooltips**: the `.dx-badge` carries a `data-tip` with the edition's effect. **Juice** (all CSS/JS,
-  no deps): `stampOutcome` (color-coded punch-in stamp, GRAND SLAM variant), tiered `screenShake`
-  (sm/big/huge), `ballFlight` (a ball arcs onto the field, path per outcome + HR flash), rally
-  **heat meter** (`--heat` colour + `rally-warm/hot/blaze` glow/flame tiers), stronger `coach-icon
-  .trigger` pop + ring, `tickNumber` count-up on the score, and `confettiBurst` on a run win.
-- **Pack variety + speed (Balatro parity):** the shop no longer shows every pack family. `rollShop`
-  rolls `CONFIG.shop.packSlots` (**2**) packs, each an independent weighted pick from
-  `CONFIG.shop.packWeights` (player>scouting>charm>coach>action), so offered types vary shop to
-  shop and on reroll (families can repeat). **Game speed setting** `META.speed` (1..4, default **4**
-  = fastest/the original pacing): `speedScale() = 4/speed` is the delay multiplier applied in
-  `sleep()` (so every gameplay pause scales) and in `tickNumber` (score count-up). The menu has a
-  1x/2x/3x/4x selector (`.menu-speed`/`data-speed` -> `setSpeed`); verified 1x runs ~4x slower.
-- **Speed scales ALL animations + juice fixes:** speed now drives a `--gs` CSS var on `#stage`
-  (`applySpeedVar()` = `speedScale()`); gameplay durations are `calc(base * var(--gs,1))` so card
-  load-in, base running (`.rtok` + `LEG_MS`), shake, stamp, ball, rally, pack tear all rescale
-  (interaction feedback is excluded). JS timeouts go through `pace(ms)` (LEG_MS, setReadout display,
-  popRuns, floatText, flashScreen, juice removals). **Ball flight** made visible: bigger (18px) +
-  glow trail + higher z, and every arc kept inside the diamond `[0..100]%` so `col-field`'s
-  `overflow:hidden` no longer clips it (the HR no longer flies to `top:-24%`). **Outcome stamp**
-  typography fixed: dropped `-webkit-text-stroke` (it distorted glyphs under scale) for a clean
-  drop-shadow. **Selected batter card** no longer lifts (`translateY` removed) into the swing
-  buttons; differentiation is now full-opacity + gold ring + glow + subtle scale vs dimmed others.
-- **Foil packs, sell-anytime, drag-only, seed gating:** pack art (`.pk-wrap`) redesigned into a real
-  foil bag with crimped/serrated **tearable top+bottom edges** (`clip-path` zigzag + ribbed
-  `.pk-crimp` seals + `.pk-foil` grid/sheen + NAME/"PACK" wordmark); the tear-open halves match.
-  **Sell at all times:** `sellCharm()` (corner `.cb-sell` button on every pouch badge) + `sellCoach`
-  refund half-cost; when a pack pick can't fit, `openMakeRoom()` lets you **sell a held item to take
-  the card** instead of being forced to skip (`packPick` -> make-room -> retry). **Targeted Salami
-  cards are drag-only** now (tap just nudges/hints; `openCharmPicker` no longer called). **Seeded
-  runs earn nothing:** `run.seeded` (a typed/replayed seed) gates `unlockAchievement`, all
-  `META.career`/`wins`/`runs`/`bestScore` accrual, and stake/lineup progression; the seed stays
-  hidden in-run (stats note "seeded run, no unlocks") and only shows on the run-end screens.
+Detailed change history lives in `git log` (commit messages are thorough). Don't grow a
+changelog here; this file describes the CURRENT state only.

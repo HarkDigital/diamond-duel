@@ -69,9 +69,9 @@
     scoreScale: 100,
 
     // Target curve. Each frame's target = round(base * inningGrowth^inning * frameMult[frame]),
-    // where inning is 0-based and frame is 0(Top)/1(Middle)/2(Boss). This ramps the 24 frames of
-    // the main run and keeps escalating forever into Extra Innings. Early frames are clearable
-    // with the starting deck; later frames demand a real build.
+    // where inning is 0-based and frame is 0(Top)/1(Middle)/2(Boss). This ramps the 27 frames of
+    // the main run (9 innings x 3) and keeps escalating forever into Extra Innings. Early frames
+    // are clearable with the starting deck; later frames demand a real build.
     target: { base: 7, inningGrowth: 1.46, frameMult: [1, 1.35, 1.8] },
 
     // Pitcher scaling. Stuff/Command grow per inning, with a small bump per frame inside an
@@ -111,8 +111,7 @@
       winRewardPerRound: 1,
       bossBonus: 2,
       perLeftoverOut: 1,
-      interestRate: 0.2, // 20% of banked payroll...
-      interestPer: 5, // ...granted as $1 per $5 banked
+      interestPer: 5, // interest: $1 per $5 banked
       interestCap: 5, // up to $5 interest
       startingPayroll: 4,
       rerollBase: 2,
@@ -123,8 +122,6 @@
     // Shop offerings per visit
     shop: {
       coachSlots: 2,
-      cardSlots: 3,
-      consumableSlots: 2,
       packSlots: 2,
       // Not every pack family shows in every shop (Balatro-style). Each shop rolls
       // `packSlots` packs, each an independent weighted pick from these families, so the
@@ -446,7 +443,7 @@
     { id: "lefty_specialist", name: "The Lefty Specialist", rule: "leftySpecialist", text: "Left-handed batters get no platoon bonus and a penalty.", tier: 1 },
     { id: "junkballer", name: "The Junkballer", rule: "junkballer", text: "The first batter of every inning is debuffed (-22 all stats).", tier: 2 },
     { id: "workhorse", name: "The Workhorse", rule: "workhorse", text: "Your Rally increment is reduced by half.", tier: 2 },
-    { id: "closer", name: "The Closer", rule: "closer", text: "You get only 18 outs (six innings). A race.", tier: 2 },
+    { id: "closer", name: "The Closer", rule: "closer", text: "You get only 2 outs this inning. A race.", tier: 2 },
     { id: "ace", name: "The Ace", rule: "ace", text: "Target is increased by 50%. No other rule - a raw check.", tier: 2 },
   ];
 
@@ -521,7 +518,7 @@
     { id: "comeback",       cat: "Winning",  name: "Down to the Wire", text: "Clear an inning on your final out.", seed: true },
     { id: "walkoff",        cat: "Winning",  name: "Walk-Off",         text: "Clear an inning on a home run.", seed: true },
     { id: "big_swing",      cat: "Scoring",  name: "One Big Swing",    text: "Score 1500+ from a single at-bat.", seed: true },
-    { id: "boss_sweep",     cat: "Bosses",   name: "Giant Killer",     text: "Beat all three bosses in one run.", seed: true },
+    { id: "boss_sweep",     cat: "Bosses",   name: "Giant Killer",     text: "Beat three Boss pitchers in one run.", seed: true },
     // --- power milestones ---
     { id: "first_dinger",   cat: "Power",    name: "First Dinger",     text: "Hit your first home run." },
     { id: "dingers_25",     cat: "Power",    name: "Slugger",          text: "Hit 25 career home runs." },
@@ -547,8 +544,8 @@
     { id: "rally_10",       cat: "Rally",    name: "Unstoppable",      text: "Reach a ×10 Rally." },
     { id: "rally_20",       cat: "Rally",    name: "Inferno",          text: "Reach a ×20 Rally." },
     // --- scoring ---
-    { id: "inning_50",      cat: "Scoring",  name: "Half-Century",     text: "Score 50+ in a single inning." },
-    { id: "inning_100",     cat: "Scoring",  name: "Triple Digits",    text: "Score 100+ in a single inning." },
+    { id: "inning_50",      cat: "Scoring",  name: "Half-Century",     text: "Score 5,000+ in a single inning." },
+    { id: "inning_100",     cat: "Scoring",  name: "Triple Digits",    text: "Score 10,000+ in a single inning." },
     // --- winning ---
     { id: "first_win",      cat: "Winning",  name: "Play Ball",        text: "Clear your first inning." },
     { id: "first_champ",    cat: "Winning",  name: "Champion",         text: "Win a full nine-inning run." },
@@ -585,7 +582,7 @@
     { id: "up_dugout",     name: "Expanded Dugout",      fx: "dugoutSlot",  icon: "home",     rarity: "star",    cost: 8,  text: "+1 dugout slot (more coaches)." },
     { id: "up_hand",       name: "Bigger Lineup Card",   fx: "handSize",    icon: "layers",   rarity: "common",  cost: 6,  text: "+1 hand size." },
     { id: "up_discount",   name: "Analytics Department", fx: "discount",    icon: "barChart", rarity: "star",    cost: 7,  text: "Shop prices reduced by $1 (min $1)." },
-    { id: "up_shopslot",   name: "Scouting Network",     fx: "shopSlot",    icon: "eye",      rarity: "star",    cost: 7,  text: "+1 card slot in the shop." },
+    { id: "up_shopslot",   name: "Scouting Network",     fx: "shopSlot",    icon: "eye",      rarity: "star",    cost: 7,  text: "Every pack you open reveals +1 option." },
     { id: "up_reroll",     name: "Front Office Interns", fx: "rerollCheap", icon: "shuffle",  rarity: "common",  cost: 6,  text: "Rerolls cost $1 less." },
     { id: "up_startrally", name: "Home Field Advantage", fx: "startRally",  icon: "zap",      rarity: "allstar", cost: 9,  text: "Start every game at x1.5 Rally instead of x1.0." },
     { id: "up_interest",   name: "Smart Investments",    fx: "interest",    icon: "coin",     rarity: "star",    cost: 7,  text: "Interest cap raised to $8." },
@@ -602,7 +599,7 @@
     { id: "up_dugout2",     name: "Luxury Box Suite",   requires: "up_dugout",     mods: { dugoutSlots: 1 },       icon: "home",     rarity: "allstar", cost: 10, text: "+1 more dugout slot. (Needs Expanded Dugout.)" },
     { id: "up_hand2",       name: "Jumbo Lineup Card",  requires: "up_hand",       mods: { handSize: 1 },          icon: "layers",   rarity: "star",    cost: 9,  text: "+1 more hand size. (Needs Bigger Lineup Card.)" },
     { id: "up_discount2",   name: "Analytics HQ",       requires: "up_discount",   mods: { discount: 1 },          icon: "barChart", rarity: "allstar", cost: 9,  text: "Shop prices reduced by another $1. (Needs Analytics Department.)" },
-    { id: "up_shopslot2",   name: "Global Scouting",    requires: "up_shopslot",   mods: { extraCardSlots: 1 },    icon: "eye",      rarity: "allstar", cost: 9,  text: "+1 more shop card slot. (Needs Scouting Network.)" },
+    { id: "up_shopslot2",   name: "Global Scouting",    requires: "up_shopslot",   mods: { extraCardSlots: 1 },    icon: "eye",      rarity: "allstar", cost: 9,  text: "Packs reveal +1 more option. (Needs Scouting Network.)" },
     { id: "up_reroll2",     name: "Front Office Staff", requires: "up_reroll",     mods: { rerollDiscount: 1 },    icon: "shuffle",  rarity: "star",    cost: 8,  text: "Rerolls cost another $1 less. (Needs Front Office Interns.)" },
     { id: "up_startrally2", name: "Dynasty Mystique",   requires: "up_startrally", mods: { startRally: 2.0 },      icon: "zap",      rarity: "legendary", cost: 12, text: "Start every game at x2.0 Rally. (Needs Home Field Advantage.)" },
     { id: "up_interest2",   name: "Hedge Fund",         requires: "up_interest",   mods: { interestCapAbs: 13 },   icon: "coin",     rarity: "allstar", cost: 9,  text: "Interest cap raised to $13. (Needs Smart Investments.)" },
@@ -867,7 +864,7 @@
       name: "The Scouts",
       tagline: "Wired into the network.",
       signatureCoach: null,
-      bonusText: "+1 shop card slot and $1 off every reroll. See more, pay less.",
+      bonusText: "Packs reveal an extra option, and rerolls cost $1 less. See more, pay less.",
       mods: { extraCardSlots: 1, rerollDiscount: 1 },
       deck: ["rocket_ruiz", "dash_okafor", "sunny_okada", "ozzie_klein", "hank_delgado",
         "nico_reyburn", "joey_marsh", "gil_hatcher", "eddie_lux", "vic_castellano",
@@ -888,8 +885,8 @@
   /* -------------------------------------------------------- */
   /* BRACKET STRUCTURE                                        */
   /* -------------------------------------------------------- */
-  // A run is 8 innings (Balatro antes). Each inning has 3 frames (Top / Middle / Boss);
-  // the 3rd frame is a Boss pitcher with a rule. Beat inning 8's boss to win the World
+  // A run is 9 innings (Balatro antes). Each inning has 3 frames (Top / Middle / Boss);
+  // the 3rd frame is a Boss pitcher with a rule. Beat inning 9's boss to win the World
   // Series, then continue into Extra Innings (endless, exponentially escalating).
   const INNINGS_TO_WIN = 9; // a full baseball game: 9 innings to the World Series
   const GAMES_PER_ROUND = 3; // frames per inning; frame idx 2 is the Boss

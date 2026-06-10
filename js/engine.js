@@ -162,47 +162,25 @@
     return { newBases: nb, runs };
   }
 
-  /* ---------- steals (positive-only: succeed or stay, no caught stealing in v1) ---------- */
-  function runSteals(game, run, rng, ev) {
-    if (!CONFIG.stealEnabled) return;
-    const b = game.bases;
-    // 2nd -> 3rd
-    if (b[1] && !b[2] && (b[1].speed + whiteyBonus(run)) >= CONFIG.stealSpeedFloor && !b[1].stoleThisInning) {
-      if (rng.chance(stealChance(b[1].speed, run))) {
-        b[2] = b[1]; b[1] = null; b[2].stoleThisInning = true;
-        registerSteal(game, run, ev, "3rd");
-      }
-    }
-    // 1st -> 2nd
-    if (b[0] && !b[1] && (b[0].speed + whiteyBonus(run)) >= CONFIG.stealSpeedFloor && !b[0].stoleThisInning) {
-      if (rng.chance(stealChance(b[0].speed, run))) {
-        b[1] = b[0]; b[0] = null; b[1].stoleThisInning = true;
-        registerSteal(game, run, ev, "2nd");
-      }
-    }
-  }
-  function registerSteal(game, run, ev, toBase) {
-    ev.steals = ev.steals || [];
-    ev.steals.push(toBase);
-    if (hasCoach(run, "smallBall")) {
-      game.rally += 0.5;
-      ev.triggers.push("coach:small_ball");
-    }
-    if (run.actionLevels && run.actionLevels.steal > 1) { game.rally += (run.actionLevels.steal - 1) * (CONFIG.actionLevelRally || 0.3); ev.triggers.push("action:steal"); }
-    if (SFX) SFX.steal();
-  }
-
+  /* ---------- steals ---------- */
   // ACTIVE steal - the player chooses to Send a runner. Real risk: caught = an out.
+  // fromBase 2 is a straight steal of HOME: long odds, but it scores a literal run.
   function attemptSteal(game, run, rng, fromBase) {
     const b = game.bases;
     const runner = b[fromBase];
-    if (!runner || fromBase >= 2 || b[fromBase + 1] != null) return { ok: false };
+    if (!runner || fromBase > 2 || (fromBase < 2 && b[fromBase + 1] != null)) return { ok: false };
     const burner = runner.card && runner.card.trait === "burner";
-    const p = clamp(stealChance(runner.speed, run) + (burner ? 0.22 : 0), 0.35, 0.97);
-    const res = { ok: true, runner, from: fromBase, rallyBonus: 0, triggers: [] };
+    const home = fromBase === 2;
+    const p = home
+      ? clamp(stealChance(runner.speed, run) - 0.42 + (burner ? 0.18 : 0), 0.05, 0.55)
+      : clamp(stealChance(runner.speed, run) + (burner ? 0.22 : 0), 0.35, 0.97);
+    const res = { ok: true, runner, from: fromBase, rallyBonus: 0, triggers: [], runs: 0 };
     if (rng.chance(p)) {
-      b[fromBase + 1] = runner; b[fromBase] = null; runner.stoleThisInning = true;
-      res.caught = false; res.to = fromBase + 1;
+      b[fromBase] = null;
+      if (home) { res.to = 3; res.runs = 1; game.runsScored += 1; }
+      else { b[fromBase + 1] = runner; res.to = fromBase + 1; }
+      runner.stoleThisInning = true;
+      res.caught = false;
       if (hasCoach(run, "smallBall")) { game.rally += 0.5; res.rallyBonus = 0.5; res.triggers.push("coach:small_ball"); }
       if (run.actionLevels && run.actionLevels.steal > 1) { const sl = (run.actionLevels.steal - 1) * (CONFIG.actionLevelRally || 0.3); game.rally += sl; res.rallyBonus += sl; res.triggers.push("action:steal"); }
     } else {
@@ -550,7 +528,6 @@
 
   global.Engine = {
     resolveAtBat,
-    runSteals,
     attemptSteal,
     maybeAdvanceInning,
     effectiveBatterStats,

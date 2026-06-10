@@ -73,12 +73,15 @@
     return api;
   }
 
-  // A simple non-random unique id counter (deterministic, not part of game RNG)
+  // A simple non-random unique id counter (deterministic, not part of game RNG).
+  // uid.bump(n) raises the counter past ids loaded from a save, so a resumed run
+  // never mints a uid that collides with one minted before the reload.
   let _uid = 0;
   function uid(prefix) {
     _uid += 1;
     return (prefix || "id") + "_" + _uid;
   }
+  uid.bump = function (n) { if (typeof n === "number" && isFinite(n) && n > _uid) _uid = Math.floor(n); };
 
   global.makeRNG = makeRNG;
   global.uid = uid;
