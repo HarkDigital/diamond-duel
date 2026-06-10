@@ -139,10 +139,8 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   are reachable from EVERY screen: tappable in-game panel headers (`.panel-btn` on the
   DUGOUT/SALAMI titles, with live `x/y` counts), Deck/Dugout/Salami buttons on the map
   (`.mn-views`) and in the shop header, and Deck/Dugout/Salami tiles in the in-run menu.
-  On top of that, `ownedStripHTML()` pins the whole build (every dugout + Salami slot,
-  each chip sellable via `data-stripsell`, tooltip on tap) into the shop screen AND
-  inside the pack-reveal overlay, Balatro-style - so a full dugout can be sold down
-  WHILE a pack is open, without leaving it.
+  The run frame's top rows stay on screen during pack reveals too, so a full dugout
+  can be sold down WHILE a pack is open, without leaving it.
 - **Make-room instead of blocking:** whenever adding a coach/Salami would overflow its
   slots (a pack pick OR a direct shop coach buy), `openMakeRoom()` offers selling a held
   item to take the new one; the blocked action retries after the sale. Player decks have
@@ -174,8 +172,11 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
 - **Shop & packs:** `rollShop` offers direct-buy coaches + voucher(s) +
   `CONFIG.shop.packSlots` (2) sealed packs, each a weighted pick from
   `CONFIG.shop.packWeights`. Packs are foil bags with `packArtSVG` scenes; drag onto
-  `#pack-slot` or tap to open (tear animation, then options deal out). **Packs charge on
-  open**, not on pick.
+  `#pack-slot` or tap to open. The reveal is **NOT a modal**: while `STATE._pack` is
+  set, `renderShop` swaps the shop content for the inline `packStageHTML()` (tear
+  animation, then options deal onto the felt) and the run frame stays interactive
+  above it (sell from the rows mid-pack; make-room/pickers overlay the stage).
+  **Packs charge on open**, not on pick.
 - **Artwork** (`js/art.js`): all art is deterministic SVG from item ids (same id = same
   art everywhere, incl. deck copies). Player cards render a `.card-art` window
   (rarity-keyed sky: day/sunset/dusk/golden), coaches get dugout portraits, the map

@@ -1341,7 +1341,7 @@
     toast(`Sold ${c.name} for $${refund}.`);
     saveRun();
     if (STATE.screen === "game") { renderPowerups(); setText("payroll-amt", run.payroll); }
-    if ((STATE.screen === "shop" || STATE.screen === "map") && !STATE._pack) render();
+    if (STATE.screen === "shop" || STATE.screen === "map") render();   // covers the inline pack stage too
   }
   // The Salami pouch, inspectable (and sellable) from ANY screen - mirrors openDugoutView.
   function openSalamiView() {
@@ -1393,12 +1393,13 @@
     if (parts[0] === "charm") sellCharm(i, "makeroom"); else sellCoach(i, "makeroom");
     const retry = ctx.retry;
     STATE._makeRoom = null;
-    if (retry) retry();                 // re-run the pick (room now exists) -> re-renders the pack
-    else if (STATE._pack) renderPackOverlay();
+    closeOverlay();                     // the inline stage / shop sits right beneath
+    if (retry) retry();                 // re-run the blocked pick (room now exists)
+    else render();
   }
   function closeMakeRoom() {
     STATE._makeRoom = null;
-    if (STATE._pack) renderPackOverlay(); else closeOverlay();
+    closeOverlay();                     // the inline stage / shop is still on screen
   }
   function useCharm(index) {
     if (STATE.busy) return;
@@ -2121,39 +2122,11 @@
   /* ============================================================
      SHOP
      ============================================================ */
-  // Balatro-style pinned build: your dugout + Salami slots, always on screen in the
-  // shop AND inside every pack reveal, each chip sellable in place. Tapping a chip
-  // pins its tooltip; the corner coin button sells it.
-  function ownedStripHTML() {
-    const run = STATE.run;
-    if (!run) return "";
-    const coachSell = (c) => Math.max(1, Math.floor((c.cost || 5) / 2));
-    const cells = [];
-    for (let i = 0; i < run.dugoutSlots; i++) {
-      const c = run.dugout[i];
-      cells.push(c
-        ? `<div class="os-item rar-${c.rarity}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>Sell +$${coachSell(c)}</span>"><span class="os-glyph">${icon(c.icon || "star")}</span><button class="os-sell" data-stripsell="coach:${i}" aria-label="Sell ${c.name}">${icon("sell")}</button></div>`
-        : `<div class="os-item empty">+</div>`);
-    }
-    const charms = [];
-    for (let i = 0; i < run.charmSlots; i++) {
-      const id = run.charms[i];
-      const c = id ? getCharm(id) : null;
-      charms.push(c
-        ? `<div class="os-item os-charm rar-${c.rarity}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>Sell +$${charmRefund(c)}</span>"><span class="os-glyph">${icon(c.icon)}</span><button class="os-sell" data-stripsell="charm:${i}" aria-label="Sell ${c.name}">${icon("sell")}</button></div>`
-        : `<div class="os-item empty">+</div>`);
-    }
-    return `<div class="owned-strip">
-        <div class="os-group"><span class="os-label">DUGOUT ${dugoutUsed(run)}/${run.dugoutSlots}</span>${cells.join("")}</div>
-        <div class="os-group"><span class="os-label">SALAMI ${run.charms.length}/${run.charmSlots}</span>${charms.join("")}</div>
-        <div class="os-pay">$${run.payroll}</div>
-      </div>`;
-  }
+  // Selling from the pinned top rows (corner coin button on any chip). sellCoach /
+  // sellCharm re-render whichever screen state is showing, incl. the inline pack stage.
   function stripSellAction(spec) {
     const parts = spec.split(":"), i = parseInt(parts[1], 10);
     if (parts[0] === "coach") sellCoach(i, "strip"); else sellCharm(i, "strip");
-    if (STATE._pack) renderPackOverlay();          // refresh the strip + options in place
-    else if (STATE.screen === "shop") render();
   }
 
   function enterShop() {
@@ -2312,6 +2285,18 @@
 
     const dugFull = dugoutUsed(run) >= run.dugoutSlots;
 
+    // while a pack is open, the shop's middle gives way to the inline pack stage;
+    // the frame (sidebar + dugout/Salami rows) stays put and stays interactive
+    if (STATE._pack) {
+      return `
+      <div class="screen run-screen shop-screen">
+        ${runSideHTML("shop")}
+        <div class="run-main">
+          ${runTopHTML()}
+          <div class="run-content">${packStageHTML()}</div>
+        </div>
+      </div>`;
+    }
     return `
     <div class="screen run-screen shop-screen">
       ${runSideHTML("shop")}
@@ -2522,11 +2507,14 @@
       options = rng.sample(ACTIONS, count).map((a) => ({ kind: "action", item: a }));
     }
     STATE._pack = { pack, options, picksLeft: pack.choose, onDone, picked: [] };
-    renderPackOverlay();
+    render();   // the shop's content gives way to the inline pack stage
   }
-  function renderPackOverlay() {
+  // The pack reveal is NOT a modal: the shop's middle simply gives way to the dealt
+  // cards (Balatro-style) while the run frame - sidebar + the big dugout/Salami rows -
+  // stays on screen and fully interactive above.
+  function packStageHTML() {
     const ctx = STATE._pack;
-    if (!ctx) return;
+    if (!ctx) return "";
     const run = STATE.run;
     const firstOpen = !ctx.opened;            // play the tear-open + deal animation only once
     ctx.opened = true;
@@ -2556,15 +2544,14 @@
         <div class="pkb-rip"></div>
         <div class="pkb-flash"></div>
       </div>` : "";
-    overlay(`
-      <div class="ov-card pack-ov ${firstOpen ? "pk-opening" : ""}">
+    return `
+      <div class="pack-stage ${firstOpen ? "pk-opening" : ""}">
         ${burst}
-        ${ownedStripHTML()}
-        <h2><span class="h2-ico">${icon("layers")}</span> ${ctx.pack.name}</h2>
-        <div class="ov-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}.${left > 0 ? " (" + left + " left)" : ""}</div>
+        <h2 class="ps-title"><span class="h2-ico">${icon("layers")}</span> ${ctx.pack.name}</h2>
+        <div class="ps-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}.${left > 0 ? " (" + left + " left)" : ""}</div>
         <div class="pack-grid ${firstOpen ? "pack-deal" : ""}">${opts}</div>
-        <button class="btn ${left === 0 ? "btn-gold" : "btn-ghost"}" data-act="pack-done">${btnLabel}</button>
-      </div>`);
+        <button class="btn btn-big ${left === 0 ? "btn-gold" : "btn-ghost"} ps-done" data-act="pack-done">${btnLabel}</button>
+      </div>`;
   }
   function packPick(i) {
     const ctx = STATE._pack;
@@ -2596,7 +2583,7 @@
     ctx.picksLeft -= 1;
     SFX.buy();
     saveRun();   // a pick is permanent the moment it's made (refresh-proof)
-    renderPackOverlay();
+    render();
     if (ctx.picksLeft === 0) {
       setTimeout(() => packDone(), 350);
     }
@@ -2606,14 +2593,14 @@
     if (!ctx) return;
     const cb = ctx.onDone;
     STATE._pack = null;
-    closeOverlay();
+    closeOverlay();   // clears any picker/make-room overlay left above the stage
     // resolve any pending scouting reports from the pack, one at a time
     if (STATE._pendingScout && STATE._pendingScout.length) {
       const next = STATE._pendingScout.shift();
       openScoutingPicker(next, () => { if (STATE._pendingScout.length) { const n = STATE._pendingScout.shift(); openScoutingPicker(n, finalize); } else finalize(); });
       function finalize() { if (cb) cb(); render(); }
     } else {
-      if (cb) cb();
+      if (cb) cb(); else render();
     }
   }
 
@@ -2672,8 +2659,8 @@
     SFX.coin();
     toast(`Sold ${c.name} for $${refund}.`);
     saveRun();
-    if (!ctx) openDugoutView();   // make-room / the build strip handle their own re-render
-    if ((STATE.screen === "shop" || STATE.screen === "map") && !STATE._pack) render();
+    if (!ctx) openDugoutView();   // make-room / the top rows handle their own re-render
+    if (STATE.screen === "shop" || STATE.screen === "map") render();   // covers the inline pack stage too
     if (STATE.screen === "game") { renderDugout(); setText("payroll-amt", run.payroll); }
   }
 
@@ -2780,10 +2767,12 @@
       const stakeEl = e.target.closest("[data-stake]");
       const buyEl = e.target.closest("[data-buy]");
       const packTapEl = e.target.closest("[data-packslot]");
+      const packpickEl = e.target.closest("[data-packpick]");
       const apEl = e.target.closest("[data-approach]");
       const sellEl = e.target.closest("[data-sell]");
       const sendEl = e.target.closest("[data-send]");
 
+      if (packpickEl) { packPick(parseInt(packpickEl.getAttribute("data-packpick"), 10)); return; }
       if (dotEl) { STATE._pickIndex = parseInt(dotEl.getAttribute("data-lineup-dot"), 10); if (SFX.click) SFX.click(); render(); return; }
       if (stakeEl) { const s = parseInt(stakeEl.getAttribute("data-stake"), 10); if (s <= (META.maxStake || 1)) { STATE._pickStake = s; if (SFX.click) SFX.click(); render(); } else if (SFX.error) SFX.error(); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
@@ -2817,6 +2806,7 @@
       case "charm-confirm": { const ctx = STATE._charm; if (ctx && applyImmediateCharm(ctx.charm)) { closeOverlay(); consumeCharm(ctx.index); saveGame(); } STATE._charm = null; break; }
       case "cancel-charm": closeOverlay(); STATE._charm = null; break;
       case "reroll": doReroll(); break;
+      case "pack-done": packDone(); break;
       case "leave-shop": STATE.screen = "map"; saveRun(); render(); break;
       case "to-shop": closeOverlay(); enterShop(); break;
       case "extra-innings": closeOverlay(); saveRun(); enterShop(); break;   // continue a won run into Extra Innings
@@ -2862,14 +2852,12 @@
       }
       const act = e.target.closest("[data-act]");
       const pick = e.target.closest("[data-pick]");
-      const packpick = e.target.closest("[data-packpick]");
       const sellEl = e.target.closest("[data-sell]");
       const mrsellEl = e.target.closest("[data-mrsell]");
       const pouchSellEl = e.target.closest("[data-pouchsell]");
       const speedEl = e.target.closest("[data-speed]");
       if (pick) { applyScouting(parseInt(pick.getAttribute("data-pick"), 10)); return; }
       if (pouchSellEl) { sellCharm(parseInt(pouchSellEl.getAttribute("data-pouchsell"), 10)); openSalamiView(); return; }
-      if (packpick) { packPick(parseInt(packpick.getAttribute("data-packpick"), 10)); return; }
       if (mrsellEl) { makeRoomSell(mrsellEl.getAttribute("data-mrsell")); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
       if (speedEl) { setSpeed(parseInt(speedEl.getAttribute("data-speed"), 10)); return; }
@@ -2877,7 +2865,6 @@
       const v = act.getAttribute("data-act");
       if (v === "cancel-pick") { closeOverlay(); STATE._pick = null; return; }
       if (v === "cancel-makeroom") { closeMakeRoom(); return; }
-      if (v === "pack-done") { packDone(); return; }
       handleAct(v);
     };
   }
