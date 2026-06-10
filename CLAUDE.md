@@ -72,15 +72,20 @@ mechanic must sweep:
 ## Layout model
 
 `#stage` is a fixed design surface scaled to fit the viewport via `transform: scale()`
-(`stageScale()` reads the matrix). The game screen is a CSS grid (`game-main`):
-`col-field` (diamond + outs/inning + the **rally meter pinned to its upper right**,
-`.field-rally`, keeping all heat effects) and `col-summary` (play log), with the
-`atbat-bar` under the summary. The dugout/Salami/payroll live in the **persistent run
-bar** (`runBarHTML()`): embedded in the game scoreboard's right cell and rendered as a
-standalone `.run-bar` atop the map and shop, so the build + money show on every in-run
-screen. Bar chips are the live `coachIconHTML`/`charmBadgeHTML` markup (ids `#dugout`/
-`#powerups`/`#payroll-amt` ride along), so tooltips, taps, drags, corner sells, count
-updates, and coach trigger flashes all work from the bar on any screen.
+(`stageScale()` reads the matrix). Every in-run screen (game/map/shop) shares the
+**persistent run frame**: `runSideHTML(ctx)` renders the left sidebar (matchup/boss rule,
+SCORE AT LEAST target, round score + progress, outs pips, inning, payroll, franchise +
+stake, Deck/Menu buttons; the game's live ids `#sb-*`/`#out-pips`/`#res-inning`/
+`#payroll-amt` all live here), and `runTopHTML()` renders the top band where the DUGOUT
+and SALAMI rows sit as **large cream art cards** (`coachIconHTML(c, idx)` = portrait +
+name + corner sell; `charmBadgeHTML(c, i)` = item poster + name + sell), always in the
+same place on every screen, with an idle float animation. The rows keep ids `#dugout`/
+`#powerups` so the live updaters, tooltips, taps (use in game / open pouch elsewhere),
+drags, corner sells, and coach trigger flashes work identically everywhere; `render()`
+fills them on map/shop too. Game content: `game-main` grid = `col-field` (diamond +
+rally meter pinned to its upper right, `.field-rally`) | `col-summary` (play log) with
+the `atbat-bar` under the summary, then the hand row with the tappable `deck-pile`
+(remaining/total) at its right.
 
 The **field diamond** must stay a perfect square or the percentage-positioned bases and
 runner tokens drift off the infield corners. It is sized with container-query units:

@@ -846,6 +846,10 @@
     else if (STATE.screen === "map") root.innerHTML = renderMap();
     wireScreen();
     if (STATE.screen === "game") { renderGame(); }
+    else if (STATE.run && (STATE.screen === "map" || STATE.screen === "shop")) {
+      // the persistent run frame's chip rows are filled by the live updaters
+      renderDugout(); renderPowerups();
+    }
     // the menu button only makes sense once a run is underway (title is the main menu)
     const mb = document.getElementById("menu-btn");
     if (mb) mb.style.display = STATE.screen === "title" ? "none" : "";
@@ -935,36 +939,76 @@
   }
   function barClass(l) { return ({ CON: "b-contact", POW: "b-power", EYE: "b-eye", SPD: "b-speed", C: "b-contact", P: "b-power", E: "b-eye", S: "b-speed" })[l] || ""; }
 
-  /* ---------- the persistent run bar ---------- */
-  // Dugout + Salami chips + payroll, pinned to the blue top bar of EVERY in-run screen:
-  // embedded in the game scoreboard, and a standalone .run-bar on the map and shop.
-  // Chips reuse the live in-game markup (coachIconHTML / charmBadgeHTML), so tooltips,
-  // taps, drags, corner-sells, and coach trigger flashes all work from the bar itself.
-  function runBarHTML() {
+  /* ---------- the persistent run frame (Balatro-style chrome) ---------- */
+  // EVERY in-run screen (game / map / shop) shares the same fixed chrome: a left
+  // sidebar (matchup, target, score, outs, payroll, Deck/Menu) and a top band with
+  // the DUGOUT and SALAMI rows as LARGE art cards, always in the same place.
+  // The rows keep the live ids (#dugout / #powerups) so the in-game updaters,
+  // tooltips, taps, drags, corner sells, and coach trigger flashes all just work.
+  function runTopHTML() {
     const run = STATE.run;
     if (!run) return "";
-    const coaches = [];
-    for (let i = 0; i < run.dugoutSlots; i++) {
-      const c = run.dugout[i];
-      coaches.push(c ? coachIconHTML(c) : `<div class="coach-icon empty">+</div>`);
-    }
-    const charms = [];
-    for (let i = 0; i < run.charmSlots; i++) {
-      const id = run.charms[i];
-      const c = id ? getCharm(id) : null;
-      charms.push(c ? charmBadgeHTML(c, i) : `<div class="charm-badge empty">+</div>`);
-    }
-    return `<div class="rb-groups">
-        <div class="rb-group rb-dugout">
-          <button class="rb-label panel-btn" data-act="open-dugout" title="Open the Dugout (sell any time)">DUGOUT <span class="pt-n" id="pt-dugout">${dugoutUsed(run)}/${run.dugoutSlots}</span></button>
-          <div class="rb-chips" id="dugout">${coaches.join("")}</div>
+    return `<div class="run-top">
+        <div class="rt-group rt-dugout">
+          <button class="rt-label panel-btn" data-act="open-dugout" title="Open the Dugout (sell any time)">DUGOUT <span class="pt-n" id="pt-dugout">${dugoutUsed(run)}/${run.dugoutSlots}</span></button>
+          <div class="rt-chips" id="dugout"></div>
         </div>
-        <div class="rb-row2">
-          <div class="rb-group rb-salami">
-            <button class="rb-label panel-btn" data-act="open-salami" title="Open the Salami pouch (sell any time)">SALAMI <span class="pt-n" id="pt-salami">${run.charms.length}/${run.charmSlots}</span></button>
-            <div class="rb-chips" id="powerups">${charms.join("")}</div>
-          </div>
-          <div class="payroll-chip rb-pay" id="payroll-chip">$<span id="payroll-amt">${run.payroll}</span></div>
+        <div class="rt-group rt-salami">
+          <button class="rt-label panel-btn" data-act="open-salami" title="Open the Salami pouch (sell any time)">SALAMI <span class="pt-n" id="pt-salami">${run.charms.length}/${run.charmSlots}</span></button>
+          <div class="rt-chips" id="powerups"></div>
+        </div>
+      </div>`;
+  }
+  function runSideHTML(ctx) {
+    const run = STATE.run;
+    if (!run) return "";
+    const gi = run.gameIndex;
+    const fr = FRANCHISES.find((f) => f.id === run.franchiseId);
+    let head = "", body = "";
+    if (ctx === "game") {
+      body = `
+        <div class="sd-round" id="sb-round"></div>
+        <div class="sd-blind" id="sd-blind">
+          <div class="sd-vs" id="sb-vs">NOW PITCHING</div>
+          <div class="sd-pitcher" id="sb-pitcher"></div>
+          <div class="sd-rule" id="sb-rule"></div>
+        </div>
+        <div class="sd-target"><span class="sd-cap">SCORE AT LEAST</span><b id="sb-target">0</b></div>
+        <div class="sd-score"><span class="sd-cap">ROUND SCORE</span><b id="sb-score">0</b>
+          <div class="sb-progress"><div class="sb-progress-fill" id="sb-progress"></div></div>
+          <div class="sd-runs">Runs this inning: <b id="sb-runs">0</b></div>
+        </div>
+        <div class="sd-duo">
+          <div class="sd-cell"><div class="sit-pips" id="out-pips"></div><span>OUTS LEFT</span></div>
+          <div class="sd-cell"><b id="res-inning">1</b><span>INNING</span></div>
+        </div>`;
+    } else if (ctx === "map") {
+      const boss = isBossInning(gi);
+      const b = boss ? bossFor(run, inningOf(gi) - 1) : null;
+      const tgt = Math.round(targetFor(gi) * (b && b.rule === "ace" ? (CONFIG.aceTargetMult || 1.25) : 1));
+      body = `
+        <div class="sd-round">${gameLabel(gi)}</div>
+        <div class="sd-blind ${boss ? "is-boss" : ""}">
+          <div class="sd-vs">UP NEXT</div>
+          <div class="sd-pitcher">${boss ? b.name : "A starter on the mound"}</div>
+          ${boss ? `<div class="sd-rule" style="display:block">${b.text}</div>` : ""}
+        </div>
+        <div class="sd-target"><span class="sd-cap">SCORE AT LEAST</span><b>${tgt}</b></div>`;
+    } else {
+      body = `
+        <div class="sd-round">THE SHOP</div>
+        <div class="sd-blind">
+          <div class="sd-vs">BEFORE</div>
+          <div class="sd-pitcher">${gameLabel(gi)}</div>
+        </div>`;
+    }
+    return `<div class="run-side">
+        ${head}${body}
+        <div class="sd-pay payroll-chip" id="payroll-chip">$<span id="payroll-amt">${run.payroll}</span></div>
+        <div class="sd-fr">${fr ? fr.name : ""} · ${STAKES[(run.stake || 1) - 1].name}</div>
+        <div class="sd-btns">
+          <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
+          <button class="btn btn-secondary" data-act="open-menu">Menu</button>
         </div>
       </div>`;
   }
@@ -972,55 +1016,47 @@
   /* ---------- game screen ---------- */
   function renderGameScreen() {
     return `
-    <div class="screen game-screen">
-      <div class="scoreboard">
-        <div class="sb-matchup">
-          <div class="sb-round" id="sb-round"></div>
-          <div class="sb-vs" id="sb-vs"></div>
-          <div class="sb-pitcher" id="sb-pitcher"></div>
-          <div class="sb-rule" id="sb-rule"></div>
-        </div>
-        <div class="sb-score">
-          <div class="sb-score-num"><span id="sb-score">0</span><span class="sb-slash">/</span><span id="sb-target">0</span></div>
-          <div class="sb-progress"><div class="sb-progress-fill" id="sb-progress"></div></div>
-          <div class="sb-runs">Runs this inning: <b id="sb-runs">0</b></div>
-        </div>
-        <div class="sb-right">${runBarHTML()}</div>
-      </div>
-
-      <div class="game-main">
-        <div class="col-field">
-          <div class="sb-rally field-rally" id="sb-rally-wrap">
-            <div class="sb-rally-label">RALLY</div>
-            <div class="sb-rally-num" id="sb-rally">x1.0</div>
-          </div>
-          <div class="diamond-wrap">
-            <div class="diamond" id="diamond">
-              <div class="base base-2" data-base="2"></div>
-              <div class="base base-1" data-base="1"></div>
-              <div class="base base-3" data-base="3"></div>
-              <div class="base base-home"></div>
-              <div class="runner-layer" id="runner-layer"></div>
-              <div class="run-pop-layer" id="run-pop-layer"></div>
+    <div class="screen run-screen game-screen">
+      ${runSideHTML("game")}
+      <div class="run-main">
+        ${runTopHTML()}
+        <div class="run-content">
+          <div class="game-main">
+            <div class="col-field">
+              <div class="sb-rally field-rally" id="sb-rally-wrap">
+                <div class="sb-rally-label">RALLY</div>
+                <div class="sb-rally-num" id="sb-rally">x1.0</div>
+              </div>
+              <div class="diamond-wrap">
+                <div class="diamond" id="diamond">
+                  <div class="base base-2" data-base="2"></div>
+                  <div class="base base-1" data-base="1"></div>
+                  <div class="base base-3" data-base="3"></div>
+                  <div class="base base-home"></div>
+                  <div class="runner-layer" id="runner-layer"></div>
+                  <div class="run-pop-layer" id="run-pop-layer"></div>
+                </div>
+                <div class="field-result" id="field-result"></div>
+              </div>
             </div>
-            <div class="field-result" id="field-result"></div>
+
+            <div class="col-summary">
+              <div class="play-log" id="play-log"></div>
+            </div>
+
+            <!-- at-bat bar: drop a batter into the box to step up; swing buttons appear here -->
+            <div class="atbat-bar" id="atbat-bar"></div>
           </div>
-          <div class="field-situation">
-            <div class="sit-cell sit-outs"><div class="sit-pips" id="out-pips"></div><span>OUTS LEFT</span></div>
-            <div class="sit-cell sit-inning"><b id="res-inning">1</b><span>INNING</span></div>
+
+          <div class="hand-row">
+            <div class="hand" id="hand"></div>
+            <div class="deck-pile" data-act="open-deck" title="View your deck">
+              <div class="dp-card"></div><div class="dp-card"></div>
+              <div class="dp-card dp-top">${icon("diamond")}</div>
+              <div class="dp-count"><b id="deck-count">0</b><span id="deck-total">/0</span></div>
+            </div>
           </div>
         </div>
-
-        <div class="col-summary">
-          <div class="play-log" id="play-log"></div>
-        </div>
-
-        <!-- at-bat bar: drop a batter into the box to step up; swing buttons appear here -->
-        <div class="atbat-bar" id="atbat-bar"></div>
-      </div>
-
-      <div class="hand-row">
-        <div class="hand" id="hand"></div>
       </div>
     </div>`;
   }
@@ -1050,6 +1086,8 @@
     renderHand();
     renderDugout();
     renderPowerups();
+    setText("deck-count", g.deck.length);
+    setText("deck-total", "/" + run.deck.length);
     refreshAtBat();
   }
 
@@ -1227,18 +1265,24 @@
     const slots = [];
     for (let i = 0; i < run.dugoutSlots; i++) {
       const c = run.dugout[i];
-      if (c) slots.push(coachIconHTML(c));
-      else slots.push(`<div class="coach-icon empty">+</div>`);
+      if (c) slots.push(coachIconHTML(c, i));
+      else slots.push(`<div class="coach-icon empty" style="--i:${i}">+</div>`);
     }
     d.innerHTML = slots.join("");
     setText("pt-dugout", `${dugoutUsed(run)}/${run.dugoutSlots}`);
   }
-  // Compact dugout badge - just the coach's icon; the full rule lives in the tap/hover tooltip.
-  function coachIconHTML(c) {
-    const glyph = c.icon ? icon(c.icon) : icon("star");
+  // A dugout coach as a LARGE mini-card (portrait + name), Balatro-joker style. The full
+  // rule lives in the tap/hover tooltip; idx (when given) adds the corner sell button.
+  function coachIconHTML(c, idx) {
     const scale = (c.state && c.state.bonus) ? `<span class="coach-badge">+${c.state.bonus.toFixed(1)}</span>` : "";
+    const sellP = Math.max(1, Math.floor((c.cost || 5) / 2));
     const dxTip = c.deluxe ? `<br><span class='tip-use'>${(getEdition(c.deluxe) || {}).name}${c.deluxe === "legendary" ? " (no slot)" : " coach: +" + (DELUXE_COACH_AURA[c.deluxe] || 0) + " Rally aura"}</span>` : "";
-    return `<div class="coach-icon rar-${c.rarity} ${c.deluxe ? "has-dx dx-" + c.deluxe : ""}" data-coach="${c.id}" data-uid="${c.uid}" data-tip="<b>${c.name}</b><br>${c.text}${dxTip}"><span class="ci-glyph">${glyph}</span>${scale}</div>`;
+    const sell = (idx != null) ? `<button class="os-sell" data-stripsell="coach:${idx}" aria-label="Sell ${c.name}">${icon("sell")}</button>` : "";
+    return `<div class="coach-icon rar-${c.rarity} ${c.deluxe ? "has-dx dx-" + c.deluxe : ""}" data-coach="${c.id}" data-uid="${c.uid}" style="--i:${idx || 0}" data-tip="<b>${c.name}</b><br>${c.text}${dxTip}<br><span class='tip-use'>Sell +$${sellP}</span>">
+        <span class="ci-art">${coachFace(c)}</span>
+        <span class="ci-name">${c.name}</span>
+        ${scale}${sell}
+      </div>`;
   }
   /* ---------- CHARMS (consumable powerups) ---------- */
   function renderPowerups() {
@@ -1250,7 +1294,7 @@
       const id = run.charms[i];
       const c = id ? getCharm(id) : null;
       if (c) slots.push(charmBadgeHTML(c, i));
-      else slots.push(`<div class="charm-badge empty">+</div>`);
+      else slots.push(`<div class="charm-badge empty" style="--i:${i}">+</div>`);
     }
     el.innerHTML = slots.join("");
     setText("pt-salami", `${run.charms.length}/${run.charmSlots}`);
@@ -1258,7 +1302,11 @@
   function charmBadgeHTML(c, i) {
     const how = c.target === "immediate" ? "Tap to use" : (c.target === "coach" ? "Drag onto a coach" : "Drag onto a player");
     const refund = charmRefund(c);
-    return `<div class="charm-badge rar-${c.rarity}" data-charm="${i}" data-charmtarget="${c.target}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>${how} &middot; sell +$${refund}</span>"><span class="cb-glyph">${icon(c.icon)}</span><button class="cb-sell" data-charmsell="${i}" data-tip="Sell ${c.name} for +$${refund}" aria-label="Sell ${c.name}">${icon("sell")}</button></div>`;
+    return `<div class="charm-badge rar-${c.rarity}" data-charm="${i}" data-charmtarget="${c.target}" style="--i:${i}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>${how} &middot; sell +$${refund}</span>">
+        <span class="cb-art">${itemArt("charm", c)}</span>
+        <span class="ci-name">${c.name}</span>
+        <button class="cb-sell" data-charmsell="${i}" data-tip="Sell ${c.name} for +$${refund}" aria-label="Sell ${c.name}">${icon("sell")}</button>
+      </div>`;
   }
   // give a charm to the run (from the shop or an achievement). false if the pouch is full.
   function grantCharm(id, announce) {
@@ -1518,7 +1566,7 @@
     if (amt > 0 && el) {
       tickNumber(el, g.score, 460);          // count up to the new score
       el.classList.remove("score-bump"); void el.offsetWidth; el.classList.add("score-bump");
-      floatText($("#sb-rally-wrap") ? $(".sb-score") : null, `+${amt}`, "float-score");
+      floatText(null, `+${amt}`, "float-score");
     } else {
       setText("sb-score", g.score);
     }
@@ -1568,7 +1616,7 @@
   }
 
   function floatText(anchorEl, text, cls) {
-    const host = $(".scoreboard");
+    const host = $(".sd-score") || $(".scoreboard");
     if (!host) return;
     const d = document.createElement("div");
     d.className = "float-text " + (cls || "");
@@ -2034,31 +2082,31 @@
       : `<div class="match-telegraph with-art">${tArt}<div class="tele-body"><h3>${pitcher.name}</h3><p>${pitcher.bats}HP starter.</p><div class="bt-stats">Stuff ${pitcher.stuff} · Command ${pitcher.command} · Target ${target}</div></div></div>`;
 
     return `
-    <div class="screen map-screen">
-      <div class="run-bar">${runBarHTML()}</div>
-      <div class="map-head">
-        <h2>The Linescore ${isExtraInnings(gi) ? `<span class="ls-extra-tag">EXTRA INNINGS</span>` : ""}</h2>
-        <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name} · Payroll <b>$${run.payroll}</b></div>
-      </div>
-      <div class="linescore">${cols}</div>
-      ${tagTrayHTML(run)}
-      <div class="map-next">
-        <div class="mn-left">
-          <div class="mn-round">${gameLabel(gi)}</div>
-          ${telegraph}
-        </div>
-        <div class="mn-right">
-          ${isSkippable(gi) ? (() => { const t = tagFor(gi); return `<div class="skip-offer">
-            <div class="skip-cap">Skip and earn</div>
-            <div class="tag-chip rar-${t.rarity || "common"}" data-tip="<b>${t.name}</b><br>${t.text}"><span class="tag-ic">${icon(t.icon)}</span><span class="tag-nm">${t.name}</span></div>
-            <button class="btn btn-secondary skip-btn" data-act="skip-frame" data-tip="Skip this frame (no win reward, no shop) and take the tag instead.">Skip frame ${icon("fastForward")}</button>
-          </div>`; })() : ""}
-          <div class="mn-views">
-            <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
-            <button class="btn btn-secondary" data-act="open-dugout">Dugout (${dugoutUsed(run)}/${run.dugoutSlots})</button>
-            <button class="btn btn-secondary" data-act="open-salami">Salami (${run.charms.length}/${run.charmSlots})</button>
+    <div class="screen run-screen map-screen">
+      ${runSideHTML("map")}
+      <div class="run-main">
+        ${runTopHTML()}
+        <div class="run-content map-inner">
+          <div class="map-head">
+            <h2>The Linescore ${isExtraInnings(gi) ? `<span class="ls-extra-tag">EXTRA INNINGS</span>` : ""}</h2>
+            <div class="map-sub">${FRANCHISES.find(f => f.id === run.franchiseId).name}</div>
           </div>
-          <button class="btn btn-big btn-gold" data-act="play-game">Play Ball ${icon("chevronR")}</button>
+          <div class="linescore">${cols}</div>
+          ${tagTrayHTML(run)}
+          <div class="map-next">
+            <div class="mn-left">
+              <div class="mn-round">${gameLabel(gi)}</div>
+              ${telegraph}
+            </div>
+            <div class="mn-right">
+              ${isSkippable(gi) ? (() => { const t = tagFor(gi); return `<div class="skip-offer">
+                <div class="skip-cap">Skip and earn</div>
+                <div class="tag-chip rar-${t.rarity || "common"}" data-tip="<b>${t.name}</b><br>${t.text}"><span class="tag-ic">${icon(t.icon)}</span><span class="tag-nm">${t.name}</span></div>
+                <button class="btn btn-secondary skip-btn" data-act="skip-frame" data-tip="Skip this frame (no win reward, no shop) and take the tag instead.">Skip frame ${icon("fastForward")}</button>
+              </div>`; })() : ""}
+              <button class="btn btn-big btn-gold" data-act="play-game">Play Ball ${icon("chevronR")}</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -2265,34 +2313,35 @@
     const dugFull = dugoutUsed(run) >= run.dugoutSlots;
 
     return `
-    <div class="screen shop-screen">
-      <div class="shop-head">
-        <div class="shop-title">The Shop <span class="shop-round">before ${gameLabel(run.gameIndex)}</span></div>
-        <div class="shop-money">
-          <div class="payroll-big">$<span id="shop-payroll">${run.payroll}</span></div>
-          <button class="btn btn-reroll" data-act="reroll">Reroll (${rerollCost() === 0 ? "Free" : "$" + rerollCost()})</button>
-          <button class="btn btn-secondary" data-act="open-deck">Deck (${run.deck.length})</button>
-          <button class="btn btn-secondary" data-act="open-dugout">Dugout (${dugoutUsed(run)}/${run.dugoutSlots})</button>
-          <button class="btn btn-secondary" data-act="open-salami">Salami (${run.charms.length}/${run.charmSlots})</button>
-          <button class="btn btn-big btn-gold" data-act="leave-shop">Proceed ${icon("chevronR")}</button>
-        </div>
-      </div>
-      <div class="run-bar">${runBarHTML()}</div>
-      ${tagTrayHTML(run)}
-      ${dugFull ? `<div class="shop-warn">Dugout full (${dugoutUsed(run)}/${run.dugoutSlots}). Sell a coach right from the bar above to make room.</div>` : ""}
-      <div class="shop-grid">
-        <div class="shop-rowgrp shop-rowgrp-top">
-          <div class="shop-section sec-coaches"><h3>Coaches</h3><div class="shop-row">${coaches}</div></div>
-          <div class="shop-section sec-frontoffice"><h3>Front Office</h3><div class="shop-row">${ups}</div></div>
-        </div>
-        <div class="shop-section sec-packs">
-          <h3>Packs <span class="sec-hint">drag a pack into the slot to open it, or just tap it</span></h3>
-          <div class="pack-area">
-            <div class="pack-open-slot" id="pack-slot">
-              <span class="pos-ico">${icon("layers")}</span>
-              <span class="pos-text"><b>Open a pack</b><span>drag one here</span></span>
+    <div class="screen run-screen shop-screen">
+      ${runSideHTML("shop")}
+      <div class="run-main">
+        ${runTopHTML()}
+        <div class="run-content shop-inner">
+          <div class="shop-head">
+            <div class="shop-title">The Shop <span class="shop-round">before ${gameLabel(run.gameIndex)}</span></div>
+            <div class="shop-money">
+              <button class="btn btn-reroll" data-act="reroll">Reroll (${rerollCost() === 0 ? "Free" : "$" + rerollCost()})</button>
+              <button class="btn btn-big btn-gold" data-act="leave-shop">Proceed ${icon("chevronR")}</button>
             </div>
-            <div class="pack-rack">${packs}</div>
+          </div>
+          ${tagTrayHTML(run)}
+          ${dugFull ? `<div class="shop-warn">Dugout full (${dugoutUsed(run)}/${run.dugoutSlots}). Sell a coach right from the row above to make room.</div>` : ""}
+          <div class="shop-grid">
+            <div class="shop-rowgrp shop-rowgrp-top">
+              <div class="shop-section sec-coaches"><h3>Coaches</h3><div class="shop-row">${coaches}</div></div>
+              <div class="shop-section sec-frontoffice"><h3>Front Office</h3><div class="shop-row">${ups}</div></div>
+            </div>
+            <div class="shop-section sec-packs">
+              <h3>Packs <span class="sec-hint">drag a pack into the slot to open it, or just tap it</span></h3>
+              <div class="pack-area">
+                <div class="pack-open-slot" id="pack-slot">
+                  <span class="pos-ico">${icon("layers")}</span>
+                  <span class="pos-text"><b>Open a pack</b><span>drag one here</span></span>
+                </div>
+                <div class="pack-rack">${packs}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

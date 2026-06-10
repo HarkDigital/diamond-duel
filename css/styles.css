@@ -1892,8 +1892,122 @@ body.portrait #toast{ display:none !important; }
 @media (max-height:470px){ .game-screen .scoreboard{ padding-right:118px; } }
 
 /* ============================================================
-   ANIMATED MARQUEE LOGO (title + splash)
+   PERSISTENT RUN FRAME - every in-run screen (game / map / shop)
+   shares the same chrome: a left sidebar (matchup, target, score,
+   outs, payroll, Deck/Menu) and a top band where the DUGOUT and
+   SALAMI rows live as LARGE art cards, always in the same place.
    ============================================================ */
+.run-screen{ flex-direction:row; align-items:stretch; justify-content:flex-start; gap:14px; padding:14px 18px 16px; }
+.run-side{ flex:0 0 232px; width:232px; min-height:0; display:flex; flex-direction:column; gap:9px; overflow:hidden;
+  background:linear-gradient(180deg,#0e1d31,#0a1626); border:1px solid #2a3f5e; border-radius:18px; padding:13px 13px 12px;
+  box-shadow:0 14px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06); }
+.run-main{ flex:1 1 auto; min-width:0; min-height:0; display:flex; flex-direction:column; gap:10px; }
+.run-content{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:10px; }
+
+/* ---- sidebar blocks ---- */
+.sd-round{ font-size:.78rem; color:var(--gold); text-transform:uppercase; letter-spacing:2px; font-weight:800; text-align:center; min-height:1em; }
+.sd-blind{ background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:9px 10px; text-align:center; }
+.sd-blind.is-boss{ border-color:rgba(255,107,107,.45); background:rgba(255,107,107,.07); }
+.sd-vs{ font-size:.6rem; color:var(--ink-faint); letter-spacing:2px; font-weight:800; }
+.sd-pitcher{ font-size:.92rem; font-weight:800; margin-top:3px; line-height:1.25; }
+.sd-rule{ margin-top:6px; font-size:.72rem; color:#ffd9a8; background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.25); padding:4px 7px; border-radius:8px; display:none; line-height:1.3; }
+.sd-target{ background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.3); border-radius:12px; padding:7px 10px 8px; text-align:center; }
+.sd-target b{ display:block; font-size:1.6rem; font-weight:900; font-variant-numeric:tabular-nums; color:#ffb4a8; line-height:1.1; }
+.sd-score{ position:relative; background:rgba(255,203,71,.07); border:1px solid rgba(255,203,71,.28); border-radius:12px; padding:7px 10px 9px; text-align:center; }
+.sd-score b#sb-score, .sd-score > b{ display:block; font-size:1.9rem; font-weight:900; font-variant-numeric:tabular-nums; color:var(--gold); line-height:1.1; text-shadow:0 0 14px rgba(255,203,71,.3); }
+.sd-cap{ font-size:.58rem; letter-spacing:1.8px; color:var(--ink-faint); font-weight:800; }
+.sd-score .sb-progress{ margin:7px auto 5px; height:10px; max-width:none; }
+.sd-runs{ font-size:.7rem; color:var(--ink-faint); }
+.sd-duo{ display:grid; grid-template-columns:1fr auto; gap:8px; }
+.sd-cell{ background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:11px; padding:7px 9px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+.sd-cell span{ font-size:.56rem; letter-spacing:1.6px; color:var(--ink-faint); font-weight:800; }
+.sd-cell b{ font-size:1.5rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums; }
+.sd-cell .sit-pips{ min-height:18px; gap:6px; }
+.sd-cell .out-pip{ width:15px; height:15px; }
+.sd-pay{ margin:0; align-self:stretch; text-align:center; font-size:1.25rem; padding:8px 10px; }
+.sd-fr{ font-size:.68rem; color:var(--ink-faint); text-align:center; line-height:1.3; }
+.sd-btns{ margin-top:auto; display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.sd-btns .btn{ padding:9px 6px; font-size:.84rem; }
+
+/* ---- the top band: dugout + salami as big art cards ---- */
+.run-top{ flex:0 0 auto; display:flex; justify-content:space-between; align-items:flex-start; gap:18px;
+  background:rgba(8,16,27,.55); border:1px solid rgba(120,140,180,.18); border-radius:16px; padding:8px 12px 10px; }
+.rt-group{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.rt-label{ align-self:flex-start; font-size:.6rem; letter-spacing:2px; color:#8ea0bf; font-weight:800; white-space:nowrap; }
+.rt-chips{ display:flex; gap:8px; flex-wrap:nowrap; }
+
+/* the big chips themselves: cream mini-cards with art + name (joker-row style) */
+.coach-icon, .charm-badge{ position:relative; width:86px; height:112px; border-radius:11px; flex:none; cursor:pointer;
+  display:flex; flex-direction:column; gap:3px; padding:5px 5px 4px; color:#241c10;
+  background:linear-gradient(180deg,#f6eedb,#eadec0); border:1px solid #b8a276; border-bottom:4px solid var(--rar-common);
+  box-shadow:0 5px 12px rgba(0,0,0,.42), inset 0 0 0 2px #fdf8ec;
+  animation:chipFloat 3.8s ease-in-out infinite; animation-delay:calc(var(--i,0) * -.47s);
+  transition:transform .12s, box-shadow .2s, border-color .15s; }
+.coach-icon:hover, .charm-badge:hover{ transform:translateY(-5px) rotate(-1.4deg) scale(1.04); z-index:7;
+  border-color:var(--gold-2); animation-play-state:paused; box-shadow:0 12px 24px rgba(0,0,0,.5); }
+@keyframes chipFloat{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-3px) } }
+.ci-art, .cb-art{ position:relative; width:100%; aspect-ratio:16/11; border-radius:6px; overflow:hidden; flex:0 0 auto;
+  background:#131e2e; box-shadow:inset 0 0 0 1px rgba(43,34,24,.4); pointer-events:none; }
+.ci-art svg, .cb-art svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.ci-name{ font-size:.55rem; font-weight:800; line-height:1.15; text-align:center; color:#3a2f1d; pointer-events:none;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.coach-icon.rar-star, .charm-badge.rar-star{ border-bottom-color:var(--rar-star); }
+.coach-icon.rar-allstar, .charm-badge.rar-allstar{ border-bottom-color:var(--rar-allstar); }
+.coach-icon.rar-legend, .charm-badge.rar-legend{ border-bottom-color:var(--rar-legend); }
+.coach-icon.empty, .charm-badge.empty{ background:rgba(255,255,255,.04); border:2px dashed rgba(255,255,255,.22);
+  box-shadow:none; color:rgba(255,255,255,.35); align-items:center; justify-content:center; font-size:1.4rem; font-weight:700;
+  cursor:default; animation:none; }
+.coach-icon .coach-badge{ bottom:auto; top:-7px; left:-7px; right:auto; }
+.coach-icon .os-sell{ opacity:0; transform:scale(.6); }
+.coach-icon:hover .os-sell{ opacity:1; transform:scale(1); }
+@media (hover:none){ .coach-icon .os-sell{ opacity:1; transform:scale(1); } }
+.charm-badge .cb-glyph{ display:none; }
+
+/* ---- the deck pile (bottom right, taps open the deck view) ---- */
+.hand-row{ display:flex; flex-direction:row; align-items:stretch; gap:12px; }
+.hand-row .hand{ flex:1 1 auto; min-width:0; }
+.deck-pile{ position:relative; flex:0 0 84px; width:84px; cursor:pointer; align-self:center; height:116px; }
+.dp-card{ position:absolute; inset:6px 4px auto 4px; height:96px; border-radius:10px;
+  background:linear-gradient(135deg,#1c3a5e,#10243c); border:1.5px solid #3a5a86;
+  box-shadow:0 4px 10px rgba(0,0,0,.4); }
+.dp-card:nth-child(1){ transform:translate(3px,4px) rotate(2deg); }
+.dp-card:nth-child(2){ transform:translate(-2px,2px) rotate(-1.6deg); }
+.dp-card.dp-top{ display:flex; align-items:center; justify-content:center; color:rgba(255,210,74,.7);
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 7px, transparent 7px 14px),
+    linear-gradient(135deg,#1c3a5e,#10243c); }
+.dp-top .ico{ width:26px; height:26px; }
+.deck-pile:hover .dp-top{ box-shadow:0 6px 16px rgba(0,0,0,.5), 0 0 0 2px var(--gold-2); }
+.dp-count{ position:absolute; left:50%; bottom:-2px; transform:translateX(-50%); white-space:nowrap;
+  font-size:.74rem; font-weight:800; color:#f4f9ff; text-shadow:0 1px 4px rgba(0,0,0,.6); font-variant-numeric:tabular-nums; }
+.dp-count b{ color:var(--gold); }
+
+/* ---- content tweaks inside the frame ---- */
+.map-inner{ justify-content:center; gap:18px; }
+.shop-inner{ gap:8px; }
+.shop-inner .shop-head{ padding-right:0; margin-bottom:0; }
+.run-screen .game-main{ flex:1 1 auto; min-height:0; grid-template-columns:380px minmax(0,1fr); }
+.run-screen .field-rally{ top:8px; right:8px; }
+.run-screen .hand-row{ flex:0 0 auto; }
+
+/* the viewport-fixed menu button must never cover the salami row's last chip */
+@media (max-width:1280px){ .run-top{ padding-right:96px; } }
+
+/* ---- compact the frame on short screens ---- */
+@media (max-height:470px){
+  .run-screen{ padding:8px 10px 10px; gap:8px; }
+  .run-side{ flex-basis:196px; width:196px; padding:9px 9px 8px; gap:6px; }
+  .sd-target b{ font-size:1.2rem; } .sd-score b#sb-score, .sd-score > b{ font-size:1.4rem; }
+  .sd-pay{ font-size:1rem; padding:6px 8px; }
+  .sd-btns .btn{ padding:7px 4px; font-size:.74rem; }
+  .coach-icon, .charm-badge{ width:62px; height:86px; padding:4px 4px 3px; border-radius:9px; }
+  .ci-name{ font-size:.46rem; }
+  .run-top{ gap:10px; padding:6px 104px 7px 8px; }   /* right gap clears the fixed menu button */
+  .rt-chips{ gap:5px; }
+  .deck-pile{ flex-basis:64px; width:64px; height:92px; }
+  .dp-card{ height:74px; }
+}
 .logo-svg{ display:flex; justify-content:center; }
 .logo-svg svg{ width:min(520px, 62vw); height:auto; display:block;
   filter:drop-shadow(0 12px 34px rgba(0,0,0,.5)); overflow:visible; }
