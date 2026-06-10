@@ -1119,10 +1119,25 @@
     });
   }
 
-  // procedural artwork helpers (js/art.js); every fall back to the old look if art is unavailable
+  // procedural artwork helpers (js/art.js); everything falls back if art is unavailable
   function cardArt(c) { return (typeof portraitSVG === "function") ? `<div class="card-art">${portraitSVG(c)}</div>` : ""; }
-  function coachArt(c) { return (typeof coachPortraitSVG === "function") ? `<div class="coach-art">${coachPortraitSVG(c)}</div>` : (c.icon ? `<span class="sc-ico">${icon(c.icon)}</span>` : ""); }
   function packArt(kind) { return (typeof packArtSVG === "function") ? packArtSVG(kind) : `<span class="pk-ico">${icon(packIcon(kind))}</span>`; }
+  function itemArt(kind, item) { return (typeof itemArtSVG === "function") ? itemArtSVG(kind, item) : (item && item.icon ? icon(item.icon) : ""); }
+  function coachFace(c) { return (typeof coachPortraitSVG === "function") ? coachPortraitSVG(c) : (c && c.icon ? icon(c.icon) : ""); }
+  // the shared RETRO CARD frame: cream cardstock, a colored kind-banner, an art window,
+  // a name plate and the rule text. Used for coaches, vouchers, Salami, scouting,
+  // analytics and Spring Training everywhere they're offered.
+  function retroCardHTML(o) {
+    const dxEd = o.deluxe ? (getEdition(o.deluxe) || {}) : null;
+    const dx = o.deluxe ? `<div class="dx-badge dx-${o.deluxe}" data-tip="<b>${dxEd.name || ""} edition</b><br>${dxEd.text || ""}">${dxEd.name || ""}</div>` : "";
+    return `<div class="rcard rk-${o.kind} rar-${o.rarity || "common"}${o.deluxe ? " has-dx dx-" + o.deluxe : ""}">
+        <div class="rc-banner">${o.kindLabel || ""}</div>
+        <div class="rc-art">${o.art || ""}</div>
+        <div class="rc-name">${o.name}${o.sub ? ` <span class="rc-sub">${o.sub}</span>` : ""}</div>
+        <div class="rc-text">${o.text || ""}</div>
+        ${dx}
+      </div>`;
+  }
 
   function cardHTML(c, idx, opts) {
     opts = opts || {};
@@ -1265,7 +1280,7 @@
         : c.target === "coach" ? "Drag it onto a dugout coach during play."
         : "Drag it onto a player in your hand during play.";
       return `<div class="mr-item rar-${c.rarity}">
-          <span class="mr-ico">${icon(c.icon)}</span>
+          <span class="mr-ico mr-art">${itemArt("charm", c)}</span>
           <div class="mr-txt"><b>${c.name}</b><span>${c.text}</span><span class="mr-how">${how}</span></div>
           <button class="btn btn-sell" data-pouchsell="${i}">Sell +$${charmRefund(c)}</button>
         </div>`;
@@ -1285,9 +1300,9 @@
     const run = STATE.run;
     let items = "";
     if (kind === "charm") {
-      items = run.charms.map((id, i) => { const c = getCharm(id); return c ? `<div class="mr-item rar-${c.rarity}"><span class="mr-ico">${icon(c.icon)}</span><div class="mr-txt"><b>${c.name}</b><span>${c.text}</span></div><button class="btn btn-sell" data-mrsell="charm:${i}">Sell +$${charmRefund(c)}</button></div>` : ""; }).join("");
+      items = run.charms.map((id, i) => { const c = getCharm(id); return c ? `<div class="mr-item rar-${c.rarity}"><span class="mr-ico mr-art">${itemArt("charm", c)}</span><div class="mr-txt"><b>${c.name}</b><span>${c.text}</span></div><button class="btn btn-sell" data-mrsell="charm:${i}">Sell +$${charmRefund(c)}</button></div>` : ""; }).join("");
     } else {
-      items = run.dugout.map((co, i) => `<div class="mr-item rar-${co.rarity || "common"}"><span class="mr-ico">${icon(co.icon || "star")}</span><div class="mr-txt"><b>${co.name}</b><span>${co.text}</span></div><button class="btn btn-sell" data-mrsell="coach:${i}">Sell +$${Math.max(1, Math.floor((co.cost || 5) / 2))}</button></div>`).join("");
+      items = run.dugout.map((co, i) => `<div class="mr-item rar-${co.rarity || "common"}"><span class="mr-ico mr-art">${coachFace(co)}</span><div class="mr-txt"><b>${co.name}</b><span>${co.text}</span></div><button class="btn btn-sell" data-mrsell="coach:${i}">Sell +$${Math.max(1, Math.floor((co.cost || 5) / 2))}</button></div>`).join("");
     }
     STATE._makeRoom = { kind, retry };
     overlay(`
@@ -1790,10 +1805,10 @@
   function showCollection() {
     if (SFX && SFX.click) SFX.click();
     const groups = [
-      { title: "Coaches", items: COACHES },
-      { title: "Salami Cards", items: CHARMS },
-      { title: "Front Office", items: UPGRADES },
-      { title: "Skip Tags", items: TAGS },
+      { title: "Coaches", items: COACHES, art: (it) => coachFace(it) },
+      { title: "Salami Cards", items: CHARMS, art: (it) => itemArt("charm", it) },
+      { title: "Front Office", items: UPGRADES, art: (it) => itemArt("upgrade", it) },
+      { title: "Skip Tags", items: TAGS, art: null },
     ];
     let allN = 0, gotN = 0;
     const board = groups.map((g) => {
@@ -1801,8 +1816,9 @@
       allN += g.items.length; gotN += gGot;
       const cells = g.items.map((it) => {
         if (isDiscovered(it.id)) {
+          const face = g.art ? `<div class="col-art">${g.art(it)}</div>` : `<div class="col-ic">${icon(it.icon || "trophy")}</div>`;
           return `<div class="col-cell got rar-${it.rarity || "common"}" data-tip="<b>${it.name}</b><br>${it.text}">
-              <div class="col-ic">${icon(it.icon || "trophy")}</div>
+              ${face}
               <div class="col-nm">${it.name}</div>
             </div>`;
         }
@@ -2144,8 +2160,8 @@
       const it = slot.item;
       const aff = run.payroll >= slot.cost && !owned;
       let body = "";
-      if (slot.kind === "coach") body = `<div class="shop-coach">${coachArt(it)}<div class="sc-name">${it.name}</div><div class="sc-text">${it.text}</div></div>`;
-      else body = `<div class="shop-misc shop-${slot.kind}"><div class="sm-name">${it.name}</div><div class="sm-text">${it.text}</div></div>`;
+      if (slot.kind === "coach") body = retroCardHTML({ kind: "coach", kindLabel: "COACH", art: coachFace(it), name: it.name, text: it.text, rarity: it.rarity });
+      else body = retroCardHTML({ kind: "upgrade", kindLabel: "FRONT OFFICE", art: itemArt("upgrade", it), name: it.name, text: it.text, rarity: it.rarity });
       // a coach / seed / voucher you've never acquired before is flagged for the Collection
       const collectible = group === "coach" || group === "charm" || group === "up";
       const undisc = collectible && it.id && !isDiscovered(it.id);
@@ -2402,11 +2418,15 @@
       if (o.kind === "card") body = cardHTML(cloneCardPreview(o.item, o.deluxe), null);
       else if (o.kind === "action") {
         const lvl = (run.actionLevels && run.actionLevels[o.item.id]) || 1;
-        body = `<div class="shop-coach action-opt"><span class="sc-ico">${icon(actionIcon(o.item.id))}</span><div class="sc-name">${o.item.name} <span class="act-lv">Lv ${lvl} -&gt; ${lvl + 1}</span></div><div class="sc-text">${o.item.text}</div></div>`;
+        body = retroCardHTML({ kind: "action", kindLabel: "SPRING TRAINING", art: itemArt("action", o.item), name: o.item.name, sub: `Lv ${lvl} &gt; ${lvl + 1}`, text: o.item.text });
       } else if (o.kind === "coach") {
-        body = `<div class="shop-coach ${o.deluxe ? "has-dx dx-" + o.deluxe : ""}">${coachArt(o.item)}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div>${o.deluxe ? `<div class="dx-badge dx-${o.deluxe}" data-tip="<b>${getEdition(o.deluxe).name} edition</b><br>${getEdition(o.deluxe).text}">${getEdition(o.deluxe).name}</div>` : ""}</div>`;
+        body = retroCardHTML({ kind: "coach", kindLabel: "COACH", art: coachFace(o.item), name: o.item.name, text: o.item.text, rarity: o.item.rarity, deluxe: o.deluxe });
+      } else if (o.kind === "charm") {
+        body = retroCardHTML({ kind: "charm", kindLabel: "SALAMI CARD", art: itemArt("charm", o.item), name: o.item.name, text: o.item.text, rarity: o.item.rarity });
+      } else if (o.kind === "analytics") {
+        body = retroCardHTML({ kind: "analytics", kindLabel: "ANALYTICS", art: itemArt("analytics", o.item), name: o.item.name, text: o.item.text, rarity: o.item.rarity });
       } else {
-        body = `<div class="shop-coach ${o.deluxe ? "has-dx dx-" + o.deluxe : ""}">${o.item.icon ? `<span class="sc-ico">${icon(o.item.icon)}</span>` : ""}<div class="sc-name">${o.item.name}</div><div class="sc-text">${o.item.text}</div>${o.deluxe ? `<div class="dx-badge dx-${o.deluxe}" data-tip="<b>${getEdition(o.deluxe).name} edition</b><br>${getEdition(o.deluxe).text}">${getEdition(o.deluxe).name}</div>` : ""}</div>`;
+        body = retroCardHTML({ kind: "scouting", kindLabel: "SCOUT REPORT", art: itemArt("scouting", o.item), name: o.item.name, text: o.item.text, rarity: o.item.rarity });
       }
       return `<div class="pack-opt ${picked ? "picked" : ""}" data-packpick="${i}" style="--deal:${i}">${body}${picked ? '<div class="pick-check">' + icon("check") + '</div>' : ""}</div>`;
     }).join("");

@@ -1721,3 +1721,89 @@ body.portrait #toast{ display:none !important; }
 .salami-view{ max-width:560px; width:min(560px,94vw); }
 .salami-view .mr-list{ text-align:left; max-height:56vh; }
 .mr-how{ color:var(--gold-2) !important; font-style:italic; }
+
+/* ============================================================
+   RETRO BASEBALL CARD SKIN - everything reads as vintage
+   cardstock: cream stock, ink text, colored name banners,
+   halftone-washed art. Player cards + the shared .rcard frame
+   for coaches / vouchers / Salami / scouting / Spring Training.
+   ============================================================ */
+
+/* ---- player cards become cream cardstock ---- */
+.card{
+  background:linear-gradient(180deg,#f7efdc,#eadfc0);
+  border:1px solid #b8a276;
+  color:#2b2218;
+  box-shadow:0 6px 16px rgba(0,0,0,.42), inset 0 0 0 2.5px #fdf8ec, inset 0 0 0 4px #d8c9a4;
+}
+.card.rar-star, .card.rar-allstar, .card.rar-legend{ background:linear-gradient(180deg,#f7efdc,#eadfc0); }
+.card.has-ed{ box-shadow:0 6px 16px rgba(0,0,0,.42), inset 0 0 0 2.5px #fdf8ec, inset 0 0 0 4px #d8c9a4; }
+.card.rar-legend{ box-shadow:0 6px 20px rgba(255,203,71,.35), inset 0 0 0 2.5px #fdf8ec, inset 0 0 0 4px #d8a51f; }
+.card.ed-bg-gold{ background:linear-gradient(180deg,#f7ecc8,#eddfae); }
+.card.ed-bg-foil{ background:linear-gradient(135deg,#eef0f7,#e9e1f2,#e8f0ea); }
+.card.ed-bg-prospect{ background:linear-gradient(180deg,#eef4dd,#e0e9c6); }
+.card.ed-bg-clutch{ background:linear-gradient(180deg,#f7e6da,#eed6c4); }
+/* the name plate is a team-color banner (rarity sets the hue) */
+.card .card-top{ background:#5d6b80; border-radius:9px; padding:5px 8px; margin:-4px -3px 9px;
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.2), 0 1px 3px rgba(0,0,0,.25); }
+.card.rar-star .card-top{ background:#2f6dcf; }
+.card.rar-allstar .card-top{ background:#7a3fb8; }
+.card.rar-legend .card-top{ background:linear-gradient(180deg,#d8a51f,#b9821f); }
+.card .card-name{ color:#fff; text-shadow:0 1px 0 rgba(0,0,0,.35); }
+.card .bats{ background:rgba(255,255,255,.22); color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.3); }
+/* ink-on-cardstock stats + footer */
+.card .sbar-l{ color:#8a7452; }
+.card .sbar-track{ background:#d9c9a2; box-shadow:inset 0 1px 2px rgba(0,0,0,.22); }
+.card .sbar-v{ color:#3a2f1d; }
+.card .card-pos{ color:#8a7452; }
+.card .ctag{ background:rgba(43,34,24,.1); color:#5b4c34; }
+.card .ct-slugger{ background:rgba(195,60,30,.16); color:#a33b1e; }
+.card .ct-contact{ background:rgba(38,140,70,.16); color:#1d6e3a; }
+.card .ct-speedster{ background:rgba(190,140,20,.22); color:#8a6414; }
+.card .ct-table-setter{ background:rgba(40,100,190,.14); color:#2a5ca8; }
+.card .ct-veteran{ background:rgba(90,100,120,.18); color:#525e70; }
+.card .ct-rookie{ background:rgba(38,140,70,.14); color:#1d6e3a; }
+.card .ct-legend{ background:rgba(195,140,20,.22); color:#9a6f1f; }
+.card .card-info{ background:rgba(43,34,24,.06); border-color:#c4b186; color:#8a7452; }
+.card .card-info:hover{ color:#9a6f1f; border-color:#b9821f; background:rgba(185,130,31,.14); }
+.card .card-trait{ color:#9a6f1f; }
+.card-art{ border-radius:7px; box-shadow:inset 0 0 0 1.5px rgba(43,34,24,.45), 0 1px 4px rgba(0,0,0,.25); }
+
+/* ---- the shared retro item card (.rcard) ---- */
+.rcard{ position:relative; width:100%; min-width:0; display:flex; flex-direction:column; gap:6px; text-align:center;
+  background:linear-gradient(180deg,#f7efdc,#eadfc0); border:1px solid #b8a276; border-radius:13px;
+  color:#2b2218; padding:8px 9px 10px;
+  box-shadow:0 8px 18px rgba(0,0,0,.42), inset 0 0 0 2.5px #fdf8ec, inset 0 0 0 4px #d8c9a4; }
+.rc-banner{ margin:-4px -3px 0; padding:4px 8px 3px; border-radius:9px; font-size:.6rem; font-weight:900;
+  letter-spacing:2.4px; color:#f8f2e2; text-shadow:0 1px 0 rgba(0,0,0,.35);
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.2), 0 1px 3px rgba(0,0,0,.25); }
+.rk-coach .rc-banner{ background:#a4541c; }
+.rk-charm .rc-banner{ background:#5b2e8e; }
+.rk-upgrade .rc-banner{ background:#8a6414; }
+.rk-analytics .rc-banner{ background:#1d6e44; }
+.rk-scouting .rc-banner{ background:#176868; }
+.rk-action .rc-banner{ background:#a4661c; }
+.rc-art{ position:relative; width:100%; aspect-ratio:100/72; border-radius:7px; overflow:hidden; flex:0 0 auto;
+  box-shadow:inset 0 0 0 1.5px rgba(43,34,24,.45), 0 1px 4px rgba(0,0,0,.25); background:#173a63; }
+.rk-coach .rc-art{ aspect-ratio:16/10; }
+.rc-art svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.rc-name{ font-weight:900; font-size:.96rem; line-height:1.12; color:#241c10; }
+.rc-sub{ font-size:.7rem; font-weight:900; color:#8a6414; white-space:nowrap; }
+.rc-text{ font-size:.75rem; line-height:1.35; color:#5b4c34; flex:1 1 auto; }
+.rcard.rar-star{ border-color:#4f9bff; }
+.rcard.rar-allstar{ border-color:#a86ee8; }
+.rcard.rar-legend, .rcard.rar-legendary{ border-color:#d8a51f; }
+.rcard.has-dx::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:3; mix-blend-mode:screen; opacity:.4;
+  background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.6) 46%, transparent 60%); background-size:250% 250%; animation:dxSheen 2.6s linear infinite; }
+.shop-item .rcard{ flex:1 1 auto; }
+.pack-opt .rcard{ width:196px; }
+.pack-ov .pack-opt .rcard{ width:200px; }
+
+/* ---- art thumbs in list rows (pouch / make-room) + the Collection ---- */
+.mr-ico.mr-art{ width:66px; height:47px; border-radius:6px; overflow:hidden; background:#173a63; flex:0 0 auto;
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18); }
+.mr-ico.mr-art svg{ width:100%; height:100%; display:block; }
+.col-art{ position:relative; width:100%; aspect-ratio:100/68; border-radius:7px; overflow:hidden;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16); background:#131e2e; }
+.col-art svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.col-cell.got{ padding:8px 7px 9px; }

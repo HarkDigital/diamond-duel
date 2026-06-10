@@ -53,6 +53,13 @@
     return `<linearGradient id="ddsky-${key}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s[0]}"/><stop offset="1" stop-color="${s[1]}"/></linearGradient>`;
   }
   const FIELD_DEF = `<linearGradient id="ddfield" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#46a35c"/><stop offset="1" stop-color="#2a7440"/></linearGradient>`;
+  // shared halftone dot pattern (identical content everywhere, so the duplicate ids are safe)
+  const HALFTONE_DEF = `<pattern id="ddht4" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".62" fill="#3a2a14" opacity=".5"/></pattern>`;
+  // vintage print finish: warm wash + halftone dots over any scene
+  function retroWash(w, h) {
+    return `<rect width="${w}" height="${h}" fill="#f0c070" opacity=".13"/>`
+      + `<rect width="${w}" height="${h}" fill="url(#ddht4)" opacity=".30"/>`;
+  }
 
   function svgOpen(vw, vh, cls) {
     return `<svg class="${cls || "dd-art"}" viewBox="0 0 ${vw} ${vh}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">`;
@@ -226,7 +233,7 @@
     const skyKey = c && c.rarity === "legend" ? "legend" : c && c.rarity === "allstar" ? "allstar" : c && c.rarity === "star" ? "star" : "common";
     const jaw = 13 + (has("slugger") ? 3.2 : 0) - (has("speedster") ? 1.8 : 0) + r() * 2.2;
     let out = svgOpen(160, 100, "dd-art dd-portrait");
-    out += `<defs>${skyDef(skyKey)}${FIELD_DEF}</defs>`;
+    out += `<defs>${skyDef(skyKey)}${FIELD_DEF}${HALFTONE_DEF}</defs>`;
     out += ballparkBG(r, skyKey);
     out += person(r, {
       jaw,
@@ -236,6 +243,7 @@
       facialP: has("veteran") ? 0.6 : has("rookie") ? 0.12 : 0.32,
       number: 1 + Math.floor(r() * 52),
     });
+    out += retroWash(160, 100);
     if (skyKey === "legend") out += `<rect width="160" height="100" fill="none" stroke="#f5c344" stroke-width="3" opacity=".55"/>`;
     return out + "</svg>";
   }
@@ -247,7 +255,7 @@
     const id = (co && (co.id || co.name)) || "coach";
     const r = streamFrom("co:" + id);
     let out = svgOpen(160, 100, "dd-art dd-coach");
-    out += `<defs>${skyDef("dugout")}${FIELD_DEF}</defs>`;
+    out += `<defs>${skyDef("dugout")}${FIELD_DEF}${HALFTONE_DEF}</defs>`;
     // dugout interior: wall, bench rail, bat rack
     out += `<rect width="160" height="100" fill="url(#ddsky-dugout)"/>`;
     out += `<rect x="0" y="58" width="160" height="3" fill="#0c1422" opacity=".9"/><rect x="0" y="61" width="160" height="39" fill="#1a2738"/>`;
@@ -262,6 +270,7 @@
       eyeStyle: pick(r, ["focus", "squint", "round"]),
       mouth: pick(r, ["flat", "grit", "smile"]),
     });
+    out += retroWash(160, 100);
     return out + "</svg>";
   }
 
@@ -273,7 +282,7 @@
     const key = (p && p.name) || "pitcher";
     const r = streamFrom("pit:" + key + ":" + (p && p.rule || ""));
     let out = svgOpen(160, 100, "dd-art dd-pitcher" + (boss ? " is-boss" : ""));
-    out += `<defs>${skyDef(boss ? "boss" : "night")}${FIELD_DEF}</defs>`;
+    out += `<defs>${skyDef(boss ? "boss" : "night")}${FIELD_DEF}${HALFTONE_DEF}</defs>`;
     out += ballparkBG(r, boss ? "boss" : "night");
     out += person(r, {
       glove: true,
@@ -284,6 +293,7 @@
       facialP: boss ? 0.7 : 0.35,
       old: boss ? r() < 0.5 : false,
     });
+    out += retroWash(160, 100);
     if (boss) out += `<rect width="160" height="100" fill="none" stroke="#d23c3c" stroke-width="3" opacity=".5"/>`;
     return out + "</svg>";
   }
@@ -348,6 +358,234 @@
   }
 
   /* ============================================================
+     ITEM ART - retro illustrated cards for everything that isn't
+     a person: Salami Cards, Front Office vouchers, Scouting and
+     Analytics reports, and Spring Training actions. Each gets a
+     sunburst poster scene built from the motif library below.
+     ============================================================ */
+  const INK = "#3a2a14";
+  /* ---- motif library (small prop drawings, all strings) ---- */
+  function mBall(x, y, r) {
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="#f7f1e2" stroke="#b9a478" stroke-width="${Math.max(1, r * 0.12)}"/>`
+      + `<path d="M ${x - r * 0.55} ${y - r * 0.62} q ${r * 0.5} ${r * 0.62} 0 ${r * 1.24} M ${x + r * 0.55} ${y - r * 0.62} q ${-r * 0.5} ${r * 0.62} 0 ${r * 1.24}" fill="none" stroke="#c43c30" stroke-width="${Math.max(1, r * 0.12)}"/>`;
+  }
+  function mBat(x, y, len, rot, w) {
+    w = w || 7;
+    return `<g transform="rotate(${rot} ${x} ${y})"><line x1="${x}" y1="${y}" x2="${x}" y2="${y - len}" stroke="#6e451f" stroke-width="${w + 2.5}" stroke-linecap="round"/>`
+      + `<line x1="${x}" y1="${y - 1}" x2="${x}" y2="${y - len + 1}" stroke="#c89a5e" stroke-width="${w}" stroke-linecap="round"/>`
+      + `<circle cx="${x}" cy="${y}" r="${w * 0.62}" fill="#8a5a28"/></g>`;
+  }
+  function mStar(x, y, r, fill) {
+    let p = "";
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.42 : r; p += `${(x + Math.cos(a) * rr).toFixed(1)},${(y + Math.sin(a) * rr).toFixed(1)} `; }
+    return `<polygon points="${p}" fill="${fill || "#ffd24a"}" stroke="${INK}" stroke-width="1.4"/>`;
+  }
+  function mPlate(x, y, w) {
+    const h = w * 0.92;
+    return `<path d="M ${x - w / 2} ${y} h ${w} v ${h * 0.45} L ${x} ${y + h} L ${x - w / 2} ${y + h * 0.45} Z" fill="#f7f1e2" stroke="${INK}" stroke-width="1.6"/>`;
+  }
+  function mBag(x, y, w) {
+    return `<rect x="${x - w / 2}" y="${y - w / 2}" width="${w}" height="${w}" rx="${w * 0.14}" fill="#f7f1e2" stroke="${INK}" stroke-width="1.6" transform="rotate(45 ${x} ${y})"/>`;
+  }
+  function mBolt(x, y, s, fill) {
+    return `<polygon points="${x + 0.1 * s},${y - 0.5 * s} ${x - 0.26 * s},${y + 0.08 * s} ${x - 0.02 * s},${y + 0.08 * s} ${x - 0.1 * s},${y + 0.5 * s} ${x + 0.3 * s},${y - 0.06 * s} ${x + 0.04 * s},${y - 0.06 * s}" fill="${fill || "#ffd24a"}" stroke="${INK}" stroke-width="1.4"/>`;
+  }
+  function mCoin(x, y, r) {
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="#f2c14a" stroke="#8a6414" stroke-width="${Math.max(1.2, r * 0.14)}"/><circle cx="${x}" cy="${y}" r="${r * 0.68}" fill="none" stroke="#8a6414" stroke-width="1"/>`
+      + `<text x="${x}" y="${y + r * 0.42}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${r * 1.15}" font-weight="900" fill="#8a6414">$</text>`;
+  }
+  function mCapM(x, y, s, c1, c2) {
+    return `<path d="M ${x - s} ${y} a ${s} ${s * 0.92} 0 0 1 ${s * 2} 0 Z" fill="${c1}" stroke="${INK}" stroke-width="1.4"/>`
+      + `<rect x="${x - s * 1.12}" y="${y - 1}" width="${s * 2.24}" height="${s * 0.26}" rx="${s * 0.13}" fill="${c1}" stroke="${INK}" stroke-width="1.1"/>`
+      + `<circle cx="${x}" cy="${y - s * 0.9}" r="${s * 0.1}" fill="${c2}"/>`;
+  }
+  function mPennant(x, y, w, color, flip) {
+    const dir = flip ? -1 : 1;
+    return `<path d="M ${x} ${y} l ${dir * w} ${w * 0.18} l ${-dir * w} ${w * 0.2} Z" fill="${color}" stroke="${INK}" stroke-width="1.3"/><line x1="${x}" y1="${y - 2}" x2="${x}" y2="${y + w * 0.44}" stroke="${INK}" stroke-width="1.6"/>`;
+  }
+  function mCardM(x, y, w, h, rot, face) {
+    return `<g transform="rotate(${rot} ${x} ${y})"><rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="2.5" fill="#f7f1e2" stroke="${INK}" stroke-width="1.5"/>`
+      + (face !== false ? `<rect x="${x - w / 2 + 2.5}" y="${y - h / 2 + 2.5}" width="${w - 5}" height="${h * 0.46}" rx="1.5" fill="#9bc4e8" stroke="${INK}" stroke-width=".8"/>`
+        + `<line x1="${x - w / 2 + 3}" y1="${y + h * 0.16}" x2="${x + w / 2 - 3}" y2="${y + h * 0.16}" stroke="${INK}" stroke-width="1" opacity=".55"/>`
+        + `<line x1="${x - w / 2 + 3}" y1="${y + h * 0.3}" x2="${x + w / 2 - 6}" y2="${y + h * 0.3}" stroke="${INK}" stroke-width="1" opacity=".35"/>` : "")
+      + `</g>`;
+  }
+  function mWhistleM(x, y, s, color) {
+    return `<rect x="${x - s * 0.2}" y="${y - s * 0.66}" width="${s * 0.9}" height="${s * 0.42}" rx="${s * 0.12}" fill="${color}" stroke="${INK}" stroke-width="1.4"/>`
+      + `<circle cx="${x}" cy="${y}" r="${s * 0.52}" fill="${color}" stroke="${INK}" stroke-width="1.4"/><circle cx="${x - s * 0.12}" cy="${y + s * 0.1}" r="${s * 0.14}" fill="${INK}"/>`
+      + `<path d="M ${x + s * 0.7} ${y - s * 0.78} q ${s * 0.5} ${s * 0.1} ${s * 0.42} ${s * 0.5}" fill="none" stroke="${INK}" stroke-width="1.2" opacity=".6"/>`;
+  }
+  function mCleat(x, y, s, color, wings) {
+    let g = `<path d="M ${x - s} ${y} q 0 -${s * 0.62} ${s * 0.5} -${s * 0.62} l ${s * 0.55} ${s * 0.06} q ${s * 0.36} ${s * 0.04} ${s * 0.5} ${s * 0.3} l ${s * 0.45} ${s * 0.26} h ${-s * 2} Z" fill="${color}" stroke="${INK}" stroke-width="1.5"/>`
+      + `<rect x="${x - s}" y="${y}" width="${s * 2}" height="${s * 0.2}" fill="#f7f1e2" stroke="${INK}" stroke-width="1.2"/>`;
+    for (let i = 0; i < 4; i++) g += `<rect x="${x - s * 0.82 + i * s * 0.5}" y="${y + s * 0.2}" width="${s * 0.14}" height="${s * 0.2}" fill="${INK}"/>`;
+    if (wings) g += `<path d="M ${x - s * 0.94} ${y - s * 0.5} q -${s * 0.7} -${s * 0.34} -${s * 1.05} -${s * 0.05} q ${s * 0.42} ${s * 0.06} ${s * 0.6} ${s * 0.3} q -${s * 0.5} -${s * 0.08} -${s * 0.74} ${s * 0.12} q ${s * 0.45} ${s * 0.12} ${s * 0.75} ${s * 0.2} Z" fill="#f7f1e2" stroke="${INK}" stroke-width="1.2"/>`;
+    return g;
+  }
+  function mArrowUp(x, y, s, color) {
+    return `<path d="M ${x} ${y - s} l ${s * 0.62} ${s * 0.7} h ${-s * 0.32} v ${s * 1.0} h ${-s * 0.6} v ${-s * 1.0} h ${-s * 0.32} Z" fill="${color || "#5ad17a"}" stroke="${INK}" stroke-width="1.4"/>`;
+  }
+  function mSwooshes(x, y, s) {
+    return `<path d="M ${x - s} ${y - 4} h ${s * 0.8} M ${x - s * 1.2} ${y + 1} h ${s * 0.95} M ${x - s * 0.9} ${y + 6} h ${s * 0.7}" stroke="#f7f1e2" stroke-width="2" stroke-linecap="round" opacity=".85"/>`;
+  }
+  function mEyeM(x, y, s) {
+    return `<path d="M ${x - s} ${y} q ${s} -${s * 0.78} ${s * 2} 0 q -${s} ${s * 0.78} -${s * 2} 0 Z" fill="#f7f1e2" stroke="${INK}" stroke-width="1.5"/>`
+      + `<circle cx="${x}" cy="${y}" r="${s * 0.34}" fill="#2f7ec0" stroke="${INK}" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="${s * 0.14}" fill="${INK}"/>`;
+  }
+  function mGlassM(x, y, s) {
+    return `<circle cx="${x}" cy="${y}" r="${s}" fill="rgba(190,228,255,.4)" stroke="${INK}" stroke-width="2.2"/>`
+      + `<line x1="${x + s * 0.72}" y1="${y + s * 0.72}" x2="${x + s * 1.5}" y2="${y + s * 1.5}" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/>`;
+  }
+  function mFlameM(x, y, s, c1, c2) {
+    return `<path d="M ${x} ${y - s} q ${s * 0.7} ${s * 0.55} ${s * 0.42} ${s * 1.1} a ${s * 0.62} ${s * 0.62} 0 1 1 -${s * 0.84} 0 q -${s * 0.28} -${s * 0.55} ${s * 0.42} -${s * 1.1} Z" fill="${c1 || "#e8762c"}" stroke="${INK}" stroke-width="1.4"/>`
+      + `<path d="M ${x} ${y - s * 0.34} q ${s * 0.3} ${s * 0.3} ${s * 0.16} ${s * 0.56} a ${s * 0.3} ${s * 0.3} 0 1 1 -${s * 0.32} 0 q -${s * 0.14} -${s * 0.26} ${s * 0.16} -${s * 0.56} Z" fill="${c2 || "#ffd24a"}"/>`;
+  }
+  function mSack(x, y, s) {
+    return `<path d="M ${x - s * 0.7} ${y + s * 0.5} a ${s * 0.74} ${s * 0.7} 0 1 1 ${s * 1.4} 0 Z" fill="#c9a04a" stroke="${INK}" stroke-width="1.5"/>`
+      + `<path d="M ${x - s * 0.26} ${y - s * 0.62} q ${s * 0.26} -${s * 0.3} ${s * 0.52} 0 l ${s * 0.1} ${s * 0.2} q -${s * 0.36} ${s * 0.16} -${s * 0.72} 0 Z" fill="#a87b2f" stroke="${INK}" stroke-width="1.2"/>`
+      + `<text x="${x}" y="${y + s * 0.28}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${s * 0.78}" font-weight="900" fill="#5e4413">$</text>`;
+  }
+  function mVault(x, y, s) {
+    return `<rect x="${x - s}" y="${y - s * 0.82}" width="${s * 2}" height="${s * 1.64}" rx="${s * 0.14}" fill="#8e98a8" stroke="${INK}" stroke-width="1.6"/>`
+      + `<circle cx="${x}" cy="${y}" r="${s * 0.44}" fill="#c8d2e0" stroke="${INK}" stroke-width="1.4"/>`
+      + `<path d="M ${x} ${y - s * 0.44} v ${s * 0.2} M ${x} ${y + s * 0.24} v ${s * 0.2} M ${x - s * 0.44} ${y} h ${s * 0.2} M ${x + s * 0.24} ${y} h ${s * 0.2}" stroke="${INK}" stroke-width="1.3"/>`;
+  }
+  function mBench(x, y, s) {
+    return `<rect x="${x - s}" y="${y - s * 0.16}" width="${s * 2}" height="${s * 0.3}" rx="${s * 0.06}" fill="#c89a5e" stroke="${INK}" stroke-width="1.4"/>`
+      + `<rect x="${x - s * 0.82}" y="${y + s * 0.14}" width="${s * 0.18}" height="${s * 0.5}" fill="#8a5a28" stroke="${INK}" stroke-width="1.1"/>`
+      + `<rect x="${x + s * 0.64}" y="${y + s * 0.14}" width="${s * 0.18}" height="${s * 0.5}" fill="#8a5a28" stroke="${INK}" stroke-width="1.1"/>`;
+  }
+  function mDumbbell(x, y, s) {
+    return `<line x1="${x - s}" y1="${y}" x2="${x + s}" y2="${y}" stroke="${INK}" stroke-width="${s * 0.2}"/>`
+      + `<rect x="${x - s * 1.2}" y="${y - s * 0.5}" width="${s * 0.34}" height="${s}" rx="2" fill="#5b6470" stroke="${INK}" stroke-width="1.3"/>`
+      + `<rect x="${x + s * 0.86}" y="${y - s * 0.5}" width="${s * 0.34}" height="${s}" rx="2" fill="#5b6470" stroke="${INK}" stroke-width="1.3"/>`;
+  }
+  function mSalamiM(x, y, r) {
+    let s = `<circle cx="${x}" cy="${y}" r="${r}" fill="#8a3043" stroke="#5e1d2c" stroke-width="${r * 0.16}"/><circle cx="${x}" cy="${y}" r="${r * 0.8}" fill="#c05a62"/>`;
+    const sp = streamFrom("sal2");
+    for (let i = 0; i < 10; i++) { const a = sp() * 6.283, d = sp() * r * 0.62; s += `<circle cx="${(x + Math.cos(a) * d).toFixed(1)}" cy="${(y + Math.sin(a) * d).toFixed(1)}" r="${(r * 0.06 + sp() * r * 0.07).toFixed(1)}" fill="#f2d8c8"/>`; }
+    return s;
+  }
+  function mTicket(x, y, w, rot, color) {
+    const h = w * 0.46;
+    return `<g transform="rotate(${rot} ${x} ${y})"><rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="3" fill="${color || "#f2c14a"}" stroke="${INK}" stroke-width="1.5"/>`
+      + `<circle cx="${x - w / 2}" cy="${y}" r="${h * 0.2}" fill="#f6eedb" stroke="${INK}" stroke-width="1"/><circle cx="${x + w / 2}" cy="${y}" r="${h * 0.2}" fill="#f6eedb" stroke="${INK}" stroke-width="1"/>`
+      + `<line x1="${x - w * 0.22}" y1="${y - h * 0.26}" x2="${x - w * 0.22}" y2="${y + h * 0.26}" stroke="${INK}" stroke-width="1" stroke-dasharray="2 2"/></g>`;
+  }
+  function mCycleM(x, y, s) {
+    return `<path d="M ${x - s} ${y} a ${s} ${s} 0 0 1 ${s * 1.7} -${s * 0.5}" fill="none" stroke="${INK}" stroke-width="2.4"/><polygon points="${x + s * 0.86},${y - s * 0.78} ${x + s * 0.4},${y - s * 0.74} ${x + s * 0.78},${y - s * 0.3}" fill="${INK}"/>`
+      + `<path d="M ${x + s} ${y} a ${s} ${s} 0 0 1 -${s * 1.7} ${s * 0.5}" fill="none" stroke="${INK}" stroke-width="2.4"/><polygon points="${x - s * 0.86},${y + s * 0.78} ${x - s * 0.4},${y + s * 0.74} ${x - s * 0.78},${y + s * 0.3}" fill="${INK}"/>`;
+  }
+
+  /* ---- the poster background: duotone sunburst + ground + frame ---- */
+  function poster(c1, c2, ground) {
+    let s = `<rect width="100" height="72" fill="${c1}"/>`;
+    const cx = 50, cy = 46, R = 130;
+    for (let i = 0; i < 12; i++) {
+      const a0 = (i / 12) * Math.PI * 2, a1 = ((i + 0.5) / 12) * Math.PI * 2;
+      s += `<path d="M ${cx} ${cy} L ${(cx + Math.cos(a0) * R).toFixed(1)} ${(cy + Math.sin(a0) * R).toFixed(1)} L ${(cx + Math.cos(a1) * R).toFixed(1)} ${(cy + Math.sin(a1) * R).toFixed(1)} Z" fill="${c2}" opacity=".55"/>`;
+    }
+    s += `<rect x="0" y="58" width="100" height="14" fill="${ground || "#2a7440"}" opacity=".9"/><rect x="0" y="58" width="100" height="1.6" fill="#f7f1e2" opacity=".5"/>`;
+    return s;
+  }
+  function posterClose(extra) {
+    return (extra || "") + retroWash(100, 72) + `<rect x="1.2" y="1.2" width="97.6" height="69.6" fill="none" stroke="#f6eedb" stroke-width="2.4" opacity=".9" rx="3"/></svg>`;
+  }
+
+  /* ---- per-item scenes ---- */
+  const FAMILY_TONES = {
+    charm:     ["#5b2e8e", "#7a4ab8", "#2a1145"],
+    upgrade:   ["#7a5514", "#9a6f1f", "#3a2a08"],
+    analytics: ["#175c38", "#22744a", "#0b2a1d"],
+    scouting:  ["#175c5c", "#1f7575", "#0b2a2a"],
+    action:    ["#8a4a12", "#b3611c", "#3a2008"],
+  };
+  function charmScene(id) {
+    switch (id) {
+      case "ch_pinetar": return mBat(58, 60, 44, -32) + `<path d="M 38 30 q 4 7 1 13 q -2 5 -5 2 q -3 -4 0 -8 Z" fill="${INK}" opacity=".85"/>` + `<rect x="24" y="44" width="17" height="12" rx="3" fill="#c8d2e0" stroke="${INK}" stroke-width="1.4" transform="rotate(-12 32 50)"/>`;
+      case "ch_cork": return mBat(60, 62, 46, -28, 8) + `<circle cx="40" cy="32" r="11" fill="#e8cf9e" stroke="${INK}" stroke-width="1.6"/><circle cx="40" cy="32" r="6.5" fill="#caa05c" stroke="${INK}" stroke-width="1.1"/><circle cx="40" cy="32" r="2.4" fill="#8a5a28"/>`;
+      case "ch_eyeblack": return mEyeM(56, 30, 13) + `<rect x="32" y="40" width="14" height="5" rx="2" fill="${INK}" transform="rotate(7 39 42)"/><rect x="54" y="40" width="14" height="5" rx="2" fill="${INK}" transform="rotate(-7 61 42)"/>`;
+      case "ch_spikes": return mCleat(50, 40, 17, "#2f5ec0", false) + mSwooshes(26, 36, 14);
+      case "ch_allstar": return mStar(50, 32, 16) + mStar(26, 22, 6.5, "#f7f1e2") + mStar(74, 22, 6.5, "#f7f1e2") + mCapM(50, 56, 11, "#15356e", "#d23c3c");
+      case "ch_clutch": return mPlate(50, 40, 22) + mStar(50, 26, 11) + mBolt(28, 30, 14, "#f7f1e2") + mBolt(72, 30, 14, "#f7f1e2");
+      case "ch_burner": return mCleat(52, 40, 16, "#c43c30", true) + mSwooshes(28, 38, 12);
+      case "ch_copy": return mCardM(42, 38, 24, 32, -9) + mCardM(58, 38, 24, 32, 9);
+      case "ch_mentor": return mWhistleM(46, 38, 15, "#cf7e34") + mStar(70, 26, 8, "#ffd24a");
+      case "ch_ibb": return mBall(22, 28, 6.5) + mBall(38, 24, 6.5) + mBall(54, 22, 6.5) + mBall(70, 24, 6.5) + mBag(78, 50, 13) + `<path d="M 28 42 q 22 12 42 6" fill="none" stroke="#f7f1e2" stroke-width="2.2" stroke-dasharray="4 3"/><polygon points="72,49 64,46.4 66.8,52.6" fill="#f7f1e2"/>`;
+      case "ch_momentum": return mBolt(50, 34, 34) + mArrowUp(76, 36, 11, "#7ef0a3");
+      case "ch_secondwind": return `<path d="M 22 30 q 12 -8 22 0 q -8 6 -16 3 M 26 44 q 14 -7 26 0 q -10 7 -20 3" fill="none" stroke="#f7f1e2" stroke-width="2.6" stroke-linecap="round"/>` + `<circle cx="66" cy="36" r="11" fill="#5ad17a" stroke="${INK}" stroke-width="1.6"/><path d="M 66 30.5 v 11 M 60.5 36 h 11" stroke="#0b2a1d" stroke-width="2.6"/>`;
+      default: return mSalamiM(50, 36, 18);
+    }
+  }
+  function upgradeScene(id) {
+    const base = String(id).replace(/2$/, "");
+    switch (base) {
+      case "up_dugout": return mBench(50, 38, 22) + mCapM(36, 30, 7, "#15356e", "#d23c3c") + mCapM(62, 30, 7, "#a32638", "#f2d8a0");
+      case "up_hand": return mCardM(36, 38, 22, 30, -16) + mCardM(50, 36, 22, 30, 0) + mCardM(64, 38, 22, 30, 16);
+      case "up_discount": return mTicket(50, 36, 36, -10) + `<text x="50" y="41" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="900" fill="${INK}" transform="rotate(-10 50 36)">-$1</text>`;
+      case "up_shopslot": return mCardM(44, 38, 24, 32, -7, true) + mGlassM(60, 34, 12);
+      case "up_reroll": return mCycleM(50, 36, 16) + mCoin(50, 36, 7);
+      case "up_startrally": return mFlameM(50, 36, 17) + mPennant(74, 22, 16, "#d23c3c");
+      case "up_interest": return mCoin(38, 42, 9) + mCoin(50, 38, 9) + mCoin(62, 34, 9) + mArrowUp(78, 32, 10, "#7ef0a3");
+      case "up_salami": return mSalamiM(50, 36, 17) + mStar(74, 22, 7, "#f7f1e2");
+      case "up_bonus": return mSack(50, 38, 16) + mCoin(70, 46, 6.5) + mCoin(30, 46, 6.5);
+      case "up_spring": return `<circle cx="70" cy="20" r="9" fill="#ffd24a" stroke="${INK}" stroke-width="1.4"/>` + `<path d="M 30 58 q 2 -16 0 -24" fill="none" stroke="#8a5430" stroke-width="3" stroke-linecap="round"/><path d="M 30 34 q -9 -5 -14 0 q 7 1 14 2 M 30 34 q 9 -5 14 0 q -7 1 -14 2 M 30 34 q -2 -9 3 -12 q 0 7 -1 12 M 30 34 q 2 -9 -3 -12 q 0 7 1 12" fill="#2faa6f" stroke="${INK}" stroke-width=".8"/>`;
+      case "up_editions": return mCardM(50, 38, 26, 34, -6) + `<path d="M 64 22 l 1.8 4 4 1.8 -4 1.8 -1.8 4 -1.8 -4 -4 -1.8 4 -1.8 Z" fill="#ffd24a" stroke="${INK}" stroke-width="1"/>`;
+      case "up_strength": return mDumbbell(50, 34, 20) + mBat(74, 58, 30, -24, 5);
+      case "up_pension": return mVault(50, 38, 17);
+      case "up_owner": return `<rect x="34" y="22" width="32" height="22" rx="3" fill="#16273f" stroke="${INK}" stroke-width="1.6"/><rect x="38" y="27" width="7" height="6" fill="#ffe9a3"/><rect x="47" y="27" width="7" height="6" fill="#ffe9a3"/><rect x="56" y="27" width="6" height="6" fill="#ffe9a3"/>` + mPennant(70, 14, 14, "#ffd24a") + mCoin(30, 50, 7);
+      case "up_rallycap": return `<g transform="rotate(180 50 34)">${mCapM(50, 30, 13, "#2f5ec0", "#ffd24a")}</g>` + mStar(72, 24, 7, "#ffd24a");
+      case "up_taxbreak": return mTicket(46, 34, 34, 6) + `<path d="M 64 26 l 12 16 M 76 26 l -12 16" stroke="#c43c30" stroke-width="2.6" stroke-linecap="round"/>`;
+      default: return mCoin(50, 36, 14);
+    }
+  }
+  function scoutScene(it) {
+    const op = it.op || "", arg = it.arg || "", key = it.key || "";
+    if (it.kind === "analytics") {
+      const tone = { power: "#ff7a59", contact: "#5ad17a", patience: "#56b4ff", speed: "#ffd34e", rally: "#ffd24a" }[key] || "#7fd0a0";
+      return `<rect x="26" y="16" width="48" height="40" rx="3.5" fill="#f6eedb" stroke="${INK}" stroke-width="1.8"/>`
+        + `<rect x="42" y="12" width="16" height="7" rx="2.5" fill="#8e98a8" stroke="${INK}" stroke-width="1.2"/>`
+        + `<path d="M 32 48 l 10 -8 7 4 14 -14" fill="none" stroke="${tone}" stroke-width="3" stroke-linecap="round"/><polygon points="64,28 56.5,29.6 62,35" fill="${tone}"/>`
+        + `<line x1="32" y1="24" x2="50" y2="24" stroke="${INK}" stroke-width="1.4" opacity=".5"/>`;
+    }
+    if (op === "edition" && arg === "gold") return mCoin(50, 34, 15) + mStar(74, 22, 7, "#f7f1e2");
+    if (op === "edition" && arg === "clutch") return mStar(50, 32, 15) + mPlate(50, 50, 17);
+    if (op === "edition" && arg === "prospect") return `<path d="M 50 52 q 1 -13 0 -19" stroke="#2faa6f" stroke-width="2.6" fill="none"/><path d="M 50 33 q -8 -5 -13 0 q 6 1 13 2 M 50 33 q 8 -5 13 0 q -6 1 -13 2" fill="#2faa6f" stroke="${INK}" stroke-width=".8"/>` + mArrowUp(72, 32, 10, "#7ef0a3");
+    if (op === "edition" && arg === "foil") return mCardM(50, 36, 26, 34, -5) + `<path d="M 36 50 L 64 22" stroke="#9bd8ff" stroke-width="3" opacity=".8"/><path d="M 41 53 L 69 25" stroke="#c9b6ff" stroke-width="2" opacity=".8"/>`;
+    if (op === "switch") return mBat(36, 56, 34, -38, 5) + mBat(64, 56, 34, 38, 5) + mBall(50, 24, 7);
+    if (op === "bump") { const tone = { contact: "#5ad17a", power: "#ff7a59", eye: "#56b4ff", speed: "#ffd34e" }[arg] || "#7fd0a0"; return mArrowUp(50, 34, 16, tone) + (arg === "eye" ? mEyeM(50, 56, 9) : arg === "speed" ? mSwooshes(30, 52, 12) + mCleat(58, 52, 10, "#2f5ec0") : arg === "power" ? mDumbbell(50, 56, 13) : mBat(64, 62, 26, -30, 4.5)); }
+    if (op === "copy") return mCardM(42, 38, 24, 32, -9) + mCardM(58, 38, 24, 32, 9);
+    if (op === "destroy") return `<rect x="38" y="20" width="24" height="34" rx="2.5" fill="#16273f" stroke="${INK}" stroke-width="1.6"/><rect x="42" y="24" width="16" height="26" fill="#0a1422"/><circle cx="56" cy="38" r="1.6" fill="#ffd24a"/>` + `<path d="M 64 36 h 14 M 73 30.5 l 5.5 5.5 -5.5 5.5" fill="none" stroke="#f7f1e2" stroke-width="2.6" stroke-linecap="round"/>`;
+    return mGlassM(48, 34, 13);
+  }
+  function actionScene(id) {
+    switch (id) {
+      case "swing": return mBat(46, 56, 40, -52) + `<path d="M 26 46 a 26 26 0 0 1 36 -18" fill="none" stroke="#f7f1e2" stroke-width="2.4" stroke-dasharray="5 4"/>` + mBall(72, 26, 7);
+      case "power": return mBat(42, 58, 42, -40, 8) + mBall(70, 22, 8) + `<path d="M 58 32 l -5 -4 M 60 26 l -6 -2 M 64 21 l -4 -4" stroke="#ffd24a" stroke-width="2.4" stroke-linecap="round"/>`;
+      case "contact": return mEyeM(50, 28, 12) + mBat(58, 60, 34, -64, 5.5) + mBall(30, 50, 6);
+      case "bunt": return `<g transform="rotate(86 50 30)">${mBat(50, 52, 40, 0, 6)}</g>` + mBall(50, 46, 6.5) + `<path d="M 50 54 q 0 5 -3 8" stroke="#f7f1e2" stroke-width="1.8" fill="none" stroke-dasharray="3 2.5"/>`;
+      case "steal": return mBag(68, 46, 15) + `<path d="M 18 50 q 16 -4 34 0" stroke="#e8cf9e" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>` + mCleat(36, 40, 13, "#c43c30") + mSwooshes(20, 36, 11);
+      default: return mBall(50, 36, 12);
+    }
+  }
+  // itemArtSVG(kind, item) -> a finished retro poster for any non-person item.
+  // kind: "charm" | "upgrade" | "analytics" | "scouting" | "action"
+  function itemArtSVG(kind, item) {
+    const tones = FAMILY_TONES[kind] || FAMILY_TONES.upgrade;
+    const tier2 = kind === "upgrade" && /2$/.test(item && item.id || "");
+    let s = svgOpen(100, 72, "dd-art dd-item dd-" + kind);
+    s += `<defs>${HALFTONE_DEF}</defs>`;
+    s += poster(tones[0], tones[1], tones[2]);
+    if (kind === "charm") s += charmScene(item && item.id);
+    else if (kind === "upgrade") s += upgradeScene(item && item.id);
+    else if (kind === "analytics" || kind === "scouting") s += scoutScene(item || {});
+    else if (kind === "action") s += actionScene(item && item.id);
+    let extra = "";
+    if (tier2) extra = `<rect x="1.2" y="1.2" width="97.6" height="69.6" fill="none" stroke="#ffd24a" stroke-width="3.4" rx="3"/>` + mStar(10, 10, 5, "#ffd24a") + mStar(90, 10, 5, "#ffd24a");
+    return s + posterClose(extra);
+  }
+
+  /* ============================================================
      TEAM CREST (lineup carousel)
      ============================================================ */
   function crestSVG(f) {
@@ -371,5 +609,6 @@
   global.coachPortraitSVG = coachPortraitSVG;
   global.pitcherPortraitSVG = pitcherPortraitSVG;
   global.packArtSVG = packArtSVG;
+  global.itemArtSVG = itemArtSVG;
   global.crestSVG = crestSVG;
 })(window);

@@ -160,11 +160,17 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   `CONFIG.shop.packWeights`. Packs are foil bags with `packArtSVG` scenes; drag onto
   `#pack-slot` or tap to open (tear animation, then options deal out). **Packs charge on
   open**, not on pick.
-- **Artwork** (`js/art.js`): all portraits/crests/pack scenes are deterministic SVG from
-  item ids (same id = same face everywhere, incl. deck copies). Player cards render a
-  `.card-art` window (rarity-keyed sky: day/sunset/dusk/golden), coaches get dugout
-  portraits in the shop/packs, the map telegraph shows the pitcher (night game; boss =
-  red menace), lineups get crests. Falls back gracefully if art.js is absent.
+- **Artwork** (`js/art.js`): all art is deterministic SVG from item ids (same id = same
+  art everywhere, incl. deck copies). Player cards render a `.card-art` window
+  (rarity-keyed sky: day/sunset/dusk/golden), coaches get dugout portraits, the map
+  telegraph shows the pitcher (night game; boss = red menace), lineups get crests, and
+  `itemArtSVG(kind, item)` paints a retro sunburst poster for every charm / voucher /
+  analytics / scouting report / action (motif library + per-id scenes; voucher tier-2s
+  get a gold double border). A `retroWash()` halftone finish ages every portrait.
+- **Retro card skin:** player cards and the shared `retroCardHTML()` frame (`.rcard`,
+  used for coaches/vouchers/Salami/scouting/analytics/actions in the shop and packs) are
+  cream cardstock with colored kind/rarity banners. The Collection, Salami pouch, and
+  make-room lists show art thumbs (`.col-art` / `.mr-art`). Falls back if art.js absent.
 - **Game speed:** `META.speed` (1..4, default 4 = fastest). `speedScale()` scales every
   `sleep()`/`pace()` timeout and the `--gs` CSS var on `#stage` (`applySpeedVar()`)
   scales gameplay animation durations. Interaction feedback is excluded.
