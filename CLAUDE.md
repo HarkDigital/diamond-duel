@@ -62,11 +62,12 @@ mechanic must sweep:
 | `js/audio.js` | WebAudio SFX (`SFX.*`) |
 | `js/icons.js` | inline-SVG icon set; `icon(name[, extraClass])` |
 | `js/art.js` | **procedural artwork**: `portraitSVG(card)`, `coachPortraitSVG`, `pitcherPortraitSVG`, `packArtSVG(kind)`, `crestSVG(franchise)`; all deterministic from item ids |
-| `js/data.js` | all content + tuning: `CONFIG` (incl. `scoreScale`, `shop.packWeights`), 15 `FRANCHISES`, 60 `PLAYERS`, 100 `COACHES`, 12 `CHARMS` (Salami Cards), 32 `UPGRADES` (vouchers), 24 `TAGS`, 49 `ACHIEVEMENTS`, `TRAITS`, `ROUNDS`, 5 `STAKES`, 5 `EDITIONS`, 15 `PACKS`, `ACTIONS` |
+| `js/data.js` | all content + tuning: `CONFIG` (incl. `scoreScale`, `shop.packWeights`), 15 `FRANCHISES`, 60 `PLAYERS`, 100 `COACHES`, 12 `CHARMS` (Salami Cards), 32 `UPGRADES` (vouchers), 24 `TAGS`, 57 `ACHIEVEMENTS`, `TRAITS`, `ROUNDS`, 5 `STAKES`, 5 `EDITIONS`, 15 `PACKS`, `ACTIONS` |
 | `js/engine.js` | pure rules: `Engine.resolveAtBat`, `attemptSteal` (incl. steal of home), rally math, edition hooks, three generic coach dispatchers (Bag/Rally/Econ) reading each coach's `gen` descriptor. Headless: no DOM/SFX calls |
 | `js/app.js` | everything else: state, rendering, screens, shop, drag, save/load, overlays |
 | `css/styles.css` | all styles; responsive via a scale-to-fit stage + media queries |
 | `README.md` | public repo description; keep in sync with the game (see checklist above) |
+| `tools/sim.js` | headless Monte-Carlo balance sim (`node tools/sim.js [reps]`): plays frames with the real engine at 4 build tiers and prints clear% vs the target curve. Use it before ANY tuning change to `CONFIG.target`/`pitcher`/coach numbers |
 
 ## Layout model
 

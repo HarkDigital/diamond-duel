@@ -37,7 +37,7 @@
       sound: true, speed: 4, wins: 0, runs: 0, bestGame: 0, bestScore: 0,
       // profile / achievement tracking
       ach: {},                 // unlocked achievement ids
-      career: { homers: 0, hits: 0, walks: 0, steals: 0, bossWins: 0, seedsUsed: 0, bestRally: 1, bestInningScore: 0 },
+      career: { homers: 0, hits: 0, walks: 0, steals: 0, bossWins: 0, seedsUsed: 0, bestRally: 1, bestInningScore: 0, packsOpened: 0 },
       franchisesPlayed: {},    // ids ever played
       franchisesWon: {},       // ids whose full run was won
       discovered: {},          // ids of coaches / seeds / front-office vouchers ever acquired (Collection)
@@ -56,6 +56,7 @@
     if (!META.maxStake) META.maxStake = 1;
     if (!META.lineupWins) META.lineupWins = {};
     if (META.speed == null) META.speed = 4;   // animation speed 1..4 (4 = fastest = the old default)
+    if (META.career.packsOpened == null) META.career.packsOpened = 0;
   })();
   // Collection: an item (coach / Salami Card / front-office voucher) is "discovered"
   // the first time you actually acquire it. Until then it shows locked in the Collection
@@ -705,6 +706,7 @@
       run.bossWins = (run.bossWins || 0) + 1;
       if (run.bossWins >= 3) awardAchievement("boss_sweep");
     }
+    if (isExtraInnings(g.gameIndex)) unlockAchievement("extra_frame");
     if (run.deck.length <= 12) unlockAchievement("thin_deck");
     saveMeta(); checkCareerAch();
     processEndOfGameScaling(run);
@@ -761,6 +763,8 @@
         const st = run.stake || 1;
         if (st > (META.lineupWins[run.franchiseId] || 0)) META.lineupWins[run.franchiseId] = st;
         if (st >= (META.maxStake || 1)) META.maxStake = Math.min(STAKES.length, st + 1);
+        if (st >= 3) unlockAchievement("stake_3");
+        if (st >= 5) unlockAchievement("stake_5");
         saveMeta(); checkCareerAch();
       }
       saveRun();
@@ -796,6 +800,7 @@
     if (!isSkippable(gi)) { SFX.error(); toast("You cannot skip a Boss frame."); return; }
     const tag = tagFor(gi);
     run.skips = (run.skips || 0) + 1;
+    if (run.skips >= 3) unlockAchievement("skip_3");
     discover(tag.id);
     applyTag(tag);
     run.gameIndex += 1;     // advance past the skipped frame: no win reward, no shop
@@ -856,10 +861,9 @@
     return `
     <div class="screen title-screen">
       <div class="title-hero">
-        <div class="logo">
-          <span class="logo-diamond">${icon("diamond")}</span>
-          <h1>DIAMOND<span>DUEL</span></h1>
-        </div>
+        ${(typeof logoSVG === "function")
+          ? `<div class="logo logo-svg">${logoSVG()}</div>`
+          : `<div class="logo"><span class="logo-diamond">${icon("diamond")}</span><h1>DIAMOND<span>DUEL</span></h1></div>`}
         <p class="tagline">A baseball roguelike deckbuilder. Build a lineup, stack the rally, out-score the ace.</p>
       </div>
       ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
@@ -1461,6 +1465,8 @@
     if (c.bestInningScore >= 50 * (CONFIG.scoreScale || 1)) unlockAchievement("inning_50");
     if (c.bestInningScore >= 100 * (CONFIG.scoreScale || 1)) unlockAchievement("inning_100");
     if (META.runs >= 50) unlockAchievement("runs_50");
+    if ((c.packsOpened || 0) >= 50) unlockAchievement("packs_50");
+    if (Object.keys(META.discovered || {}).length >= 100) unlockAchievement("discover_100");
     const played = Object.keys(META.franchisesPlayed || {}).length;
     if (played >= FRANCHISES.length) unlockAchievement("all_franchises");
     const won = Object.keys(META.franchisesWon || {}).length;
@@ -1782,7 +1788,7 @@
     return `<div class="stat-cell"><div class="stat-val">${val}</div><div class="stat-label">${label}</div></div>`;
   }
 
-  /* ---------- profile: career stats + 49 achievements (Balatro-style) ---------- */
+  /* ---------- profile: career stats + achievements (Balatro-style) ---------- */
   function showProfile() {
     if (SFX && SFX.click) SFX.click();
     const c = META.career || {};
@@ -1956,7 +1962,7 @@
     `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (8 slots) and trigger passively or in the right spot - bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
     `<section><h3>Innings, frames &amp; bosses</h3><p>Each of the 9 innings has three frames: <b>Top</b>, <b>Middle</b>, and <b>Boss</b>, with the target climbing each step. The <b>Boss</b> frame is a special pitcher with a nasty rule, telegraphed on the linescore so you can prepare. You shop between every frame, or <b>skip</b> a Top/Middle frame to pocket a Tag instead. Win inning 9's Boss for the title, then <b>Extra Innings</b> scale up forever.</p></section>`,
     `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (on the bar at the top of the screen). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
-    `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>49 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, <b>Front Office</b> voucher, and <b>Skip Tag</b>: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
+    `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>57 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, <b>Front Office</b> voucher, and <b>Skip Tag</b>: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
     `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, a <b>Coaching Pack</b> offers coaches, and a <b>Spring Training</b> pack levels up your at-bat actions. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
     `<section><h3>Editions &amp; Spring Training</h3><p>Cards and coaches in packs can roll a shiny <b>edition</b>: <b>All-Star</b> (+2 Bag), <b>Silver Slugger</b> (+1.0 Rally), <b>Gold Glove</b> (that play scores at x1.5 Rally), <b>Hall of Fame</b> (+2 Bag and +0.5 Rally), and the rare <b>Legendary</b> (the biggest boost, and on a coach it takes no dugout slot). An edition fires whenever that card scores. Separately, <b>Spring Training</b> packs <b>level up an action</b> (Swing Away, Power Swing, Work the Count, Bunt, Steal), so every safe play with that action builds your Rally faster. Levels show right on the swing buttons.</p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
@@ -2312,10 +2318,12 @@
       // full dugout no longer blocks the buy: offer to sell a coach to make room (Balatro-style)
       if (dugoutUsed(run) >= run.dugoutSlots) { openMakeRoom("coach", () => { closeOverlay(); buy(group, i); }); return; }
       run.dugout.push(cloneCoach(slot.item));
+      if (slot.item.deluxe === "legendary") unlockAchievement("legendary_dx");
       discover(slot.item.id);
       finishBuy(slot, key); render();
     } else if (group === "up") {
       applyUpgrade(slot.item);
+      if (slot.item.requires) unlockAchievement("tier2_voucher");
       run.upgradesOwned.push(slot.item.id);
       run.lastVoucherInning = Math.floor(run.gameIndex / GAMES_PER_ROUND);
       discover(slot.item.id);
@@ -2434,6 +2442,7 @@
   /* ---------- pack opening ---------- */
   function openPack(pack, onDone) {
     const run = STATE.run;
+    if (!runIsSeeded()) { META.career.packsOpened = (META.career.packsOpened || 0) + 1; saveMeta(); checkCareerAch(); }
     const rng = makeRNG(run.seed + ":pack:" + run.gameIndex + ":" + run.shopBuys);
     // Scouting Network vouchers + The Scouts lineup widen every pack you open
     const count = pack.count + (run.extraCardSlots || 0);
@@ -2514,11 +2523,12 @@
     if (ctx.picked.indexOf(i) >= 0) return;
     const o = ctx.options[i];
     const run = STATE.run;
-    if (o.kind === "card") { const c = cloneCard(o.item); if (o.deluxe) c.deluxe = o.deluxe; run.deck.push(c); }
+    if (o.kind === "card") { const c = cloneCard(o.item); if (o.deluxe) c.deluxe = o.deluxe; run.deck.push(c); if (o.deluxe === "legendary") unlockAchievement("legendary_dx"); }
     else if (o.kind === "coach") {
       if (dugoutUsed(run) >= run.dugoutSlots) { openMakeRoom("coach", () => packPick(i)); return; }
       const c = cloneCoach(o.item); if (o.deluxe) applyDeluxeToCoach(c, o.deluxe);
       run.dugout.push(c);
+      if (o.deluxe === "legendary") unlockAchievement("legendary_dx");
       discover(o.item.id);
     } else if (o.kind === "action") {
       run.actionLevels[o.item.id] = ((run.actionLevels[o.item.id]) || 1) + 1;
@@ -3242,6 +3252,11 @@
     (function () {
       const sp = document.getElementById("splash");
       if (!sp) return;
+      // swap the static splash wordmark for the animated marquee logo
+      if (typeof logoSVG === "function") {
+        const sl = sp.querySelector(".splash-logo");
+        if (sl) { const d = document.createElement("div"); d.className = "logo-svg splash-logo-svg"; d.innerHTML = logoSVG(); sl.replaceWith(d); }
+      }
       const go = () => { sp.classList.add("gone"); setTimeout(() => { if (sp.parentNode) sp.remove(); }, 700); };
       sp.addEventListener("pointerdown", go);
       setTimeout(go, 2600);

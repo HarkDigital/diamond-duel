@@ -52,7 +52,7 @@ straight **steal of home**.
   deterministic SVG portrait generated from its id; no image files anywhere.
 - **Seeded runs**: every run reproduces exactly from its seed string. The seed is revealed
   when the run ends and can be copied and replayed (seeded runs earn no unlocks).
-- **49 achievements**, a career profile, and a Balatro-style Collection compendium that
+- **57 achievements**, a career profile, and a Balatro-style Collection compendium that
   fills in as you discover coaches, Salami Cards, vouchers, and tags.
 - **Mid-inning save/resume**: refresh whenever; the game picks up exactly where you were.
 - **Game speed setting** (1x to 4x) that scales every animation and pause.

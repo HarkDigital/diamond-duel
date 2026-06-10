@@ -72,7 +72,10 @@
     // where inning is 0-based and frame is 0(Top)/1(Middle)/2(Boss). This ramps the 27 frames of
     // the main run (9 innings x 3) and keeps escalating forever into Extra Innings. Early frames
     // are clearable with the starting deck; later frames demand a real build.
-    target: { base: 7, inningGrowth: 1.46, frameMult: [1, 1.35, 1.8] },
+    // Tuned 2026-06 via tools/sim.js: growth 1.46 -> 1.44 and boss mult 1.8 -> 1.7
+    // soften the late-inning Boss cliff ~10-16% (a strong build's final-Boss clear rate
+    // was 67%; 27 frames of compounding odds made deserved wins too rare).
+    target: { base: 7, inningGrowth: 1.44, frameMult: [1, 1.35, 1.7] },
 
     // Pitcher scaling. Stuff/Command grow per inning, with a small bump per frame inside an
     // inning (Top < Middle < Boss) and a flat boss bonus on top.
@@ -551,6 +554,9 @@
     { id: "first_win",      cat: "Winning",  name: "Play Ball",        text: "Clear your first inning." },
     { id: "first_champ",    cat: "Winning",  name: "Champion",         text: "Win a full nine-inning run." },
     { id: "champ_5",        cat: "Winning",  name: "Dynasty",          text: "Win five full runs." },
+    { id: "extra_frame",    cat: "Winning",  name: "Free Baseball",    text: "Win a frame in Extra Innings." },
+    { id: "stake_3",        cat: "Winning",  name: "Raising the Stakes", text: "Win the World Series at All-Star stake or higher." },
+    { id: "stake_5",        cat: "Winning",  name: "Cooperstown Call", text: "Win the World Series at the Cooperstown stake." },
     // --- bosses ---
     { id: "first_boss",     cat: "Bosses",   name: "Ace Beater",       text: "Beat a boss inning." },
     { id: "boss_10",        cat: "Bosses",   name: "Boss Hunter",      text: "Beat 10 boss innings." },
@@ -560,6 +566,9 @@
     { id: "got_legend",     cat: "Building",  name: "Sign a Legend",   text: "Add a Legend to your deck." },
     { id: "thin_deck",      cat: "Building",  name: "Lean & Mean",     text: "Trim your deck to 12 cards or fewer." },
     { id: "deep_pockets",   cat: "Building",  name: "Deep Pockets",    text: "Hold $40 at once." },
+    { id: "skip_3",         cat: "Building",  name: "Fast Forward",    text: "Skip three frames in one run." },
+    { id: "tier2_voucher",  cat: "Building",  name: "Corner Office",   text: "Buy a tier-2 Front Office upgrade." },
+    { id: "legendary_dx",   cat: "Building",  name: "Living Legend",   text: "Own a Legendary edition card or coach." },
     // --- sunflower seeds ---
     { id: "first_seed",     cat: "Salami",    name: "First Slice",     text: "Use your first Salami Card." },
     { id: "seeds_20",       cat: "Salami",    name: "Deli Regular",    text: "Use 20 Salami Cards." },
@@ -568,6 +577,8 @@
     { id: "all_franchises", cat: "Franchise", name: "Globetrotter",    text: "Play a run with every franchise." },
     { id: "win_variety",    cat: "Franchise", name: "Versatile",       text: "Win a run with five different franchises." },
     { id: "runs_50",        cat: "Meta",      name: "Grinder",         text: "Play 50 runs." },
+    { id: "packs_50",       cat: "Meta",      name: "Wax Fiend",       text: "Open 50 packs." },
+    { id: "discover_100",   cat: "Meta",      name: "Archivist",       text: "Discover 100 Collection entries." },
   ];
   function getAchievement(id) { return ACHIEVEMENTS.find((a) => a.id === id); }
 

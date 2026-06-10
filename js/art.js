@@ -586,6 +586,56 @@
   }
 
   /* ============================================================
+     THE LOGO - an animated retro marquee: crossed bats, gold
+     wordmark with a traveling glint, a ball that rockets across
+     on a loop, and pulsing stars. Pure SVG + SMIL, no deps.
+     ============================================================ */
+  function logoSVG() {
+    const F = `font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"`;
+    let s = `<svg class="dd-logo" viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" aria-label="Diamond Duel">`;
+    s += `<defs>
+      <linearGradient id="ddlg-gold" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#e8a92a"/>
+        <stop offset="0" stop-color="#ffe9a3">
+          <animate attributeName="offset" values="0;1;0" dur="5.5s" repeatCount="indefinite"/>
+        </stop>
+        <stop offset="1" stop-color="#e8a92a"/>
+      </linearGradient>
+      <linearGradient id="ddlg-red" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e25555"/><stop offset="1" stop-color="#a32638"/>
+      </linearGradient>
+    </defs>`;
+    // crossed bats behind everything
+    const bat = (rot) => `<g transform="rotate(${rot} 320 96)">`
+      + `<line x1="320" y1="216" x2="320" y2="-14" stroke="#5e3a1c" stroke-width="17" stroke-linecap="round"/>`
+      + `<line x1="320" y1="214" x2="320" y2="-12" stroke="#c89a5e" stroke-width="13" stroke-linecap="round"/>`
+      + `<circle cx="320" cy="214" r="9" fill="#8a5a28"/></g>`;
+    s += `<g opacity=".9">${bat(-28)}${bat(28)}</g>`;
+    // home plate badge behind the wordmark
+    s += `<path d="M 320 22 L 478 50 V 118 Q 478 152 320 178 Q 162 152 162 118 V 50 Z" fill="#0e1d31" stroke="#f5c344" stroke-width="4" opacity=".96"/>`;
+    s += `<path d="M 320 30 L 470 56 V 116 Q 470 146 320 170 Q 170 146 170 116 V 56 Z" fill="none" stroke="#3a4f6e" stroke-width="2"/>`;
+    // pennant ribbon
+    s += `<path d="M 188 58 H 452 L 466 74 L 452 90 H 188 L 174 74 Z" fill="url(#ddlg-red)" stroke="#5e1d2c" stroke-width="2.5"/>`;
+    s += `<text x="320" y="86" text-anchor="middle" ${F} font-size="36" font-weight="900" letter-spacing="6" fill="#ffe9c8" stroke="#3a0d12" stroke-width="1.2" paint-order="stroke">DIAMOND</text>`;
+    // big DUEL in animated gold
+    s += `<text x="320" y="152" text-anchor="middle" ${F} font-size="62" font-weight="900" letter-spacing="14" fill="url(#ddlg-gold)" stroke="#3a2408" stroke-width="3" paint-order="stroke">DUEL</text>`;
+    // flanking stars with alternating glow pulses
+    s += `<g opacity=".95">${mStar(196, 119, 9, "#ffd24a")}${mStar(444, 119, 9, "#ffd24a")}</g>`;
+    s += `<circle cx="196" cy="119" r="12" fill="#ffd24a" opacity="0"><animate attributeName="opacity" values="0;.4;0" dur="2.4s" repeatCount="indefinite"/></circle>`;
+    s += `<circle cx="444" cy="119" r="12" fill="#ffd24a" opacity="0"><animate attributeName="opacity" values="0;.4;0" dur="2.4s" begin="1.2s" repeatCount="indefinite"/></circle>`;
+    // the flying ball: rockets across the marquee on a loop, comet trail behind it
+    s += `<g><g>
+      <line x1="-46" y1="0" x2="-10" y2="0" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+      <line x1="-34" y1="-7" x2="-8" y2="-5" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".35"/>
+      <line x1="-34" y1="7" x2="-8" y2="5" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".35"/>
+      <circle cx="0" cy="0" r="13" fill="#f7f1e2" stroke="#b9a478" stroke-width="2"/>
+      <path d="M -4.5 -10.5 q 6 10.5 0 21 M 4.5 -10.5 q -6 10.5 0 21" fill="none" stroke="#c43c30" stroke-width="2.2" transform="rotate(14)"/>
+      <animateMotion dur="4.6s" repeatCount="indefinite" rotate="auto" path="M -80 150 Q 150 190 320 96 Q 490 2 720 40"/>
+    </g></g>`;
+    return s + "</svg>";
+  }
+
+  /* ============================================================
      TEAM CREST (lineup carousel)
      ============================================================ */
   function crestSVG(f) {
@@ -611,4 +661,5 @@
   global.packArtSVG = packArtSVG;
   global.itemArtSVG = itemArtSVG;
   global.crestSVG = crestSVG;
+  global.logoSVG = logoSVG;
 })(window);
