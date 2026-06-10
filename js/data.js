@@ -101,7 +101,7 @@
 
     // At-bat APPROACHES - the per-plate-appearance decision. Each scales outcome weights.
     approaches: {
-      swing:  { id: "swing",  name: "Swing Away",     icon: "bat", desc: "Balanced - your natural swing.", w: {} },
+      swing:  { id: "swing",  name: "Contact Swing",     icon: "bat", desc: "Balanced - your natural swing.", w: {} },
       power:  { id: "power",  name: "Power Swing",    icon: "muscle", desc: "Sell out for the big fly. More HR & extra-base hits, but more strikeouts.",
         w: { HR: 1.65, "2B": 1.45, "3B": 1.4, "1B": 0.7, BB: 0.55, K: 1.3, OUT: 1.0 } },
       contact:{ id: "contact",name: "Work the Count", icon: "eye", desc: "Patient & protective. Many more walks, far fewer strikeouts - but little power.",
@@ -168,7 +168,7 @@
     editionSpawnChance: 0.15,   // chance a pack card/coach rolls a deluxe edition
 
     // Action leveling (Balatro Celestial-style). Each level above 1 adds this much Rally
-    // to a safe play made with that action (Swing Away / Power Swing / Work the Count / Bunt / Steal).
+    // to a safe play made with that action (Contact Swing / Power Swing / Work the Count / Bunt / Steal).
     actionLevelRally: 0.3,
   };
 
@@ -712,7 +712,7 @@
 
   // The five at-bat actions you can level up (Spring Training).
   const ACTIONS = [
-    { id: "swing",   name: "Swing Away",     text: "Your balanced swing scores hotter." },
+    { id: "swing",   name: "Contact Swing",     text: "Your balanced swing scores hotter." },
     { id: "power",   name: "Power Swing",    text: "Selling out for the big fly scores hotter." },
     { id: "contact", name: "Work the Count", text: "Patient at-bats score hotter." },
     { id: "bunt",    name: "Bunt",           text: "Sacrifices and bunt singles score hotter." },

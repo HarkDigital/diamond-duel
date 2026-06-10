@@ -101,7 +101,7 @@
       w["1B"] *= plat.mult; w["2B"] *= plat.mult; w["3B"] *= plat.mult; w["HR"] *= plat.mult;
     }
 
-    // at-bat approach reshapes the swing profile (Swing Away / Power / Work the Count)
+    // at-bat approach reshapes the swing profile (Contact Swing / Power / Work the Count)
     const ap = approach && CONFIG.approaches && CONFIG.approaches[approach];
     if (ap && ap.w) { for (const k in ap.w) if (w[k] != null) w[k] *= ap.w[k]; }
 
