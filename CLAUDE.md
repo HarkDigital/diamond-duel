@@ -71,9 +71,15 @@ mechanic must sweep:
 ## Layout model
 
 `#stage` is a fixed design surface scaled to fit the viewport via `transform: scale()`
-(`stageScale()` reads the matrix). The game screen is a CSS grid (`game-main`) with
-`col-field` (diamond + outs/inning), `col-summary` (play log), `col-powerups` (Salami),
-`col-dugout` (coaches), and a full-width `atbat-bar`.
+(`stageScale()` reads the matrix). The game screen is a CSS grid (`game-main`):
+`col-field` (diamond + outs/inning + the **rally meter pinned to its upper right**,
+`.field-rally`, keeping all heat effects) and `col-summary` (play log), with the
+`atbat-bar` under the summary. The dugout/Salami/payroll live in the **persistent run
+bar** (`runBarHTML()`): embedded in the game scoreboard's right cell and rendered as a
+standalone `.run-bar` atop the map and shop, so the build + money show on every in-run
+screen. Bar chips are the live `coachIconHTML`/`charmBadgeHTML` markup (ids `#dugout`/
+`#powerups`/`#payroll-amt` ride along), so tooltips, taps, drags, corner sells, count
+updates, and coach trigger flashes all work from the bar on any screen.
 
 The **field diamond** must stay a perfect square or the percentage-positioned bases and
 runner tokens drift off the infield corners. It is sized with container-query units:

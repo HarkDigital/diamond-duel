@@ -1841,3 +1841,52 @@ body.portrait #toast{ display:none !important; }
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.16); background:#131e2e; }
 .col-art svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
 .col-cell.got{ padding:8px 7px 9px; }
+
+/* ============================================================
+   PERSISTENT RUN BAR - the dugout + Salami pouch + payroll live
+   on the blue top bar of EVERY in-run screen (embedded in the
+   game scoreboard; a standalone bar on the map and shop). The
+   rally meter moves onto the field's upper-right corner.
+   ============================================================ */
+.run-bar{ flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,#0f2034,#0b1726); border:1px solid var(--line);
+  border-radius:16px; padding:9px 18px; box-shadow:var(--shadow); margin-bottom:12px; }
+.rb-groups{ display:flex; align-items:center; gap:24px; flex-wrap:wrap; justify-content:center; }
+.rb-row2{ display:flex; align-items:center; gap:24px; }
+.rb-group{ display:flex; align-items:center; gap:9px; }
+.rb-label{ font-size:.62rem; letter-spacing:1.8px; color:#8ea0bf; font-weight:800; white-space:nowrap; }
+.rb-label .pt-n{ margin-left:3px; }
+.rb-chips{ display:flex; gap:6px; flex-wrap:nowrap; }
+.rb-chips .coach-icon, .rb-chips .charm-badge{ width:35px; height:35px; border-radius:10px; }
+.rb-chips .coach-icon .ci-glyph .ico, .rb-chips .charm-badge .cb-glyph .ico{ width:17px; height:17px; }
+.rb-chips .coach-icon.empty, .rb-chips .charm-badge.empty{ font-size:.9rem; }
+.rb-chips .coach-badge{ font-size:.5rem; padding:0 4px; bottom:-5px; right:-5px; }
+.rb-chips .cb-sell{ width:16px; height:16px; top:-6px; right:-6px; }
+.rb-chips .cb-sell svg{ width:9px; height:9px; }
+.rb-pay{ margin:0; font-size:1rem; padding:7px 14px; }
+/* in the game scoreboard the bar stacks into the right cell */
+.scoreboard{ grid-template-columns:1.05fr 1.15fr auto; }
+.sb-right .rb-groups{ flex-direction:column; align-items:flex-end; gap:5px; flex-wrap:nowrap; }
+.sb-right .rb-row2{ gap:12px; }
+.sb-right .rb-group{ gap:7px; }
+.sb-right .rb-chips{ gap:5px; }
+.sb-right .rb-chips .coach-icon, .sb-right .rb-chips .charm-badge{ width:28px; height:28px; border-radius:8px; border-bottom-width:2px; }
+.sb-right .rb-chips .coach-icon .ci-glyph .ico, .sb-right .rb-chips .charm-badge .cb-glyph .ico{ width:14px; height:14px; }
+.sb-right .rb-chips .coach-badge{ font-size:.46rem; bottom:-4px; right:-4px; }
+.sb-right .rb-label{ font-size:.54rem; letter-spacing:1.3px; }
+.sb-right .rb-pay{ font-size:.9rem; padding:4px 11px; }
+/* the scoreboard clips its stadium texture; let the chip hover/sell buttons breathe */
+.sb-right{ padding:2px 0; }
+/* rally relocated to the field's upper right */
+.col-field{ position:relative; }
+.field-rally{ position:absolute; top:10px; right:10px; z-index:9; text-align:center;
+  padding:4px 13px 7px; border-radius:14px; background:rgba(5,14,9,.62);
+  border:1px solid rgba(255,255,255,.16); backdrop-filter:blur(2px); }
+.field-rally .sb-rally-label{ font-size:.6rem; letter-spacing:3px; }
+.field-rally .sb-rally-num{ font-size:2.2rem; }
+/* the side columns moved into the top bar: field | summary, at-bat under the summary */
+.game-main{ grid-template-columns:400px minmax(0,1fr); grid-template-areas:"field summary" "field atbat"; }
+/* on small screens the viewport-fixed menu button looms larger over the scaled stage;
+   give the scoreboard's right cell room so the payroll chip never hides behind it */
+@media (max-width:1100px){ .game-screen .scoreboard{ padding-right:104px; } }
+@media (max-height:470px){ .game-screen .scoreboard{ padding-right:118px; } }
