@@ -1267,7 +1267,7 @@
     toast(`Sold ${c.name} for $${refund}.`);
     saveRun();
     if (STATE.screen === "game") { renderPowerups(); setText("payroll-amt", run.payroll); }
-    if (STATE.screen === "shop") render();
+    if (STATE.screen === "shop" && !STATE._pack) render();
   }
   // The Salami pouch, inspectable (and sellable) from ANY screen - mirrors openDugoutView.
   function openSalamiView() {
@@ -2044,6 +2044,41 @@
   /* ============================================================
      SHOP
      ============================================================ */
+  // Balatro-style pinned build: your dugout + Salami slots, always on screen in the
+  // shop AND inside every pack reveal, each chip sellable in place. Tapping a chip
+  // pins its tooltip; the corner coin button sells it.
+  function ownedStripHTML() {
+    const run = STATE.run;
+    if (!run) return "";
+    const coachSell = (c) => Math.max(1, Math.floor((c.cost || 5) / 2));
+    const cells = [];
+    for (let i = 0; i < run.dugoutSlots; i++) {
+      const c = run.dugout[i];
+      cells.push(c
+        ? `<div class="os-item rar-${c.rarity}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>Sell +$${coachSell(c)}</span>"><span class="os-glyph">${icon(c.icon || "star")}</span><button class="os-sell" data-stripsell="coach:${i}" aria-label="Sell ${c.name}">${icon("sell")}</button></div>`
+        : `<div class="os-item empty">+</div>`);
+    }
+    const charms = [];
+    for (let i = 0; i < run.charmSlots; i++) {
+      const id = run.charms[i];
+      const c = id ? getCharm(id) : null;
+      charms.push(c
+        ? `<div class="os-item os-charm rar-${c.rarity}" data-tip="<b>${c.name}</b><br>${c.text}<br><span class='tip-use'>Sell +$${charmRefund(c)}</span>"><span class="os-glyph">${icon(c.icon)}</span><button class="os-sell" data-stripsell="charm:${i}" aria-label="Sell ${c.name}">${icon("sell")}</button></div>`
+        : `<div class="os-item empty">+</div>`);
+    }
+    return `<div class="owned-strip">
+        <div class="os-group"><span class="os-label">DUGOUT ${dugoutUsed(run)}/${run.dugoutSlots}</span>${cells.join("")}</div>
+        <div class="os-group"><span class="os-label">SALAMI ${run.charms.length}/${run.charmSlots}</span>${charms.join("")}</div>
+        <div class="os-pay">$${run.payroll}</div>
+      </div>`;
+  }
+  function stripSellAction(spec) {
+    const parts = spec.split(":"), i = parseInt(parts[1], 10);
+    if (parts[0] === "coach") sellCoach(i, "strip"); else sellCharm(i, "strip");
+    if (STATE._pack) renderPackOverlay();          // refresh the strip + options in place
+    else if (STATE.screen === "shop") render();
+  }
+
   function enterShop() {
     STATE.shop = { reroll: 0, freeUsed: false };
     consumeTagsIntoShop();   // resolve held shop tags into free coaches/packs/voucher + flags
@@ -2214,7 +2249,8 @@
         </div>
       </div>
       ${tagTrayHTML(run)}
-      ${dugFull ? `<div class="shop-warn">Dugout full (${dugoutUsed(run)}/${run.dugoutSlots}). Sell a coach in the Dugout view to make room.</div>` : ""}
+      ${ownedStripHTML()}
+      ${dugFull ? `<div class="shop-warn">Dugout full (${dugoutUsed(run)}/${run.dugoutSlots}). Sell a coach right from the strip above to make room.</div>` : ""}
       <div class="shop-grid">
         <div class="shop-rowgrp shop-rowgrp-top">
           <div class="shop-section sec-coaches"><h3>Coaches</h3><div class="shop-row">${coaches}</div></div>
@@ -2441,6 +2477,7 @@
     overlay(`
       <div class="ov-card pack-ov ${firstOpen ? "pk-opening" : ""}">
         ${burst}
+        ${ownedStripHTML()}
         <h2><span class="h2-ico">${icon("layers")}</span> ${ctx.pack.name}</h2>
         <div class="ov-sub">Choose ${ctx.pack.choose} of ${ctx.options.length}.${left > 0 ? " (" + left + " left)" : ""}</div>
         <div class="pack-grid ${firstOpen ? "pack-deal" : ""}">${opts}</div>
@@ -2552,8 +2589,8 @@
     SFX.coin();
     toast(`Sold ${c.name} for $${refund}.`);
     saveRun();
-    if (ctx !== "makeroom") openDugoutView();   // make-room handles its own re-render
-    if (STATE.screen === "shop") render();
+    if (!ctx) openDugoutView();   // make-room / the build strip handle their own re-render
+    if (STATE.screen === "shop" && !STATE._pack) render();
     if (STATE.screen === "game") { renderDugout(); setText("payroll-amt", run.payroll); }
   }
 
@@ -2636,9 +2673,11 @@
     if (!root) return;
 
     root.onclick = (e) => {
-      // selling a Salami card takes precedence over its tooltip (sell at all times)
+      // selling takes precedence over tooltips (sell at all times)
       const charmSellEl = e.target.closest("[data-charmsell]");
       if (charmSellEl) { if (TIP) TIP.hide(); sellCharm(parseInt(charmSellEl.getAttribute("data-charmsell"), 10)); return; }
+      const stripSellEl = e.target.closest("[data-stripsell]");
+      if (stripSellEl) { if (TIP) TIP.hide(); stripSellAction(stripSellEl.getAttribute("data-stripsell")); return; }
       // explainer tooltips (info button + coach/trait badges) - pin on tap, toggle off
       const tipEl = tipTargetOf(e);
       if (tipEl) { if (TIP) TIP.toggle(tipEl, e.clientX, e.clientY); return; }
@@ -2725,6 +2764,9 @@
     ov.onclick = (e) => {
       const seedEl = e.target.closest("[data-seed]");
       if (seedEl) { copySeed(seedEl.getAttribute("data-seed")); return; }
+      // selling from the pinned build strip beats tooltips (Balatro-style, mid-pack too)
+      const stripSellEl = e.target.closest("[data-stripsell]");
+      if (stripSellEl) { if (TIP) TIP.hide(); stripSellAction(stripSellEl.getAttribute("data-stripsell")); return; }
       // explainer tooltips inside overlays (deck cards' info button, dugout coach badges)
       const tipEl = tipTargetOf(e);
       if (tipEl) { if (TIP) TIP.toggle(tipEl, e.clientX, e.clientY); return; }
@@ -2899,7 +2941,7 @@
   }
   // element that should pin a tooltip on tap (info button, coach badges, etc.)
   function tipTargetOf(e) {
-    return e.target.closest("[data-cardinfo], .coach-icon, .coach-chip, .card-trait, .trait-chip, .streak-chip, .edition");
+    return e.target.closest("[data-cardinfo], .coach-icon, .coach-chip, .card-trait, .trait-chip, .streak-chip, .edition, .os-item:not(.empty)");
   }
 
   /* ============================================================

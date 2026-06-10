@@ -127,6 +127,10 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   are reachable from EVERY screen: tappable in-game panel headers (`.panel-btn` on the
   DUGOUT/SALAMI titles, with live `x/y` counts), Deck/Dugout/Salami buttons on the map
   (`.mn-views`) and in the shop header, and Deck/Dugout/Salami tiles in the in-run menu.
+  On top of that, `ownedStripHTML()` pins the whole build (every dugout + Salami slot,
+  each chip sellable via `data-stripsell`, tooltip on tap) into the shop screen AND
+  inside the pack-reveal overlay, Balatro-style - so a full dugout can be sold down
+  WHILE a pack is open, without leaving it.
 - **Make-room instead of blocking:** whenever adding a coach/Salami would overflow its
   slots (a pack pick OR a direct shop coach buy), `openMakeRoom()` offers selling a held
   item to take the new one; the blocked action retries after the sale. Player decks have

@@ -1799,6 +1799,40 @@ body.portrait #toast{ display:none !important; }
 .pack-opt .rcard{ width:196px; }
 .pack-ov .pack-opt .rcard{ width:200px; }
 
+/* ============================================================
+   PINNED BUILD STRIP - Balatro-style: your dugout + Salami slots
+   stay on screen (and sellable) in the shop and inside every
+   pack reveal. Corner coin button sells; tapping a chip pins
+   its tooltip.
+   ============================================================ */
+.owned-strip{ display:flex; align-items:center; justify-content:center; gap:20px; flex-wrap:wrap;
+  background:rgba(9,17,28,.62); border:1px solid rgba(120,140,180,.2); border-radius:13px; padding:8px 14px; }
+.os-group{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.os-label{ font-size:.6rem; letter-spacing:1.8px; color:#8ea0bf; font-weight:800; margin-right:5px; white-space:nowrap; }
+.os-item{ position:relative; width:38px; height:38px; border-radius:10px; flex:none;
+  display:flex; align-items:center; justify-content:center; cursor:help;
+  background:linear-gradient(180deg,#16273f,#112034); border:1px solid var(--line); border-bottom:3px solid var(--rar-common);
+  transition:transform .1s, border-color .12s; }
+.os-item:hover{ transform:translateY(-2px); border-color:var(--gold-2); }
+.os-item.os-charm{ background:linear-gradient(180deg,#2a2150,#1a1438); border-color:#4a3a7a; border-bottom-width:3px; }
+.os-item.rar-star{ border-bottom-color:var(--rar-star); }
+.os-item.rar-allstar{ border-bottom-color:var(--rar-allstar); }
+.os-item.rar-legend, .os-item.rar-legendary{ border-bottom-color:var(--rar-legend); }
+.os-item.empty{ border-style:dashed; opacity:.32; color:var(--ink-faint); font-weight:700; cursor:default; }
+.os-glyph{ display:flex; } .os-glyph .ico{ width:19px; height:19px; color:#d6e6ff; }
+.os-item.os-charm .os-glyph .ico{ color:#e9ddff; }
+.os-sell{ position:absolute; top:-7px; right:-7px; z-index:5; width:18px; height:18px; padding:0; border-radius:50%;
+  border:1px solid rgba(0,0,0,.45); background:linear-gradient(180deg,#ffd24a,#e8a92a); color:#2a1c00; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.45);
+  opacity:0; transform:scale(.6); transition:opacity .12s, transform .12s; }
+.os-item:hover .os-sell{ opacity:1; transform:scale(1); }
+.os-sell:hover{ filter:brightness(1.12); transform:scale(1.12); }
+.os-sell svg{ width:10px; height:10px; }
+@media (hover:none){ .os-sell{ opacity:1; transform:scale(1); } }
+.os-pay{ font-weight:900; font-size:1.02rem; color:var(--gold); font-variant-numeric:tabular-nums; }
+.pack-ov .owned-strip{ margin:-4px 0 12px; }
+.shop-screen .owned-strip{ flex:0 0 auto; }
+
 /* ---- art thumbs in list rows (pouch / make-room) + the Collection ---- */
 .mr-ico.mr-art{ width:66px; height:47px; border-radius:6px; overflow:hidden; background:#173a63; flex:0 0 auto;
   box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18); }
