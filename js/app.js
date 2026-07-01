@@ -2061,47 +2061,59 @@
       </div>`);
   }
 
-  /* ---------- collection: every coach / seed / voucher, locked until discovered ---------- */
-  function showCollection() {
-    if (SFX && SFX.click) SFX.click();
-    const groups = [
+  /* ---------- collection: every coach / seed / voucher, locked until discovered.
+     One group at a time (tabs), paged with the shared dot pager - no scrolling. ---------- */
+  function collectionGroups() {
+    return [
       { title: "Coaches", items: COACHES, art: (it) => coachFace(it) },
       { title: "Salami Cards", items: CHARMS, art: (it) => itemArt("charm", it) },
       { title: "Front Office", items: UPGRADES, art: (it) => itemArt("upgrade", it) },
       { title: "Skip Tags", items: TAGS, art: null },
     ];
+  }
+  function showCollection(tab, page) {
+    if (page == null && SFX && SFX.click) SFX.click();   // click on open / tab switch, not on page flips
+    const groups = collectionGroups();
+    const t = Math.max(0, Math.min(groups.length - 1, tab || 0));
+    const g = groups[t];
+    const PER = isShortView() ? 7 : 14;                   // 7 x 2 pages; one row of 7 on phones
+    const pages = Math.max(1, Math.ceil(g.items.length / PER));
+    const p = Math.max(0, Math.min(pages - 1, page || 0));
+    const prev = (STATE._colTab === t) ? STATE._colPage : null;
+    const dir = (page == null || prev == null || prev === p) ? "" : (p > prev ? " pg-in-r" : " pg-in-l");
+    STATE._colTab = t; STATE._colPage = p;
     let allN = 0, gotN = 0;
-    const board = groups.map((g) => {
-      const gGot = g.items.filter((it) => isDiscovered(it.id)).length;
-      allN += g.items.length; gotN += gGot;
-      const cells = g.items.map((it) => {
-        if (isDiscovered(it.id)) {
-          const face = g.art ? `<div class="col-art">${g.art(it)}</div>` : `<div class="col-ic">${icon(it.icon || "trophy")}</div>`;
-          return `<div class="col-cell got rar-${it.rarity || "common"}" data-tip="<b>${it.name}</b><br>${it.text}">
-              ${face}
-              <div class="col-nm">${it.name}</div>
-            </div>`;
-        }
-        return `<div class="col-cell locked" data-tip="<b>Undiscovered</b><br>Acquire this in a run to add it to your Collection.">
-            <div class="col-ic">${icon("lock")}</div>
-            <div class="col-nm">???</div>
+    const tabs = groups.map((gr, i) => {
+      const got = gr.items.filter((it) => isDiscovered(it.id)).length;
+      allN += gr.items.length; gotN += got;
+      return `<button class="col-tab${i === t ? " on" : ""}" data-coltab="${i}">${gr.title} <span class="ct-n">${got}/${gr.items.length}</span></button>`;
+    }).join("");
+    const cells = g.items.slice(p * PER, p * PER + PER).map((it) => {
+      if (isDiscovered(it.id)) {
+        const face = g.art ? `<div class="col-art">${g.art(it)}</div>` : `<div class="col-ic">${icon(it.icon || "trophy")}</div>`;
+        return `<div class="col-cell got rar-${it.rarity || "common"}" data-tip="<b>${it.name}</b><br>${it.text}">
+            ${face}
+            <div class="col-nm">${it.name}</div>
           </div>`;
-      }).join("");
-      return `<div class="col-group">
-          <div class="col-group-h">${g.title} <span class="col-count">${gGot} / ${g.items.length}</span></div>
-          <div class="col-grid">${cells}</div>
+      }
+      return `<div class="col-cell locked" data-tip="<b>Undiscovered</b><br>Acquire this in a run to add it to your Collection.">
+          <div class="col-ic">${icon("lock")}</div>
+          <div class="col-nm">???</div>
         </div>`;
     }).join("");
     overlay(`
       <div class="ov-card collection-card">
         <h2><span class="h2-ico">${icon("book")}</span> Collection <span class="col-total">${gotN} / ${allN}</span></h2>
-        <div class="ov-sub">Coaches, Salami Cards, Front Office vouchers, and Skip Tags. Locked items reveal once you acquire them in a run.</div>
-        <div class="col-board">${board}</div>
+        <div class="ov-sub">Locked items reveal once you acquire them in a run.</div>
+        <div class="col-tabs">${tabs}</div>
+        <div class="col-grid pgrid${dir}">${cells}</div>
+        ${pagerHTML("col", p, pages)}
         <div class="ov-actions">
           <button class="btn btn-secondary" data-act="open-profile">${icon("chevronL")} Back</button>
           <button class="btn btn-gold" data-act="close-ov">Close</button>
         </div>
       </div>`);
+    wirePagedGrid("col", p, pages);
   }
 
   /* ---------- seeds: copy + replay ---------- */
@@ -2645,6 +2657,7 @@
     SFX.click();
     if (kind === "pick" && STATE._pick) openScoutingPicker(STATE._pick.report, STATE._pick.onApply, n);
     else if (kind === "deck") openDeckView(n);
+    else if (kind === "col") showCollection(STATE._colTab || 0, n);
   }
   // stagger the deal-in + let a horizontal swipe flip the page (the tap ending a swipe
   // is swallowed so it can never pick a card by accident)
@@ -3108,6 +3121,8 @@
       const speedEl = e.target.closest("[data-speed]");
       const pgEl = e.target.closest("[data-pgact]");
       if (pgEl && !pgEl.disabled) { gotoPage(pgEl.getAttribute("data-pgact"), parseInt(pgEl.getAttribute("data-pg"), 10)); return; }
+      const colTabEl = e.target.closest("[data-coltab]");
+      if (colTabEl) { showCollection(parseInt(colTabEl.getAttribute("data-coltab"), 10), null); return; }
       // the tap that ends a page swipe must never count as a card pick
       if (pick) {
         if (performance.now() - (STATE._swipedAt || 0) < 250) return;

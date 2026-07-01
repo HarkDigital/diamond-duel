@@ -540,15 +540,19 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .seed-hidden{ color:var(--ink-faint); font-style:italic; font-size:.8rem; }
 
 /* ===== Collection (Balatro-style compendium) ===== */
-.collection-card{ max-width:820px; width:min(820px,94vw); text-align:left; }
+.collection-card{ max-width:980px; width:min(980px,92vw); text-align:left; }
 .collection-card h2{ text-align:center; }
 .col-total{ color:var(--gold); font-weight:900; margin-left:6px; }
 .collection-card .ov-sub{ text-align:center; }
-.col-board{ max-height:60vh; overflow:auto; padding:4px 4px 2px; margin:6px 0 14px; }
-.col-group{ margin-bottom:16px; }
-.col-group-h{ font-size:.74rem; letter-spacing:2px; text-transform:uppercase; color:#cfe6d4; font-weight:800; margin:0 2px 8px; display:flex; align-items:center; gap:8px; }
-.col-count{ color:var(--ink-faint); font-weight:700; letter-spacing:0; }
-.col-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(104px,1fr)); gap:8px; }
+/* one group at a time: tab row + a paged 7-column grid (no scrolling) */
+.col-tabs{ display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin:10px 0 12px; }
+.col-tab{ border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--ink-dim); font-weight:800;
+  font-size:.78rem; padding:7px 13px; border-radius:999px; cursor:pointer; transition:all .15s; }
+.col-tab .ct-n{ color:var(--ink-faint); font-weight:700; margin-left:4px; font-variant-numeric:tabular-nums; }
+.col-tab:hover{ border-color:var(--gold-2); color:var(--ink); }
+.col-tab.on{ background:rgba(255,203,71,.14); border-color:var(--gold-2); color:var(--gold); }
+.col-tab.on .ct-n{ color:var(--gold-deep); }
+.col-grid{ display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:8px; margin-bottom:2px; }
 .col-cell{ background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:11px; padding:11px 8px; text-align:center;
   display:flex; flex-direction:column; align-items:center; gap:6px; min-height:78px; justify-content:center; transition:transform .1s, border-color .12s; }
 .col-cell.got{ cursor:help; }
@@ -2122,4 +2126,10 @@ body.portrait #toast{ display:none !important; }
   .deck-view .deck-grid{ gap:6px; }
   .pager{ margin:6px 0 2px; gap:12px; }
   .pg-arrow{ width:32px; height:32px; }
+  .collection-card h2{ font-size:1.05rem; }
+  .collection-card .ov-sub{ display:none; }
+  .col-tabs{ margin:6px 0 8px; gap:6px; }
+  .col-tab{ font-size:.68rem; padding:5px 10px; }
+  .col-cell{ min-height:0; padding:7px 6px; gap:4px; }
+  .col-nm{ font-size:.62rem; }
 }
