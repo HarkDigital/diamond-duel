@@ -2624,6 +2624,12 @@
   }
 
   /* ---------- paged card grids (no scrolling: arrows + dots + swipe) ---------- */
+  // phone-height check for cards-per-page (mirrors the CSS max-height:470px tier);
+  // a transiently 0-height window (mid-load/rotation) must not read as short
+  function isShortView() {
+    const h = window.innerHeight || (window.visualViewport && window.visualViewport.height) || 0;
+    return h > 0 && h <= 470;
+  }
   function pagerHTML(kind, page, pages) {
     if (pages <= 1) return "";
     let dots = "";
@@ -2665,7 +2671,7 @@
     const run = STATE.run;
     // 'release' or 'copy' or 'edition' or 'bump' or 'switch'
     // 4 x 2 normally; phone-height windows page a single row of 4 instead
-    const PER = (window.matchMedia && matchMedia("(max-height:470px)").matches) ? 4 : 8;
+    const PER = isShortView() ? 4 : 8;
     const pages = Math.max(1, Math.ceil(run.deck.length / PER));
     const p = Math.max(0, Math.min(pages - 1, page || 0));
     const prev = STATE._pickPage;
@@ -2854,7 +2860,7 @@
     const run = STATE.run;
     const sorted = run.deck.slice().sort((a, b) => (RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity]) || (b.power - a.power));
     // 9 x 2 normally; phone-height windows page a single row of 8 smaller cards
-    const PER = (window.matchMedia && matchMedia("(max-height:470px)").matches) ? 8 : 18;
+    const PER = isShortView() ? 8 : 18;
     const pages = Math.max(1, Math.ceil(sorted.length / PER));
     const p = Math.max(0, Math.min(pages - 1, page || 0));
     const prev = STATE._deckPage;
