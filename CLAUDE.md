@@ -216,6 +216,14 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   handlers (`#bat-zone`, `.charm-ghost`/`.charm-zone`, `.pack-ghost`/`#pack-slot`).
 - **Seeds visibility:** hidden during a run; revealed on run-end screens, copyable /
   replayable via `seedChip`.
+- **Paged card grids (no scrolling):** the scouting target picker and the deck view
+  render fixed pages navigated by `pagerHTML` (chevron arrows + clickable dots) and
+  `wirePagedGrid` (swipe left/right; the tap ending a swipe is swallowed via
+  `STATE._swipedAt` so it can never pick a card). `gotoPage` re-renders through the
+  overlay router (`data-pgact`/`data-pg`). Cards per page adapt: picker 8 (4x2) or 4
+  (single row) and deck 18 (9x2) or 8 on phone-height windows
+  (`matchMedia("(max-height:470px)")`, matching the CSS tier). Page flips slide the
+  grid (`pg-in-l/r`, scaled by `--gs`); the per-card deal-in only plays on first open.
 - **Tooltips:** custom `TIP` controller; `?`-only hover on cards, tap-to-pin, touch
   suppression.
 

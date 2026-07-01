@@ -2623,19 +2623,67 @@
     render();
   }
 
+  /* ---------- paged card grids (no scrolling: arrows + dots + swipe) ---------- */
+  function pagerHTML(kind, page, pages) {
+    if (pages <= 1) return "";
+    let dots = "";
+    for (let i = 0; i < pages; i++) dots += `<button class="pg-dot${i === page ? " on" : ""}" data-pgact="${kind}" data-pg="${i}" aria-label="Page ${i + 1}"></button>`;
+    return `<div class="pager">
+        <button class="pg-arrow" data-pgact="${kind}" data-pg="${page - 1}" ${page <= 0 ? "disabled" : ""}>${icon("chevronL")}</button>
+        <div class="pg-dots">${dots}</div>
+        <button class="pg-arrow" data-pgact="${kind}" data-pg="${page + 1}" ${page >= pages - 1 ? "disabled" : ""}>${icon("chevronR")}</button>
+      </div>`;
+  }
+  function gotoPage(kind, n) {
+    if (isNaN(n)) return;
+    SFX.click();
+    if (kind === "pick" && STATE._pick) openScoutingPicker(STATE._pick.report, STATE._pick.onApply, n);
+    else if (kind === "deck") openDeckView(n);
+  }
+  // stagger the deal-in + let a horizontal swipe flip the page (the tap ending a swipe
+  // is swallowed so it can never pick a card by accident)
+  function wirePagedGrid(kind, page, pages) {
+    const grid = $("#overlay .pgrid");
+    if (!grid) return;
+    $$(".card", grid).forEach((el, i) => { el.style.animationDelay = (i * 24) + "ms"; });
+    let sx = null, sy = null;
+    grid.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; });
+    grid.addEventListener("pointerup", (e) => {
+      if (sx == null) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      sx = null;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        STATE._swipedAt = performance.now();
+        const to = dx < 0 ? page + 1 : page - 1;
+        if (to >= 0 && to < pages) gotoPage(kind, to);
+      }
+    });
+  }
+
   /* ---------- scouting picker ---------- */
-  function openScoutingPicker(report, onApply) {
+  function openScoutingPicker(report, onApply, page) {
     const run = STATE.run;
     // 'release' or 'copy' or 'edition' or 'bump' or 'switch'
-    const cards = run.deck.map((c, i) => `<div class="pick-card" data-pick="${i}">${cardHTML(c, null)}</div>`).join("");
+    // 4 x 2 normally; phone-height windows page a single row of 4 instead
+    const PER = (window.matchMedia && matchMedia("(max-height:470px)").matches) ? 4 : 8;
+    const pages = Math.max(1, Math.ceil(run.deck.length / PER));
+    const p = Math.max(0, Math.min(pages - 1, page || 0));
+    const prev = STATE._pickPage;
+    // page flips slide the grid; the first open deals the cards in instead
+    const dir = (page == null || prev == null || prev === p) ? "" : (p > prev ? " pg-in-r" : " pg-in-l");
+    STATE._pickPage = p;
+    const cards = run.deck.slice(p * PER, p * PER + PER).map((c, i) =>
+      `<div class="pick-card" data-pick="${p * PER + i}">${cardHTML(c, null)}</div>`).join("");
     overlay(`
       <div class="ov-card picker">
         <h2>${report.name}</h2>
         <div class="ov-sub">${report.text}</div>
-        <div class="picker-grid">${cards}</div>
+        <div class="picker-grid pgrid${dir}">${cards}</div>
+        ${pagerHTML("pick", p, pages)}
         <button class="btn btn-ghost" data-act="cancel-pick">Cancel</button>
       </div>`);
     STATE._pick = { report, onApply };
+    wirePagedGrid("pick", p, pages);
   }
   function applyScouting(cardIndex) {
     const run = STATE.run;
@@ -2805,24 +2853,22 @@
   function openDeckView(page) {
     const run = STATE.run;
     const sorted = run.deck.slice().sort((a, b) => (RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity]) || (b.power - a.power));
-    const PER = 18;                                  // 9 per row × 2 rows - fits with no scroll
+    // 9 x 2 normally; phone-height windows page a single row of 8 smaller cards
+    const PER = (window.matchMedia && matchMedia("(max-height:470px)").matches) ? 8 : 18;
     const pages = Math.max(1, Math.ceil(sorted.length / PER));
-    let p = (page == null) ? 0 : page;
-    p = Math.max(0, Math.min(pages - 1, p));
+    const p = Math.max(0, Math.min(pages - 1, page || 0));
+    const prev = STATE._deckPage;
+    const dir = (page == null || prev == null || prev === p) ? "" : (p > prev ? " pg-in-r" : " pg-in-l");
     STATE._deckPage = p;
     const cards = sorted.slice(p * PER, p * PER + PER).map((c) => `<div class="deck-card">${cardHTML(c, null)}</div>`).join("");
-    const nav = pages > 1 ? `<div class="deck-nav">
-        <button class="btn btn-ghost" data-act="deck-prev" ${p === 0 ? "disabled" : ""}>${icon("chevronL")} Prev</button>
-        <span class="deck-page">Page ${p + 1} / ${pages}</span>
-        <button class="btn btn-ghost" data-act="deck-next" ${p >= pages - 1 ? "disabled" : ""}>Next ${icon("chevronR")}</button>
-      </div>` : "";
     overlay(`
       <div class="ov-card deck-view">
         <h2>Your Deck (${run.deck.length})</h2>
-        <div class="deck-grid">${cards}</div>
-        ${nav}
+        <div class="deck-grid pgrid${dir}">${cards}</div>
+        ${pagerHTML("deck", p, pages)}
         <button class="btn btn-gold" data-act="close-ov">Close</button>
       </div>`);
+    wirePagedGrid("deck", p, pages);
   }
   function openDugoutView() {
     const run = STATE.run;
@@ -2999,8 +3045,6 @@
       case "skip-frame": skipFrame(); break;
       case "cancel-atbat": cancelAtBat(); break;
       case "open-deck": openDeckView(0); break;
-      case "deck-prev": openDeckView((STATE._deckPage || 0) - 1); break;
-      case "deck-next": openDeckView((STATE._deckPage || 0) + 1); break;
       case "open-dugout": openDugoutView(); break;
       case "open-salami": openSalamiView(); break;
       case "charm-confirm": { const ctx = STATE._charm; if (ctx && applyImmediateCharm(ctx.charm)) { closeOverlay(); consumeCharm(ctx.index); saveGame(); } STATE._charm = null; break; }
@@ -3056,7 +3100,13 @@
       const mrsellEl = e.target.closest("[data-mrsell]");
       const pouchSellEl = e.target.closest("[data-pouchsell]");
       const speedEl = e.target.closest("[data-speed]");
-      if (pick) { applyScouting(parseInt(pick.getAttribute("data-pick"), 10)); return; }
+      const pgEl = e.target.closest("[data-pgact]");
+      if (pgEl && !pgEl.disabled) { gotoPage(pgEl.getAttribute("data-pgact"), parseInt(pgEl.getAttribute("data-pg"), 10)); return; }
+      // the tap that ends a page swipe must never count as a card pick
+      if (pick) {
+        if (performance.now() - (STATE._swipedAt || 0) < 250) return;
+        applyScouting(parseInt(pick.getAttribute("data-pick"), 10)); return;
+      }
       if (pouchSellEl) { sellCharm(parseInt(pouchSellEl.getAttribute("data-pouchsell"), 10)); openSalamiView(); return; }
       if (mrsellEl) { makeRoomSell(mrsellEl.getAttribute("data-mrsell")); return; }
       if (sellEl) { sellCoach(parseInt(sellEl.getAttribute("data-sell"), 10)); return; }
