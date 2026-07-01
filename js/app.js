@@ -1812,6 +1812,7 @@
      WIN OVERLAY / GAME OVER / VICTORY
      ============================================================ */
   function showWinOverlay(g, breakdown, total) {
+    g._cashout = { breakdown, total };   // kept so dismissOverlay can re-show this after the menu replaces it
     const rows = breakdown.map((b) => `<div class="brk-row brk-hidden"><span>${b.label}</span><b>+$${b.amt}</b></div>`).join("");
     const startPay = STATE.run.payroll - total;   // onWin already credited the total; tick up from before
     overlay(`
@@ -1822,13 +1823,14 @@
         <div class="brk">${rows}<div class="brk-row brk-total brk-hidden"><span>Total earned</span><b>+$${total}</b></div></div>
         <div class="ov-pay">Payroll: <b>$<span id="wo-pay">${startPay}</span></b></div>
         <button class="btn btn-big btn-gold brk-hidden" data-act="to-shop">Visit the Shop ${icon("chevronR")}</button>
-      </div>`);
+      </div>`, true);   // locked: backdrop/Escape would strand the ended frame (a tap still fast-forwards the reveal)
     revealWinRows(breakdown, total, startPay);
   }
 
   // Balatro cash-out: the payout lines count out one by one while payroll ticks up.
   // A tap anywhere fast-forwards; if the overlay closes mid-reveal the loop stops quietly.
   async function revealWinRows(breakdown, total, startPay) {
+    const gen = (STATE._revealGen = (STATE._revealGen || 0) + 1);   // a re-shown overlay starts a fresh reveal; stale loops stop
     const ov = $("#overlay");
     let skip = false;
     const onSkip = () => { skip = true; };
@@ -1838,6 +1840,7 @@
       const count = $$("#overlay .win-ov .brk-row").length;
       let pay = startPay;
       for (let i = 0; i < count; i++) {
+        if (STATE._revealGen !== gen) return;
         const row = $$("#overlay .win-ov .brk-row")[i];
         if (!row) return;   // overlay is gone
         row.classList.remove("brk-hidden");
@@ -1847,6 +1850,7 @@
         tickNumber($("#wo-pay"), pay, 280);
         if (!skip) await sleep(300);
       }
+      if (STATE._revealGen !== gen) return;
       const btn = $('#overlay .win-ov [data-act="to-shop"]');
       if (btn) { btn.classList.remove("brk-hidden"); btn.classList.add("brk-in"); }
       tickNumber($("#wo-pay"), startPay + total, 200);
@@ -2227,6 +2231,20 @@
   function closeOverlay() {
     const ov = $("#overlay");
     if (ov) { ov.className = "overlay"; ov.innerHTML = ""; }
+  }
+  // "Close back to the underlying screen" for the menu, its subviews, backdrop taps and
+  // Escape. An ENDED frame's game screen has no forward button - the win / victory /
+  // game-over overlay IS the way onward - so if the menu replaced that overlay, closing
+  // must bring it back instead of stranding the player on a dead screen.
+  function dismissOverlay() {
+    const g = STATE.game, run = STATE.run;
+    if (STATE.screen === "game" && run && g && g.ended) {
+      if (g.result !== "win") return showGameOver(g);
+      if (run.wonWS && run.gameIndex === ROUNDS.length * GAMES_PER_ROUND) return showVictory();
+      if (g._cashout) return showWinOverlay(g, g._cashout.breakdown, g._cashout.total);
+      closeOverlay(); enterShop(); return;   // no stored cash-out (should not happen): send the run onward
+    }
+    closeOverlay();
   }
 
   /* ============================================================
@@ -2994,7 +3012,7 @@
       case "extra-innings": closeOverlay(); saveRun(); enterShop(); break;   // continue a won run into Extra Innings
       // menu system
       case "open-menu": showMenu(); break;
-      case "menu-resume": closeOverlay(); break;
+      case "menu-resume": dismissOverlay(); break;
       case "back-to-menu": showMenu(); break;
       case "open-stats": showStats(); break;
       case "open-profile": showProfile(); break;
@@ -3011,7 +3029,7 @@
       case "confirm-start": case "confirm-newrun": { const id = (STATE._pendingFranchise) || FRANCHISES[STATE._pickIndex || 0].id; STATE._pendingFranchise = null; doStartRun(id); break; }
       case "retry-run": closeOverlay(); STATE.run = null; STATE.game = null; STATE.screen = "title"; render(); break;
       case "to-title": closeOverlay(); STATE.screen = "title"; render(); break;
-      case "close-ov": closeOverlay(); break;
+      case "close-ov": dismissOverlay(); break;
     }
   }
 
@@ -3030,7 +3048,7 @@
       if (TIP) TIP.hide();
       // tap the dimmed backdrop to dismiss simple overlays (not pickers / packs / locked screens)
       if ((e.target.id === "overlay" || e.target.classList.contains("overlay-inner")) && !STATE._pick && !STATE._pack && !STATE._charm && !ov.classList.contains("lock")) {
-        closeOverlay(); return;
+        dismissOverlay(); return;
       }
       const act = e.target.closest("[data-act]");
       const pick = e.target.closest("[data-pick]");
@@ -3103,7 +3121,7 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !STATE._pick && !STATE._pack) {
       const ov = document.getElementById("overlay");
-      if (ov && ov.classList.contains("show") && !ov.classList.contains("lock")) { closeOverlay(); return; }
+      if (ov && ov.classList.contains("show") && !ov.classList.contains("lock")) { dismissOverlay(); return; }
     }
     if (STATE.screen !== "game" || STATE.busy) return;
     if (STATE.atBat && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); commitAtBat("swing"); return; }
