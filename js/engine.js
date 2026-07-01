@@ -318,33 +318,42 @@
 
     /* ---------- bag value ---------- */
     let bag = 0;
+    // Cascade log: every scoring contribution, in order, with the RUNNING totals.
+    // Pure data for the app's sequential presentation; no math or RNG happens here.
+    ev.steps = [];
+    const noteBag = (src, id, d) => { if (d) ev.steps.push({ t: "bag", src, id: id || null, d, bag }); };
+    const noteRally = (src, id, d, rally) => { if (d) ev.steps.push({ t: "rally", src, id: id || null, d, rally }); };
     if (finalOutcome === "BB" || finalOutcome === "HBP") bag = C.bag.BB;
     else if (HITS[finalOutcome]) bag = C.bag[finalOutcome];
+    noteBag("base", null, bag);
     bag += runsOnPlay; // +1 per run
+    noteBag("runs", null, runsOnPlay);
 
     // sabermetrician: walks count as singles
     if ((finalOutcome === "BB" || finalOutcome === "HBP") && hasCoach(run, "sabermetrician")) {
+      const wasBag = bag;
       bag = C.bag["1B"] + runsOnPlay;
+      noteBag("coach", "sabermetrician", bag - wasBag);
       ev.triggers.push("coach:sabermetrician");
     }
 
     // passive bag bonuses (only on offense-producing outcomes)
     if (bag > 0) {
-      eachCoach(run, "launchAngle", () => { if (finalOutcome === "HR") { bag += 2; ev.triggers.push("coach:launch_angle"); } });
-      eachCoach(run, "contactInstructor", () => { if (finalOutcome === "1B") { bag += 1; ev.triggers.push("coach:contact_instructor"); } });
-      eachCoach(run, "gapCoach", () => { if (finalOutcome === "2B" || finalOutcome === "3B") { bag += 2; ev.triggers.push("coach:gap_coach"); } });
-      eachCoach(run, "bashBrothers", () => { if (isHit && tagCount(run, "slugger") >= 4) { bag += 1; ev.triggers.push("coach:bash_brothers"); } });
-      eachCoach(run, "rispSpecialist", () => { if (rispBefore && runsOnPlay > 0) { bag += runsOnPlay; ev.triggers.push("coach:risp_specialist"); } });
+      eachCoach(run, "launchAngle", () => { if (finalOutcome === "HR") { bag += 2; noteBag("coach", "launch_angle", 2); ev.triggers.push("coach:launch_angle"); } });
+      eachCoach(run, "contactInstructor", () => { if (finalOutcome === "1B") { bag += 1; noteBag("coach", "contact_instructor", 1); ev.triggers.push("coach:contact_instructor"); } });
+      eachCoach(run, "gapCoach", () => { if (finalOutcome === "2B" || finalOutcome === "3B") { bag += 2; noteBag("coach", "gap_coach", 2); ev.triggers.push("coach:gap_coach"); } });
+      eachCoach(run, "bashBrothers", () => { if (isHit && tagCount(run, "slugger") >= 4) { bag += 1; noteBag("coach", "bash_brothers", 1); ev.triggers.push("coach:bash_brothers"); } });
+      eachCoach(run, "rispSpecialist", () => { if (rispBefore && runsOnPlay > 0) { bag += runsOnPlay; noteBag("coach", "risp_specialist", runsOnPlay); ev.triggers.push("coach:risp_specialist"); } });
       // analytics
       if (run.analytics) {
-        if (finalOutcome === "HR" && run.analytics.power) bag += run.analytics.power * 1;
-        if (finalOutcome === "2B" && run.analytics.power) bag += run.analytics.power * 0.5;
-        if (finalOutcome === "1B" && run.analytics.contact) bag += run.analytics.contact * 0.5;
+        if (finalOutcome === "HR" && run.analytics.power) { bag += run.analytics.power * 1; noteBag("analytics", "power", run.analytics.power * 1); }
+        if (finalOutcome === "2B" && run.analytics.power) { bag += run.analytics.power * 0.5; noteBag("analytics", "power", run.analytics.power * 0.5); }
+        if (finalOutcome === "1B" && run.analytics.contact) { bag += run.analytics.contact * 0.5; noteBag("analytics", "contact", run.analytics.contact * 0.5); }
       }
       // Ace Killer trait: +1 bag vs boss pitchers
-      if (batter.trait === "acekiller" && pitcher.isBoss) bag += 1;
+      if (batter.trait === "acekiller" && pitcher.isBoss) { bag += 1; noteBag("trait", "acekiller", 1); }
       // deluxe edition: extra Bag value (All-Star / Hall of Fame / Legendary)
-      if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].bag) { bag += C.editionFx[batter.deluxe].bag; ev.triggers.push("deluxe:" + batter.deluxe); }
+      if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].bag) { bag += C.editionFx[batter.deluxe].bag; noteBag("edition", batter.deluxe, C.editionFx[batter.deluxe].bag); ev.triggers.push("deluxe:" + batter.deluxe); }
       // generic coaches: data-driven Bag bonuses (`gen.at === "bag"`)
       for (let _gi = 0; _gi < run.dugout.length; _gi++) {
         const _c = run.dugout[_gi], gg = _c.gen;
@@ -353,25 +362,26 @@
         if (gg.out) ok = gg.out === "hit" ? isHit : gg.out === "xbh" ? (finalOutcome === "2B" || finalOutcome === "3B" || finalOutcome === "HR") : gg.out === "walk" ? (finalOutcome === "BB" || finalOutcome === "HBP") : finalOutcome === gg.out;
         else if (gg.tag) ok = isHit && batter.tags.indexOf(gg.tag) >= 0;
         else if (gg.deck) ok = isHit && tagCount(run, gg.deck) >= (gg.min || 1);
-        if (ok) { bag += gg.amt; ev.triggers.push("coach:" + _c.id); }
+        if (ok) { bag += gg.amt; noteBag("coach", _c.id, gg.amt); ev.triggers.push("coach:" + _c.id); }
       }
     }
 
     /* ---------- event rally bonus (applies to scoring THIS event only) ---------- */
     let eventRallyBonus = 0;
     if (isSafe) {
-      eachCoach(run, "twoOutMagic", () => { if (outsThisInning === 2) { eventRallyBonus += 1.0; ev.triggers.push("coach:two_out_magic"); } });
-      eachCoach(run, "prospectPipeline", (c) => { if (c.state.bonus) eventRallyBonus += c.state.bonus; });
-      eachCoach(run, "hotStreak", (c) => { if (c.state.bonus) eventRallyBonus += c.state.bonus; });
-      eachCoach(run, "veteranPresence", (c) => { if (c.state.bonus) eventRallyBonus += c.state.bonus; });
-      eachCoach(run, "rallyCap", () => { if ((consecBefore + 1) % 3 === 0) { eventRallyBonus += 1.5; ev.triggers.push("coach:rally_cap"); } });
-      if (batter.edition === "clutch" && rispBefore) { eventRallyBonus += C.edition.clutchRallyBonus; ev.triggers.push("edition:clutch"); }
-      if (batter.edition === "veteran") eventRallyBonus += C.edition.veteranRallyBonus;
+      noteRally("base", null, game.rally, game.rally);
+      eachCoach(run, "twoOutMagic", () => { if (outsThisInning === 2) { eventRallyBonus += 1.0; noteRally("coach", "two_out_magic", 1.0, game.rally + eventRallyBonus); ev.triggers.push("coach:two_out_magic"); } });
+      eachCoach(run, "prospectPipeline", (c) => { if (c.state.bonus) { eventRallyBonus += c.state.bonus; noteRally("coach", c.id, c.state.bonus, game.rally + eventRallyBonus); } });
+      eachCoach(run, "hotStreak", (c) => { if (c.state.bonus) { eventRallyBonus += c.state.bonus; noteRally("coach", c.id, c.state.bonus, game.rally + eventRallyBonus); } });
+      eachCoach(run, "veteranPresence", (c) => { if (c.state.bonus) { eventRallyBonus += c.state.bonus; noteRally("coach", c.id, c.state.bonus, game.rally + eventRallyBonus); } });
+      eachCoach(run, "rallyCap", () => { if ((consecBefore + 1) % 3 === 0) { eventRallyBonus += 1.5; noteRally("coach", "rally_cap", 1.5, game.rally + eventRallyBonus); ev.triggers.push("coach:rally_cap"); } });
+      if (batter.edition === "clutch" && rispBefore) { eventRallyBonus += C.edition.clutchRallyBonus; noteRally("edition", "clutch", C.edition.clutchRallyBonus, game.rally + eventRallyBonus); ev.triggers.push("edition:clutch"); }
+      if (batter.edition === "veteran") { eventRallyBonus += C.edition.veteranRallyBonus; noteRally("edition", "veteran", C.edition.veteranRallyBonus, game.rally + eventRallyBonus); }
       // signature traits
-      if (batter.trait === "clutch" && (outsThisInning === 2 || rispBefore)) { eventRallyBonus += 1.0; ev.triggers.push("trait:clutch"); }
-      if (batter.trait === "acekiller" && pitcher.isBoss) { eventRallyBonus += 1.0; ev.triggers.push("trait:acekiller"); }
+      if (batter.trait === "clutch" && (outsThisInning === 2 || rispBefore)) { eventRallyBonus += 1.0; noteRally("trait", "clutch", 1.0, game.rally + eventRallyBonus); ev.triggers.push("trait:clutch"); }
+      if (batter.trait === "acekiller" && pitcher.isBoss) { eventRallyBonus += 1.0; noteRally("trait", "acekiller", 1.0, game.rally + eventRallyBonus); ev.triggers.push("trait:acekiller"); }
       // deluxe edition: extra Rally (Silver Slugger / Hall of Fame / Legendary)
-      if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].rally) eventRallyBonus += C.editionFx[batter.deluxe].rally;
+      if (batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].rally) { eventRallyBonus += C.editionFx[batter.deluxe].rally; noteRally("edition", batter.deluxe, C.editionFx[batter.deluxe].rally, game.rally + eventRallyBonus); }
       // generic coaches: data-driven event Rally bonuses (`gen.at === "rally"`)
       for (let _gi = 0; _gi < run.dugout.length; _gi++) {
         const _c = run.dugout[_gi], gg = _c.gen;
@@ -381,7 +391,7 @@
         else if (gg.tag) ok = batter.tags.indexOf(gg.tag) >= 0;
         else if (gg.cond) ok = gg.cond === "risp" ? rispBefore : gg.cond === "twoout" ? outsThisInning === 2 : gg.cond === "leadoff" ? (game.inningPA === 0) : gg.cond === "firston" ? runnerOnFirst : false;
         else ok = true; // flat aura
-        if (ok) { eventRallyBonus += gg.amt; ev.triggers.push("coach:" + _c.id); }
+        if (ok) { eventRallyBonus += gg.amt; noteRally("coach", _c.id, gg.amt, game.rally + eventRallyBonus); ev.triggers.push("coach:" + _c.id); }
       }
     }
 
@@ -392,7 +402,10 @@
     /* ---------- score the event ---------- */
     let rallyUsed = game.rally + eventRallyBonus;
     // Gold Glove edition: this scoring play is worth a Rally multiple
-    if (isSafe && batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].mult) rallyUsed *= C.editionFx[batter.deluxe].mult;
+    if (isSafe && batter.deluxe && C.editionFx[batter.deluxe] && C.editionFx[batter.deluxe].mult) {
+      rallyUsed *= C.editionFx[batter.deluxe].mult;
+      ev.steps.push({ t: "mult", src: "edition", id: batter.deluxe, d: C.editionFx[batter.deluxe].mult, rally: rallyUsed });
+    }
     let scoreGained = 0;
     if (bag > 0 && isSafe) {
       scoreGained = Math.round(bag * rallyUsed);

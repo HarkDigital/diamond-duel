@@ -106,9 +106,24 @@
       const f = 520 + Math.min(2400, (level || 1) * 120);
       tone({ type: "triangle", freq: f, dur: 0.07, gain: 0.12 });
     },
+    tick(step) { // scoring cascade blip: pitch climbs with each contribution
+      const f = Math.min(2100, 560 * Math.pow(1.09, step || 0));
+      tone({ type: "triangle", freq: f, dur: 0.05, gain: 0.13 });
+      tone({ type: "square", freq: f * 2, dur: 0.03, gain: 0.05 });
+    },
+    mult() { tone({ type: "sawtooth", freq: 330, freqTo: 660, dur: 0.14, gain: 0.13 }); },
+    slam() { // the Bag x Rally product lands
+      noise({ freq: 900, q: 0.6, dur: 0.18, gain: 0.22, filter: "lowpass" });
+      tone({ type: "square", freq: 196, freqTo: 98, dur: 0.2, gain: 0.2 });
+      tone({ type: "triangle", freq: 784, dur: 0.12, gain: 0.1, delay: 0.03 });
+    },
     coach() { tone({ type: "sine", freq: 740, freqTo: 1100, dur: 0.12, gain: 0.12 }); tone({ type: "sine", freq: 988, dur: 0.1, gain: 0.08, delay: 0.05 }); },
     steal() { noise({ freq: 3000, q: 1.5, dur: 0.12, gain: 0.18, filter: "highpass" }); },
-    coin() { tone({ type: "square", freq: 880, dur: 0.06, gain: 0.1 }); tone({ type: "square", freq: 1320, dur: 0.08, gain: 0.1, delay: 0.05 }); },
+    coin(step) { // optional step raises the pitch (sequential cash-out)
+      const m = Math.pow(1.06, step || 0);
+      tone({ type: "square", freq: 880 * m, dur: 0.06, gain: 0.1 });
+      tone({ type: "square", freq: 1320 * m, dur: 0.08, gain: 0.1, delay: 0.05 });
+    },
     win() {
       [523, 659, 784, 1047].forEach((f, i) => tone({ type: "triangle", freq: f, dur: 0.3, gain: 0.18, delay: i * 0.12 }));
     },

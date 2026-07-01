@@ -2,6 +2,12 @@
    Diamond Duel - styles
    ============================================================ */
 :root{
+  /* iPhone island / notch / home-indicator insets. ALL safe-area use flows through
+     these vars (never env() directly) so the ?sa= debug override works everywhere. */
+  --sa-t: env(safe-area-inset-top, 0px);
+  --sa-r: env(safe-area-inset-right, 0px);
+  --sa-b: env(safe-area-inset-bottom, 0px);
+  --sa-l: env(safe-area-inset-left, 0px);
   --bg0:#0a0f1c; --bg1:#0d1828; --bg2:#102338;
   --ink:#eaf1fb; --ink-dim:#9fb2cc; --ink-faint:#64748b;
   --gold:#ffcb47; --gold-2:#f5a623; --gold-deep:#b9821f;
@@ -492,7 +498,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:rgba(25
 .overlay{position:fixed; inset:0; background:rgba(6,28,15,.84); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:50; padding:20px}
 .overlay.show{display:flex; animation:ovIn .25s ease}
 @keyframes ovIn{from{opacity:0}to{opacity:1}}
-.overlay-inner{max-width:92vw; max-height:90vh; overflow:auto}
+.overlay-inner{max-width:92vw; max-height:90vh; overflow:auto; padding-bottom:var(--sa-b)}
 .ov-card{background:linear-gradient(180deg,var(--panel),var(--panel-2)); border:1px solid var(--line); border-radius:18px; padding:26px 30px; text-align:center; box-shadow:var(--shadow); min-width:320px; max-width:760px; animation:ovPop .3s cubic-bezier(.2,1.3,.3,1)}
 @keyframes ovPop{from{transform:scale(.9); opacity:0}to{transform:scale(1)}}
 .ov-card h2{font-size:1.9rem; font-weight:900; letter-spacing:1px}
@@ -592,7 +598,7 @@ body.is-charmdrag, .is-charmdrag *{ cursor:grabbing !important; }
 .btn-sell{background:linear-gradient(180deg,#7a3030,#5f1d1d); border-color:#4a0f0f; flex:none}
 
 /* toast */
-#toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(30px); background:#1b2c46; border:1px solid var(--line); color:var(--ink); padding:11px 18px; border-radius:12px; opacity:0; pointer-events:none; transition:all .3s; z-index:80; box-shadow:var(--shadow); font-weight:600}
+#toast{position:fixed; bottom:calc(24px + var(--sa-b)); left:50%; transform:translateX(-50%) translateY(30px); background:#1b2c46; border:1px solid var(--line); color:var(--ink); padding:11px 18px; border-radius:12px; opacity:0; pointer-events:none; transition:all .3s; z-index:80; box-shadow:var(--shadow); font-weight:600}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
 /* Menu button - icon-only square, flush in the very top-right corner */
@@ -687,7 +693,7 @@ body{ position:fixed; inset:0; margin:0; }
 .screen{ width:100%; height:100%; max-width:none; margin:0; padding:24px 34px; overflow:hidden; display:flex; flex-direction:column; }
 
 /* Menu button stays viewport-fixed in the TOP-RIGHT, clear of notches */
-#menu-btn{ z-index:45; top:calc(8px + env(safe-area-inset-top,0px)); right:calc(8px + env(safe-area-inset-right,0px)); bottom:auto; left:auto; }
+#menu-btn{ z-index:45; top:calc(8px + var(--sa-t)); right:calc(8px + var(--sa-r)); bottom:auto; left:auto; }
 
 /* ---------------- TITLE ---------------- */
 .title-screen{ padding:30px 48px 56px; justify-content:center; gap:4px; }
@@ -755,7 +761,8 @@ body{ position:fixed; inset:0; margin:0; }
   display:none; position:fixed; inset:0; z-index:300;
   background:radial-gradient(circle at 50% 38%, #16314a 0%, transparent 62%), linear-gradient(180deg,var(--bg1),var(--bg0));
   color:var(--ink); flex-direction:column; align-items:center; justify-content:center;
-  text-align:center; padding:8vw; gap:18px;
+  text-align:center; gap:18px;
+  padding:calc(8vw + var(--sa-t)) calc(8vw + var(--sa-r)) calc(8vw + var(--sa-b)) calc(8vw + var(--sa-l));
 }
 body.portrait #rotate-hint{ display:flex; }
 body.portrait #stage,
@@ -1394,7 +1401,7 @@ body.portrait #toast{ display:none !important; }
 .ach-cell.locked{ opacity:.55; } .ach-cell.locked .ach-ic{ color:var(--ink-faint); } .ach-cell.locked .ach-nm{ color:var(--ink-faint); }
 
 /* ---- achievement unlock banner (slides in top-right) ---- */
-#ach-banner{ position:fixed; top:14px; right:14px; z-index:200; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+#ach-banner{ position:fixed; top:calc(14px + var(--sa-t)); right:calc(14px + var(--sa-r)); z-index:200; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
 .ach-pop{ display:flex; align-items:center; gap:12px; min-width:240px; max-width:330px;
   background:linear-gradient(180deg,#1a2c46,#11203a); border:1px solid var(--gold-2); border-radius:13px; padding:11px 15px;
   box-shadow:0 14px 36px rgba(0,0,0,.6); animation:achIn .4s cubic-bezier(.2,1.4,.3,1); }
@@ -2024,3 +2031,43 @@ body.portrait #toast{ display:none !important; }
 .splash-logo-svg svg{ width:min(620px, 84vw); animation:splashLogoIn .7s .1s cubic-bezier(.2,1.3,.3,1) both; }
 @keyframes splashLogoIn{ from{ transform:translateY(26px) scale(.92); opacity:0 } to{ transform:none; opacity:1 } }
 .title-hero .logo-svg{ margin-bottom:2px; }
+
+/* ============================================================
+   Sequential scoring cascade (Balatro-style) + cash-out
+   ============================================================ */
+/* live Bag x Rally tally inside the field readout */
+.ro-tally{ display:inline-flex; align-items:baseline; gap:7px; font-variant-numeric:tabular-nums; }
+.ro-tally .ro-cap{ font-size:.62rem; letter-spacing:1.6px; color:var(--ink-dim); font-weight:800; }
+.ro-tally .ro-bag{ color:var(--gold); font-size:1.55rem; font-weight:900; }
+.ro-tally .ro-rally{ color:#ff8a3c; font-size:1.55rem; font-weight:900; }
+.ro-tally .ro-x{ color:var(--ink-faint); font-weight:900; font-size:1.1rem; }
+.ro-tally .ro-eq{ margin-left:2px; font-weight:900; }
+.ro-tally .ro-eq b{ color:var(--good); font-size:1.55rem; }
+.num-pop{ display:inline-block; animation:numPop calc(.22s * var(--gs,1)) cubic-bezier(.2,1.6,.3,1); }
+@keyframes numPop{ 0%{ transform:scale(1) } 40%{ transform:scale(1.38) } 100%{ transform:scale(1) } }
+.mult-pop{ display:inline-block; color:var(--gold) !important; text-shadow:0 0 14px rgba(255,203,71,.65);
+  animation:multPop calc(.34s * var(--gs,1)) cubic-bezier(.2,1.6,.3,1); }
+@keyframes multPop{ 0%{ transform:scale(1) rotate(0deg) } 40%{ transform:scale(1.55) rotate(-4deg) } 100%{ transform:scale(1) rotate(0deg) } }
+.ro-card.ro-slam{ animation:roSlam calc(.42s * var(--gs,1)) cubic-bezier(.2,1.5,.3,1);
+  box-shadow:0 0 0 2px rgba(255,203,71,.55), 0 14px 44px rgba(0,0,0,.6), 0 0 34px rgba(255,203,71,.28); }
+@keyframes roSlam{ 0%{ transform:scale(1) } 35%{ transform:scale(1.12) } 100%{ transform:scale(1) } }
+/* floating "+N" step popups (positioned in stage coordinates by floatPop) */
+.step-pop{ position:absolute; transform:translate(-50%,-100%); font-weight:900; font-size:21px;
+  pointer-events:none; z-index:70; white-space:nowrap;
+  text-shadow:0 2px 0 rgba(0,0,0,.55), 0 0 12px rgba(0,0,0,.4);
+  animation:stepPop calc(.8s * var(--gs,1)) ease forwards; }
+.step-pop.sp-bag{ color:var(--gold); }
+.step-pop.sp-rally{ color:#ff8a3c; }
+@keyframes stepPop{
+  0%{ opacity:0; transform:translate(-50%,-88%) scale(.7) }
+  18%{ opacity:1; transform:translate(-50%,-104%) scale(1.12) }
+  30%{ transform:translate(-50%,-108%) scale(1) }
+  100%{ opacity:0; transform:translate(-50%,-165%) scale(1) } }
+/* sequential cash-out rows (win overlay) */
+.brk-hidden{ opacity:0; transform:translateY(8px); }
+.brk-in{ animation:brkIn calc(.3s * var(--gs,1)) ease forwards; }
+@keyframes brkIn{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:translateY(0) } }
+.brk-total.brk-in{ animation:brkTotal calc(.44s * var(--gs,1)) cubic-bezier(.2,1.5,.3,1) forwards; }
+@keyframes brkTotal{ 0%{ opacity:0; transform:translateY(8px) scale(.94) } 55%{ opacity:1; transform:translateY(0) scale(1.06) } 100%{ opacity:1; transform:translateY(0) scale(1) } }
+/* splash keeps its content off the island (cosmetic; content is centered anyway) */
+#splash{ padding:var(--sa-t) var(--sa-r) var(--sa-b) var(--sa-l); }

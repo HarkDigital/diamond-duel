@@ -55,7 +55,12 @@ straight **steal of home**.
 - **57 achievements**, a career profile, and a Balatro-style Collection compendium that
   fills in as you discover coaches, Salami Cards, vouchers, and tags.
 - **Mid-inning save/resume**: refresh whenever; the game picks up exactly where you were.
+- **Sequential scoring**: every hit counts up Balatro-style, one contribution at a time.
+  The Bag x Rally tally fills as each coach fires, then the product slams into your score;
+  frame wins cash out line by line. Tap anywhere to fast-forward.
 - **Game speed setting** (1x to 4x) that scales every animation and pause.
+- **iPhone friendly**: the playfield tucks inside the Dynamic Island and home indicator
+  safe areas in landscape.
 
 ## Project layout
 

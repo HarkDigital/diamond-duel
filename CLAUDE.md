@@ -21,7 +21,8 @@ GitHub Pages.
   Use this for count checks, art smoke tests, and engine sims before opening a browser.
 - **Debug API (`window.DD`):** `DD.autoPlay(n)` (crude AI plays the current frame),
   `DD.play(i, approach)`, `DD.win()` (score = target), `DD.give(n)` (payroll),
-  `DD.state()`, `DD.startFranchise(id)`, `DD.render()`. This is how balance gets
+  `DD.state()`, `DD.startFranchise(id)`, `DD.render()`, `DD.instant(bool)` (skip the
+  scoring cascade; autoPlay sets it automatically). This is how balance gets
   Monte-Carlo tested in the browser; it ships in production deliberately.
 
 ### Cache-busting (IMPORTANT)
@@ -63,7 +64,7 @@ mechanic must sweep:
 | `js/icons.js` | inline-SVG icon set; `icon(name[, extraClass])` |
 | `js/art.js` | **procedural artwork**: `portraitSVG(card)`, `coachPortraitSVG`, `pitcherPortraitSVG`, `packArtSVG(kind)`, `crestSVG(franchise)`; all deterministic from item ids |
 | `js/data.js` | all content + tuning: `CONFIG` (incl. `scoreScale`, `shop.packWeights`), 15 `FRANCHISES`, 60 `PLAYERS`, 100 `COACHES`, 12 `CHARMS` (Salami Cards), 32 `UPGRADES` (vouchers), 24 `TAGS`, 57 `ACHIEVEMENTS`, `TRAITS`, `ROUNDS`, 5 `STAKES`, 5 `EDITIONS`, 15 `PACKS`, `ACTIONS` |
-| `js/engine.js` | pure rules: `Engine.resolveAtBat`, `attemptSteal` (incl. steal of home), rally math, edition hooks, three generic coach dispatchers (Bag/Rally/Econ) reading each coach's `gen` descriptor. Headless: no DOM/SFX calls |
+| `js/engine.js` | pure rules: `Engine.resolveAtBat`, `attemptSteal` (incl. steal of home), rally math, edition hooks, three generic coach dispatchers (Bag/Rally/Econ) reading each coach's `gen` descriptor. `resolveAtBat` also records `ev.steps`, an ordered pure-data log of every scoring contribution (t: bag/rally/mult, src, id, delta + running totals) that the app's cascade replays; recording never changes the math. Headless: no DOM/SFX calls |
 | `js/app.js` | everything else: state, rendering, screens, shop, drag, save/load, overlays |
 | `css/styles.css` | all styles; responsive via a scale-to-fit stage + media queries |
 | `README.md` | public repo description; keep in sync with the game (see checklist above) |
@@ -72,7 +73,13 @@ mechanic must sweep:
 ## Layout model
 
 `#stage` is a fixed design surface scaled to fit the viewport via `transform: scale()`
-(`stageScale()` reads the matrix). Every in-run screen (game/map/shop) shares the
+(`stageScale()` reads the matrix). `fitStage()` fits the stage inside the iPhone **safe
+area**: `env(safe-area-inset-*)` flows through the `--sa-t/r/b/l` custom props (`:root`
+in styles.css), which `safeInsets()` reads back in JS, so the stage, toast, achievement
+banner, tooltips, and menu button all clear the Dynamic Island and home indicator (the
+full-bleed body backdrop fills the trimmed margins). Test on desktop with the `?sa=59`
+(all sides) or `?sa=t,r,b,l` URL override, set inline before the first fit. Every in-run
+screen (game/map/shop) shares the
 **persistent run frame**: `runSideHTML(ctx)` renders the left sidebar (matchup/boss rule,
 SCORE AT LEAST target, round score + progress, outs pips, inning, payroll, franchise +
 stake, Deck/Menu buttons; the game's live ids `#sb-*`/`#out-pips`/`#res-inning`/
@@ -191,8 +198,20 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
 - **Game speed:** `META.speed` (1..4, default 4 = fastest). `speedScale()` scales every
   `sleep()`/`pace()` timeout and the `--gs` CSS var on `#stage` (`applySpeedVar()`)
   scales gameplay animation durations. Interaction feedback is excluded.
+- **Sequential scoring cascade (Balatro-style):** safe scoring plays replay `ev.steps`
+  one at a time in `playScoreCascade`: the readout becomes a live BAG x RALLY tally
+  (`tallyMarkup`/`tallyBag`/`tallyRally`/`tallySlam`), each step flashes its source
+  (coach chip via `flashCoachById`, else the tally slot), pops a `floatPop` "+N", and
+  plays `SFX.tick(i)` (rising pitch; `SFX.mult`/`SFX.slam` for Gold Glove and the slam),
+  then the product ticks into the round score. Any tap fast-forwards (`CASCADE.skip`,
+  capture-phase pointerdown; every pause is `sleepSkip`). Outs, zero-score plays, and
+  `STATE.instant` (set by `DD.instant`/autoPlay) keep the classic all-at-once fast path.
+  Frame wins cash out sequentially too: `revealWinRows` reveals the breakdown rows one
+  by one with `SFX.coin(i)` while payroll ticks up; tap skips.
 - **Juice:** `stampOutcome`, tiered `screenShake`, `ballFlight`, rally heat meter,
-  `flashCoachById`, `tickNumber`, `confettiBurst`. All scale with `--gs`.
+  `flashCoachById`, `tickNumber` (rAF tween with a generation guard + a setTimeout
+  fallback so throttled tabs still land the final value), `confettiBurst`. All scale
+  with `--gs`.
 - **Drag:** card-to-bat, salami-to-target, pack-to-slot via document-level pointer
   handlers (`#bat-zone`, `.charm-ghost`/`.charm-zone`, `.pack-ghost`/`#pack-slot`).
 - **Seeds visibility:** hidden during a run; revealed on run-end screens, copyable /

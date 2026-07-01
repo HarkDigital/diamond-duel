@@ -13,6 +13,19 @@
   function speedScale() { return 4 / ((typeof META !== "undefined" && META && META.speed) ? META.speed : 4); }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms * speedScale()));
   const pace = (ms) => Math.round(ms * speedScale());   // scale a UI timeout to match the speed setting
+  // A scoring cascade is skippable: any tap while it plays fast-forwards the remaining
+  // steps. sleepSkip() is sleep() that ends early once the skip flag is raised.
+  let CASCADE = null; // { skip: false } while a cascade is playing
+  const sleepSkip = (ms) => {
+    if (!CASCADE) return sleep(ms);
+    const end = performance.now() + ms * speedScale();
+    return new Promise((resolve) => {
+      (function wait() {
+        if (!CASCADE || CASCADE.skip || performance.now() >= end) return resolve();
+        setTimeout(wait, Math.min(50, Math.max(8, end - performance.now())));
+      })();
+    });
+  };
   // Publish the speed multiplier as a CSS var so every gameplay animation/transition scales too
   // (calc(... * var(--gs))). Interaction feedback (hovers, button presses) deliberately ignores it.
   function applySpeedVar() {
@@ -436,7 +449,9 @@
           pushLog(`${icon("arrowUpRight")} ${res.runner.name} steals ${to}!`, "steal");
           if (res.runs) { popRuns(res.runs); stampOutcome("STOLE HOME", "huge", "SB", false); screenShake("big"); }
           if (res.rallyBonus) animateRally({ rallyDelta: res.rallyBonus });
-          (res.triggers || []).forEach(flashCoachByFx);
+          // coach triggers fire in sequence, not all at once
+          const stealTrigs = res.triggers || [];
+          for (let i = 0; i < stealTrigs.length; i++) { flashCoachByFx(stealTrigs[i]); await sleep(150); }
           g.steals = (g.steals || 0) + 1; if (!runIsSeeded()) META.career.steals++;
           if (g.steals >= 3) awardAchievement("thief");
           if (res.to === 3) awardAchievement("steal_home");
@@ -528,6 +543,23 @@
     "1B": "good", "2B": "great", "3B": "great", HR: "huge",
   };
 
+  // user-facing text for one cascade step (the engine records ids only; names resolve here)
+  function stepLabel(st, ev) {
+    const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+    switch (st.src) {
+      case "base": return st.t === "rally" ? "Rally" : (OUTCOME_LABEL[ev.outcome] || ev.outcome);
+      case "runs": return st.d === 1 ? "Run" : "Runs";
+      case "analytics": return "Analytics";
+      case "coach": {
+        const c = STATE.run && STATE.run.dugout.find((x) => x.id === st.id);
+        return c ? c.name : cap(("" + st.id).replace(/_/g, " "));
+      }
+      case "trait": { const t = typeof getTrait === "function" ? getTrait(st.id) : null; return (t && t.name) ? t.name : cap("" + st.id); }
+      case "edition": { const e = typeof getEdition === "function" ? getEdition(st.id) : null; return (e && e.name) ? e.name : cap("" + st.id); }
+      default: return cap("" + (st.id || st.src));
+    }
+  }
+
   async function animateResult(ev, card) {
     const g = STATE.game;
     const o = ev.outcome;
@@ -567,39 +599,108 @@
     if (!seeded && g.score > (META.career.bestInningScore || 0)) META.career.bestInningScore = g.score;
     saveMeta(); checkCareerAch();
 
-    // readout
+    // readout + scoring. Safe scoring plays run the SEQUENTIAL cascade (each
+    // contribution fires one at a time, Balatro style); outs, zero-score plays,
+    // and instant mode (autoplay) keep the classic all-at-once presentation.
     const cls = OUTCOME_CLASS[o] || "neutral";
-    let math = "";
-    if (ev.isSafe && ev.bagValue > 0) {
-      math = `Bag ${trim(ev.bagValue)} × Rally ${ev.rallyUsed.toFixed(1)} = <b>+${ev.scoreGained}</b>`;
-    } else if (ev.productiveOut && ev.runsOnPlay > 0) {
-      math = `Productive out - ${ev.runsOnPlay} run scored`;
-    } else if (ev.doublePlay) {
-      math = `Double play - two outs!`;
-    } else {
-      math = ev.isSafe ? "" : (g.rally > g.startRally + 0.01 ? `Out - rally holds at ×${g.rally.toFixed(1)}` : "Out.");
+    const canCascade = ev.isSafe && ev.scoreGained > 0 && !STATE.instant && Array.isArray(ev.steps) && ev.steps.length > 0;
+    if (!canCascade) {
+      let math = "";
+      if (ev.isSafe && ev.bagValue > 0) {
+        math = `Bag ${trim(ev.bagValue)} × Rally ${ev.rallyUsed.toFixed(1)} = <b>+${ev.scoreGained}</b>`;
+      } else if (ev.productiveOut && ev.runsOnPlay > 0) {
+        math = `Productive out - ${ev.runsOnPlay} run scored`;
+      } else if (ev.doublePlay) {
+        math = `Double play - two outs!`;
+      } else {
+        math = ev.isSafe ? "" : (g.rally > g.startRally + 0.01 ? `Out - rally holds at ×${g.rally.toFixed(1)}` : "Out.");
+      }
+      setReadout(OUTCOME_LABEL[o] || o, cls, ev, math);
+      renderDiamond();
+      if (ev.runsOnPlay > 0) popRuns(ev.runsOnPlay);
+      bumpScore(ev.scoreGained);
+      animateRally(ev);
+      (ev.triggers || []).forEach((t) => {
+        if (t.indexOf("coach:") === 0) flashCoachById(t.slice(6));
+      });
+      if (ev.payrollGained > 0) { SFX.coin(); flashPayrollGain(ev.payrollGained); }
+      logEvent(ev);
+      await sleep(o === "HR" ? 620 : 460);
+      return;
     }
-    setReadout(OUTCOME_LABEL[o] || o, cls, ev, math);
 
-    // diamond update + run pops
+    // diamond update + run pops happen first, then the cascade plays over them
     renderDiamond();
     if (ev.runsOnPlay > 0) popRuns(ev.runsOnPlay);
+    await playScoreCascade(ev, cls);
+  }
 
-    // score + progress
-    bumpScore(ev.scoreGained);
-    // rally
-    animateRally(ev);
-
-    // coach flashes
-    (ev.triggers || []).forEach((t) => {
-      if (t.indexOf("coach:") === 0) flashCoachById(t.slice(6));
-    });
-    if (ev.payrollGained > 0) { SFX.coin(); flashPayrollGain(ev.payrollGained); }
-
-    // log entry
-    logEvent(ev);
-
-    await sleep(o === "HR" ? 620 : 460);
+  // Balatro-style sequential scoring: the Bag x Rally tally fills one contribution at a
+  // time (coaches flash + pop "+N" as they fire), then the product slams into the round
+  // score. Any tap fast-forwards; every pause runs through sleepSkip (speed-scaled).
+  async function playScoreCascade(ev, cls) {
+    CASCADE = { skip: false };
+    const onSkip = () => { if (CASCADE) CASCADE.skip = true; };
+    document.addEventListener("pointerdown", onSkip, true);
+    try {
+      setReadout(OUTCOME_LABEL[ev.outcome] || ev.outcome, cls, ev, tallyMarkup(), { hold: true });
+      await sleepSkip(ev.runsOnPlay > 0 ? 420 : 260);   // beat: the runners finish their legs
+      const scale = CONFIG.scoreScale || 1;
+      const steps = (ev.steps || []).filter((s) => s.d !== 0 || s.t === "mult");
+      // long stacked builds compress so the cascade never drags
+      const stepMs = steps.length > 8 ? Math.max(90, Math.round(1400 / steps.length)) : 170;
+      const flashed = {};
+      let shownBag = 0;
+      for (let i = 0; i < steps.length; i++) {
+        const st = steps[i];
+        let popText = "";
+        let anchor = null;
+        if (st.t === "bag") {
+          const next = Math.round(st.bag * scale);
+          popText = "+" + (next - shownBag);
+          shownBag = next;
+          tallyBag(next);
+          anchor = $("#ro-bag");
+        } else if (st.t === "rally") {
+          // the base step FILLS the multiplier; bonuses ADD to it
+          popText = st.src === "base" ? "×" + st.rally.toFixed(1) : "+" + trim(st.d);
+          tallyRally(st.rally);
+          anchor = $("#ro-rally");
+        } else { // mult (Gold Glove)
+          popText = "×" + trim(st.d);
+          tallyMult(st.rally);
+          anchor = $("#ro-rally");
+        }
+        if (st.src === "coach") {
+          flashCoachById(st.id);
+          flashed[st.id] = true;
+          const cEl = $(`.coach-icon[data-coach="${st.id}"]`) || $(`.coach-chip[data-coach="${st.id}"]`);
+          if (cEl) anchor = cEl;
+        }
+        if (!CASCADE.skip) {
+          floatPop(anchor, st.src === "coach" ? popText : popText + " " + stepLabel(st, ev), st.t === "bag" ? "sp-bag" : "sp-rally");
+          if (st.t === "mult") SFX.mult(); else SFX.tick(i);
+          await sleepSkip(i === 0 ? stepMs + 90 : stepMs);
+        }
+      }
+      if (CASCADE.skip) { tallyBag(ev.bagValue); tallyRally(ev.rallyUsed); }
+      // SLAM: the product lands in the round score
+      tallySlam(ev.scoreGained);
+      SFX.slam();
+      screenShake(ev.scoreGained >= 20 * scale ? "huge" : ev.scoreGained >= 8 * scale ? "big" : "sm");
+      bumpScore(ev.scoreGained);
+      await sleepSkip(360);
+      // aftermath: rally climbs for the NEXT play; leftover coach triggers flash in turn
+      animateRally(ev);
+      const rest = (ev.triggers || []).filter((t) => t.indexOf("coach:") === 0 && !flashed[t.slice(6)]);
+      for (let i = 0; i < rest.length; i++) { flashCoachById(rest[i].slice(6)); await sleepSkip(110); }
+      if (ev.payrollGained > 0) { SFX.coin(); flashPayrollGain(ev.payrollGained); }
+      logEvent(ev);
+      await sleepSkip(ev.outcome === "HR" ? 480 : 320);
+    } finally {
+      document.removeEventListener("pointerdown", onSkip, true);
+      CASCADE = null;
+    }
   }
 
   function trim(n) { return Number.isInteger(n) ? "" + n : n.toFixed(1); }
@@ -663,10 +764,15 @@
     if (!el) return;
     const from = parseInt(("" + el.textContent).replace(/[^0-9-]/g, ""), 10) || 0;
     to = Math.round(to);
+    const gen = (el._tickGen = (el._tickGen || 0) + 1);   // a newer call cancels an in-flight tween
     if (from === to) { el.textContent = to; return; }
     const start = performance.now();
     dur = (dur || 450) * speedScale();   // slower count-up at lower speeds
+    // rAF can be throttled to zero (backgrounded tab, low-power mode); make sure the
+    // final value always lands even if no animation frames ever fire
+    setTimeout(() => { if (el._tickGen === gen) el.textContent = to; }, dur + 60);
     (function step(now) {
+      if (el._tickGen !== gen) return;
       const t = Math.min(1, (now - start) / dur);
       const eased = t * (2 - t); // ease-out
       el.textContent = Math.round(from + (to - from) * eased);
@@ -1544,7 +1650,7 @@
 
   /* ---------- readout + animations ---------- */
   // the outcome now pops over the field for a moment, then fades (no persistent box)
-  function setReadout(label, cls, ev, math) {
+  function setReadout(label, cls, ev, math, opts) {
     const r = $("#field-result");
     if (!r) return;
     const plat = ev.platoon === "adv" ? `<span class="plat plat-adv">platoon +</span>` : ev.platoon === "dis" ? `<span class="plat plat-dis">platoon -</span>` : "";
@@ -1556,7 +1662,33 @@
       </div>`;
     r.classList.remove("show"); void r.offsetWidth; r.classList.add("show");
     clearTimeout(setReadout._t);
-    setReadout._t = setTimeout(() => { r.classList.remove("show"); }, pace(1700));
+    // hold mode: the cascade keeps the readout up and schedules the hide at the slam
+    if (!(opts && opts.hold)) setReadout._t = setTimeout(() => { r.classList.remove("show"); }, pace(1700));
+  }
+
+  /* ---------- live Bag x Rally tally (filled stepwise by the cascade) ---------- */
+  function tallyMarkup() {
+    return `<span class="ro-tally">` +
+      `<span class="ro-cap">BAG</span> <b class="ro-bag" id="ro-bag">0</b>` +
+      `<span class="ro-x">×</span>` +
+      `<span class="ro-cap">RALLY</span> <b class="ro-rally" id="ro-rally">-</b>` +
+      `<span class="ro-eq" id="ro-eq"></span></span>`;
+  }
+  function numPop(el) { if (!el) return; el.classList.remove("num-pop"); void el.offsetWidth; el.classList.add("num-pop"); }
+  function tallyBag(v) { const el = $("#ro-bag"); if (!el) return; tickNumber(el, v, 160); numPop(el); }
+  function tallyRally(v) { const el = $("#ro-rally"); if (!el) return; el.textContent = v.toFixed(1); numPop(el); }
+  function tallyMult(rallyAfter) {
+    const el = $("#ro-rally"); if (!el) return;
+    el.textContent = rallyAfter.toFixed(1);
+    el.classList.remove("mult-pop"); void el.offsetWidth; el.classList.add("mult-pop");
+  }
+  function tallySlam(total) {
+    const eq = $("#ro-eq"); if (eq) eq.innerHTML = `= <b>+${total}</b>`;
+    const card = $("#field-result .ro-card");
+    if (card) { card.classList.remove("ro-slam"); void card.offsetWidth; card.classList.add("ro-slam"); }
+    const r = $("#field-result");
+    clearTimeout(setReadout._t);
+    setReadout._t = setTimeout(() => { if (r) r.classList.remove("show"); }, pace(1700));
   }
 
   function bumpScore(amt) {
@@ -1626,6 +1758,22 @@
     setTimeout(() => d.remove(), pace(900));
   }
 
+  // float a cascade "+N" popup above any element, positioned in stage coordinates
+  function floatPop(srcEl, text, cls) {
+    const stage = $("#stage");
+    if (!stage || !srcEl) return;
+    const s = stageScale() || 1;
+    const sr = stage.getBoundingClientRect();
+    const r = srcEl.getBoundingClientRect();
+    const d = document.createElement("div");
+    d.className = "step-pop " + (cls || "");
+    d.textContent = text;
+    d.style.left = ((r.left + r.width / 2 - sr.left) / s) + "px";
+    d.style.top = ((r.top - sr.top) / s) + "px";
+    stage.appendChild(d);
+    setTimeout(() => d.remove(), pace(800));
+  }
+
   function flashPayrollGain(amt) {
     const chip = $("#payroll-chip");
     if (chip) { chip.classList.remove("flash"); void chip.offsetWidth; chip.classList.add("flash"); }
@@ -1664,16 +1812,47 @@
      WIN OVERLAY / GAME OVER / VICTORY
      ============================================================ */
   function showWinOverlay(g, breakdown, total) {
-    const rows = breakdown.map((b) => `<div class="brk-row"><span>${b.label}</span><b>+$${b.amt}</b></div>`).join("");
+    const rows = breakdown.map((b) => `<div class="brk-row brk-hidden"><span>${b.label}</span><b>+$${b.amt}</b></div>`).join("");
+    const startPay = STATE.run.payroll - total;   // onWin already credited the total; tick up from before
     overlay(`
       <div class="ov-card win-ov">
         <div class="ov-burst">${icon("sparkle")}</div>
         <h2>${gameLabel(g.gameIndex).toUpperCase()} CLEARED</h2>
         <div class="ov-sub">You beat ${g.pitcher.name} - <b>${g.score}</b> vs ${g.target}.</div>
-        <div class="brk">${rows}<div class="brk-row brk-total"><span>Total earned</span><b>+$${total}</b></div></div>
-        <div class="ov-pay">Payroll: <b>$${STATE.run.payroll}</b></div>
-        <button class="btn btn-big btn-gold" data-act="to-shop">Visit the Shop ${icon("chevronR")}</button>
+        <div class="brk">${rows}<div class="brk-row brk-total brk-hidden"><span>Total earned</span><b>+$${total}</b></div></div>
+        <div class="ov-pay">Payroll: <b>$<span id="wo-pay">${startPay}</span></b></div>
+        <button class="btn btn-big btn-gold brk-hidden" data-act="to-shop">Visit the Shop ${icon("chevronR")}</button>
       </div>`);
+    revealWinRows(breakdown, total, startPay);
+  }
+
+  // Balatro cash-out: the payout lines count out one by one while payroll ticks up.
+  // A tap anywhere fast-forwards; if the overlay closes mid-reveal the loop stops quietly.
+  async function revealWinRows(breakdown, total, startPay) {
+    const ov = $("#overlay");
+    let skip = false;
+    const onSkip = () => { skip = true; };
+    if (ov) ov.addEventListener("pointerdown", onSkip, true);
+    try {
+      await sleep(320);
+      const count = $$("#overlay .win-ov .brk-row").length;
+      let pay = startPay;
+      for (let i = 0; i < count; i++) {
+        const row = $$("#overlay .win-ov .brk-row")[i];
+        if (!row) return;   // overlay is gone
+        row.classList.remove("brk-hidden");
+        row.classList.remove("brk-in"); void row.offsetWidth; row.classList.add("brk-in");
+        if (row.classList.contains("brk-total")) { SFX.mult(); pay = startPay + total; }
+        else { SFX.coin(i); pay += (breakdown[i] && breakdown[i].amt) || 0; }
+        tickNumber($("#wo-pay"), pay, 280);
+        if (!skip) await sleep(300);
+      }
+      const btn = $('#overlay .win-ov [data-act="to-shop"]');
+      if (btn) { btn.classList.remove("brk-hidden"); btn.classList.add("brk-in"); }
+      tickNumber($("#wo-pay"), startPay + total, 200);
+    } finally {
+      if (ov) ov.removeEventListener("pointerdown", onSkip, true);
+    }
   }
 
   function showGameOver(g) {
@@ -2941,16 +3120,29 @@
   // Scale the fixed 1600x900 stage to fit the viewport (landscape, no scroll).
   const STAGE_W = 1600;
   let _lastFit = "";
+  // iPhone Dynamic Island / notch / home indicator: env(safe-area-inset-*) flows through
+  // the --sa-* custom props (styles.css :root; the ?sa= debug override sets them inline),
+  // so CSS and JS always agree on the insets.
+  function safeInsets() {
+    const cs = getComputedStyle(document.documentElement);
+    const px = (p) => parseFloat(cs.getPropertyValue(p)) || 0;
+    return { t: px("--sa-t"), r: px("--sa-r"), b: px("--sa-b"), l: px("--sa-l") };
+  }
   function fitStage() {
     const stage = document.getElementById("stage");
     if (!stage) return;
     // Use the *visual* viewport (true visible area, excluding the mobile URL bar)
     const vp = window.visualViewport;
-    const w = vp ? vp.width : window.innerWidth;
-    const h = vp ? vp.height : window.innerHeight;
+    const rawW = vp ? vp.width : window.innerWidth;
+    const rawH = vp ? vp.height : window.innerHeight;
     const ox = vp ? vp.offsetLeft : 0;
     const oy = vp ? vp.offsetTop : 0;
-    const key = Math.round(w) + "x" + Math.round(h) + "+" + Math.round(ox) + "+" + Math.round(oy);
+    // Fit inside the SAFE area so nothing interactive sits under the island or the
+    // home indicator; the full-bleed body backdrop fills the trimmed margins.
+    const sa = safeInsets();
+    const w = Math.max(1, rawW - sa.l - sa.r);
+    const h = Math.max(1, rawH - sa.t - sa.b);
+    const key = Math.round(w) + "x" + Math.round(h) + "+" + Math.round(ox) + "+" + Math.round(oy) + "+" + sa.l + "," + sa.t + "," + sa.r + "," + sa.b;
     if (key === _lastFit) return; // cheap no-op when nothing changed
     _lastFit = key;
     // Adaptive aspect: lock the design WIDTH and derive the height from the viewport's
@@ -2961,12 +3153,13 @@
     const s = Math.min(w / STAGE_W, h / stageH);
     stage.style.width = STAGE_W + "px";
     stage.style.height = stageH + "px";
-    stage.style.left = (ox + w / 2) + "px";
-    stage.style.top = (oy + h / 2) + "px";
+    stage.style.left = (ox + sa.l + w / 2) + "px";
+    stage.style.top = (oy + sa.t + h / 2) + "px";
     stage.style.transform = "translate(-50%,-50%) scale(" + s + ")";
-    // portrait gate: only for touch / small screens (never on desktop)
+    // portrait gate: only for touch / small screens (never on desktop); RAW dims so
+    // orientation detection is never skewed by the insets
     const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-    const portrait = h > w && (coarse || Math.min(w, h) < 620);
+    const portrait = rawH > rawW && (coarse || Math.min(rawW, rawH) < 620);
     document.body.classList.toggle("portrait", portrait);
   }
 
@@ -2978,11 +3171,12 @@
     let pinned = null;
     function position(x, y) {
       const r = tip.getBoundingClientRect();
+      const sa = safeInsets();   // keep tooltips off the island / home indicator
       let left = x + 14, top = y + 16;
-      if (left + r.width > window.innerWidth - 8) left = x - r.width - 14;
-      if (top + r.height > window.innerHeight - 8) top = y - r.height - 16;
-      tip.style.left = Math.max(6, left) + "px";
-      tip.style.top = Math.max(6, top) + "px";
+      if (left + r.width > window.innerWidth - 8 - sa.r) left = x - r.width - 14;
+      if (top + r.height > window.innerHeight - 8 - sa.b) top = y - r.height - 16;
+      tip.style.left = Math.max(6 + sa.l, left) + "px";
+      tip.style.top = Math.max(6 + sa.t, top) + "px";
     }
     function contentOf(el) { return el && (el.getAttribute("data-tip") || el.getAttribute("title") || el.getAttribute("data-title")); }
     function show(el, x, y) { const c = contentOf(el); if (!c) return; tip.innerHTML = c; tip.classList.add("show"); position(x, y); }
@@ -3323,6 +3517,17 @@
     window.addEventListener("unhandledrejection", () => { STATE.busy = false; });
     SFX.setEnabled(META.sound);
     applySpeedVar();   // seed the CSS speed multiplier from the saved setting
+    // debug: fake safe-area insets on desktop, e.g. ?sa=59 (all sides) or ?sa=0,59,21,59 (t,r,b,l).
+    // Inline props beat the :root env() declarations, so CSS and JS both see the override.
+    try {
+      const q = new URLSearchParams(location.search).get("sa");
+      if (q != null && q !== "") {
+        const p = q.split(",").map((v) => Math.max(0, parseFloat(v) || 0));
+        const v = p.length >= 4 ? p : [p[0], p[0], p[0], p[0]];
+        const st = document.documentElement.style;
+        ["--sa-t", "--sa-r", "--sa-b", "--sa-l"].forEach((k, i) => st.setProperty(k, v[i] + "px"));
+      }
+    } catch (e) { /* no override */ }
     fitStage();
     window.addEventListener("resize", fitStage);
     window.addEventListener("orientationchange", fitStage);
@@ -3377,6 +3582,7 @@
       state: () => STATE,
       render: () => render(),
       renderGame: () => renderGame(),
+      instant: (v) => { STATE.instant = v !== false; },   // skip the scoring cascade (Monte-Carlo sessions)
     };
   }
 
@@ -3384,23 +3590,29 @@
   async function autoPlay(maxPlays) {
     maxPlays = maxPlays || 999;
     let n = 0;
-    while (STATE.screen === "game" && !STATE.game.ended && n < maxPlays) {
-      if (STATE.busy) { await sleep(60); continue; }
-      const g = STATE.game;
-      const risp = g.bases[1] || g.bases[2];
-      let best = 0, bestScore = -1, bestCard = null;
-      g.hand.forEach((c, i) => {
-        let s = c.contact * 0.5 + c.power * (risp ? 1.1 : 0.7) + c.eye * 0.4 + c.speed * 0.2;
-        if (s > bestScore) { bestScore = s; best = i; bestCard = c; }
-      });
-      // pick an approach the way a player might: power for sluggers w/ runners, patience for high-eye
-      let ap = "swing";
-      if (bestCard) {
-        if (bestCard.power >= 80 && (risp || g.outsRemaining > 1)) ap = "power";
-        else if (bestCard.eye >= 75 && !risp) ap = "contact";
+    STATE.instant = true;   // the AI grinds fast: skip the scoring cascade
+    try {
+      while (STATE.screen === "game" && !STATE.game.ended && n < maxPlays) {
+        if (STATE.busy) { await sleep(60); continue; }
+        const g = STATE.game;
+        const risp = g.bases[1] || g.bases[2];
+        let best = 0, bestScore = -1, bestCard = null;
+        g.hand.forEach((c, i) => {
+          let s = c.contact * 0.5 + c.power * (risp ? 1.1 : 0.7) + c.eye * 0.4 + c.speed * 0.2;
+          if (s > bestScore) { bestScore = s; best = i; bestCard = c; }
+        });
+        // pick an approach the way a player might: power for sluggers w/ runners, patience for high-eye
+        let ap = "swing";
+        if (bestCard) {
+          if (bestCard.power >= 80 && (risp || g.outsRemaining > 1)) ap = "power";
+          else if (bestCard.eye >= 75 && !risp) ap = "contact";
+        }
+        await playAB(best, ap);
+        n++;
+        await sleep(30);
       }
-      await playAB(best, ap);
-      await sleep(30);
+    } finally {
+      STATE.instant = false;
     }
     return STATE.game ? STATE.game.result : null;
   }
