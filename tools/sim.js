@@ -11,18 +11,28 @@ require("../js/data.js");
 require("../js/engine.js");
 
 const REPS = parseInt(process.argv[2], 10) || 300;
+const STAKE = parseInt(process.argv[3], 10) || 1;   // node tools/sim.js [reps] [stake 1..5]
 
 /* ---------- helpers mirrored from app.js ---------- */
+function stakeMods(stake) {
+  stake = Math.max(1, Math.min(5, stake || 1));
+  return {
+    targetMult: 1 + 0.08 * (stake - 1),                   // 1.00 / 1.08 / 1.16 / 1.24 / 1.32
+    pitcherBonus: stake >= 3 ? (stake - 2) * 2 + 1 : 0,   // +3 / +5 / +7
+    handDelta: stake >= 5 ? -1 : 0,
+  };
+}
+const SM = stakeMods(STAKE);
 function targetFor(inning0, frame) {
   const t = CONFIG.target;
-  const raw = t.base * Math.pow(t.inningGrowth, inning0) * t.frameMult[frame] * (CONFIG.scoreScale || 1);
+  const raw = t.base * Math.pow(t.inningGrowth, inning0) * t.frameMult[frame] * SM.targetMult * (CONFIG.scoreScale || 1);
   return Math.max(1, Math.round(raw / 5) * 5);
 }
 function makePitcher(rng, inning0, frame) {
   const pc = CONFIG.pitcher;
   const boss = frame === 2;
-  let stuff = pc.baseStuff + pc.stuffPerInning * inning0 + frame * pc.framePenalty + rng.range(-3, 3);
-  let command = pc.baseCommand + pc.commandPerInning * inning0 + frame * (pc.framePenalty * 0.8) + rng.range(-3, 3);
+  let stuff = pc.baseStuff + pc.stuffPerInning * inning0 + frame * pc.framePenalty + SM.pitcherBonus + rng.range(-3, 3);
+  let command = pc.baseCommand + pc.commandPerInning * inning0 + frame * (pc.framePenalty * 0.8) + SM.pitcherBonus + rng.range(-3, 3);
   if (boss) { stuff += pc.bossStuffBonus; command += pc.bossCommandBonus; }
   return {
     name: "Sim", isBoss: boss, rule: null, bats: rng.pick(["L", "R"]),
@@ -99,7 +109,7 @@ function baseRun(deckIds, opts) {
     dugout: (o.coaches || []).map(coach),
     analytics: Object.assign({ power: 0, contact: 0, patience: 0, speed: 0, rally: 0 }, o.analytics),
     actionLevels: Object.assign({ swing: 1, power: 1, contact: 1, bunt: 1, steal: 1 }, o.actions),
-    handSize: o.handSize || CONFIG.handSize,
+    handSize: (o.handSize || CONFIG.handSize) + SM.handDelta,
     startRally: o.startRally || CONFIG.startingRally,
     payroll: 0,
   };
@@ -111,13 +121,13 @@ const BUILDS = {
     coaches: ["co_hit1", "co_aura1"], analytics: { contact: 1 }, actions: { swing: 2 },
   }),
   "B2 inning-6 build": () => baseRun(sandlot.slice(0, 18).concat(["mack_thunderton", "cy_bigsby", "walt_pemberton", "ozzie_klein"]), {
-    coaches: ["co_hit2", "co_aura2", "co_rhit", "patience_guru", "table_setter"],
+    coaches: ["co_hit2", "co_aura2", "co_rhit", "patience_guru"],       // 4 of 5 slots mid-run
     analytics: { contact: 1, rally: 1 }, actions: { swing: 3, power: 2 }, startRally: 1.25,
   }),
   "B3 inning-9 build": () => {
     const ids = sandlot.slice(0, 8).concat(["mack_thunderton", "cy_bigsby", "el_toro_mendez", "lionel_frye", "walt_pemberton", "ozzie_klein", "sherman_boyle", "buster_kray"]);
     const r = baseRun(ids, {
-      coaches: ["co_hit3", "co_aura4", "co_rhit2", "two_out_magic", "co_crisp2", "patience_guru", "co_xbh3"],
+      coaches: ["co_hit3", "co_aura4", "co_rhit2", "two_out_magic", "co_xbh3"],   // the 5-slot dugout cap
       analytics: { contact: 2, rally: 2, power: 1 }, actions: { swing: 4, power: 4, contact: 3 }, startRally: 1.5, handSize: 7,
     });
     r.deck[8].deluxe = "allstar"; r.deck[10].deluxe = "hof"; r.deck[11].deluxe = "slugger";
@@ -130,7 +140,7 @@ const SPOTS = [];
 for (let i = 0; i < 9; i++) { SPOTS.push([i, 0]); SPOTS.push([i, 2]); }
 SPOTS.push([10, 2]); // Extra Innings, inning 11 Boss
 
-console.log(`reps=${REPS} per spot. clear% vs target (mean score)`);
+console.log(`reps=${REPS} per spot, stake ${STAKE} (${["", "Rookie", "Veteran", "All-Star", "Cy Young", "Cooperstown"][STAKE]}). clear% vs target (mean score)`);
 const head = ["spot".padEnd(14), "target".padStart(7)].concat(Object.keys(BUILDS).map((b) => b.padStart(20))).join("");
 console.log(head);
 for (const [inn, fr] of SPOTS) {

@@ -68,7 +68,7 @@ mechanic must sweep:
 | `js/app.js` | everything else: state, rendering, screens, shop, drag, save/load, overlays |
 | `css/styles.css` | all styles; responsive via a scale-to-fit stage + media queries |
 | `README.md` | public repo description; keep in sync with the game (see checklist above) |
-| `tools/sim.js` | headless Monte-Carlo balance sim (`node tools/sim.js [reps]`): plays frames with the real engine at 4 build tiers and prints clear% vs the target curve. Use it before ANY tuning change to `CONFIG.target`/`pitcher`/coach numbers |
+| `tools/sim.js` | headless Monte-Carlo balance sim (`node tools/sim.js [reps] [stake 1..5]`): plays frames with the real engine at 4 build tiers (coach counts respect the 5-slot dugout) and prints clear% vs the target curve, with stake mods applied. Use it before ANY tuning change to `CONFIG.target`/`pitcher`/coach numbers. Tuned anchor: at Rookie the B3 build clears the inning-9 Boss ~77% / B2 ~51%; Cooperstown ~63% / ~37% (never 0) |
 
 ## Layout model
 
@@ -138,7 +138,9 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   gates `unlockAchievement` and ALL career/record accrual (incl. `bestRally`).
 - **Coaches** (`COACHES`, 100): 21 originals use hand-coded `fx`; 79 are pure data with a
   `gen` descriptor read by the engine's Bag/Rally/Econ dispatchers. Coaches may carry an
-  `aura` and a `deluxe` edition; sell anytime for half cost (`sellCoach`).
+  `aura` and a `deluxe` edition; sell anytime for half cost (`sellCoach`). The dugout is
+  **5 slots** (`CONFIG.dugoutSlots`; the two Expanded Dugout vouchers add +1 each,
+  Legendary coaches take no slot).
 - **Salami Cards** (`CHARMS`, 12 one-shots): `target` player/coach cards are **drag-only**
   (`onCharmPointerDown/Move/Up` -> `applyCharmToTarget`); `immediate` ones are tapped
   (confirm -> `applyImmediateCharm`). Sell anytime (`.cb-sell` -> `sellCharm`).

@@ -75,18 +75,18 @@
     // Tuned 2026-06 via tools/sim.js: growth 1.46 -> 1.44 and boss mult 1.8 -> 1.7
     // soften the late-inning Boss cliff ~10-16% (a strong build's final-Boss clear rate
     // was 67%; 27 frames of compounding odds made deserved wins too rare).
-    target: { base: 7, inningGrowth: 1.44, frameMult: [1, 1.35, 1.7] },
+    target: { base: 7, inningGrowth: 1.38, frameMult: [1, 1.33, 1.66] },
 
     // Pitcher scaling. Stuff/Command grow per inning, with a small bump per frame inside an
     // inning (Top < Middle < Boss) and a flat boss bonus on top.
     pitcher: {
       baseStuff: 32,
       baseCommand: 36,
-      stuffPerInning: 3.1,
-      commandPerInning: 2.7,
+      stuffPerInning: 2.8,
+      commandPerInning: 2.5,
       framePenalty: 2.0,
-      bossStuffBonus: 6,
-      bossCommandBonus: 5,
+      bossStuffBonus: 5,
+      bossCommandBonus: 4,
     },
 
     // Ace boss target multiplier
@@ -139,7 +139,7 @@
     },
 
     // Dugout
-    dugoutSlots: 8,
+    dugoutSlots: 5,
     // Salami Cards (consumable powerups, Balatro-Arcana style)
     charmSlots: 4,
     // Roster: each franchise's 12 signature players are filled out to this many UNIQUE
@@ -562,7 +562,7 @@
     { id: "boss_10",        cat: "Bosses",   name: "Boss Hunter",      text: "Beat 10 boss innings." },
     { id: "boss_30",        cat: "Bosses",   name: "Boss Slayer",      text: "Beat 30 boss innings." },
     // --- building ---
-    { id: "full_dugout",    cat: "Building",  name: "Brain Trust",     text: "Fill all eight dugout slots with coaches." },
+    { id: "full_dugout",    cat: "Building",  name: "Brain Trust",     text: "Fill every dugout slot with coaches." },
     { id: "got_legend",     cat: "Building",  name: "Sign a Legend",   text: "Add a Legend to your deck." },
     { id: "thin_deck",      cat: "Building",  name: "Lean & Mean",     text: "Trim your deck to 12 cards or fewer." },
     { id: "deep_pockets",   cat: "Building",  name: "Deep Pockets",    text: "Hold $40 at once." },

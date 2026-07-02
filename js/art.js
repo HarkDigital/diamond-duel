@@ -135,6 +135,11 @@
       s += `<circle cx="${cx + 12}" cy="86" r="3.4" fill="#a87b44"/></g>`;
     }
 
+    /* neck FIRST, tall enough to reach under the jersey's neckline dip, so the
+       shoulders tuck over its base and no background ever shows between chin
+       and collar (the old 9px stub stopped above the jersey's top edge) */
+    s += `<rect x="${cx - 6.5}" y="${fy + fr - 6}" width="13" height="20" rx="3" fill="${skin}" stroke="${skinEdge}" stroke-width=".8"/>`;
+
     /* torso */
     const jerseyKind = o.jerseyKind || pick(r, ["home", "home", "grey", "alt"]);
     const jersey = jerseyKind === "home" ? "#f2efe6" : jerseyKind === "grey" ? "#d7dbe2" : capMain;
@@ -167,8 +172,7 @@
       s += `<path d="M ${cx - 25.5} 68.5 q 2.5 2 5 0 M ${cx - 25.5} 72.5 q 2.5 -2 5 0" fill="none" stroke="#d23c3c" stroke-width=".7"/></g>`;
     }
 
-    /* neck + head */
-    s += `<rect x="${cx - 5.5}" y="${fy + fr - 5}" width="11" height="9" rx="2" fill="${skin}" stroke="${skinEdge}" stroke-width=".8"/>`;
+    /* head (the neck is drawn before the torso above) */
     s += `<circle cx="${cx - fr - 1.5}" cy="${fy + 2}" r="3.1" fill="${skin}"/><circle cx="${cx + fr + 1.5}" cy="${fy + 2}" r="3.1" fill="${skin}"/>`;
     s += `<circle cx="${cx}" cy="${fy}" r="${fr}" fill="${skin}"/>`;
     s += `<ellipse cx="${cx}" cy="${fy + fr * 0.42}" rx="${jaw}" ry="${fr * 0.66}" fill="${skin}"/>`;
