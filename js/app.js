@@ -991,15 +991,22 @@
     STATE._pickStake = Math.max(1, Math.min(STATE._pickStake, META.maxStake || 1));
     return `
     <div class="screen title-screen">
-      <div class="title-hero">
-        ${(typeof logoSVG === "function")
-          ? `<div class="logo logo-svg">${logoSVG()}</div>`
-          : `<div class="logo"><span class="logo-diamond">${icon("diamond")}</span><h1>DIAMOND<span>DUEL</span></h1></div>`}
+      <div class="title-cols">
+        <div class="title-left">
+          <div class="title-hero">
+            ${(typeof logoSVG === "function")
+              ? `<div class="logo logo-svg">${logoSVG()}</div>`
+              : `<div class="logo"><span class="logo-diamond">${icon("diamond")}</span><h1>DIAMOND<span>DUEL</span></h1></div>`}
+          </div>
+          ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
+          <div class="title-career">${META.wins} ${META.wins === 1 ? "championship" : "championships"} · ${META.runs} runs · best ${META.bestScore || 0}</div>
+        </div>
+        <div class="title-right">
+          <h2 class="pick-h">Choose your lineup</h2>
+          ${STATE._replaySeed ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code></div>` : ""}
+          ${renderLineupCarousel()}
+        </div>
       </div>
-      ${hasSave ? `<div class="continue-row"><button class="btn btn-big btn-gold" data-act="continue">Continue Run</button><button class="btn btn-ghost" data-act="abandon">Abandon</button></div>` : ""}
-      <h2 class="pick-h">Choose your lineup</h2>
-      ${STATE._replaySeed ? `<div class="seed-hint replay">${icon("replay")} Replaying <code>${escAttr(STATE._replaySeed)}</code></div>` : ""}
-      ${renderLineupCarousel()}
       <div class="title-foot">
         <div class="foot-btns">
           <button class="btn btn-foot" data-act="open-profile">${icon("trophy")} Profile</button>
@@ -1007,7 +1014,6 @@
           <button class="btn btn-foot" data-act="open-stats">${icon("stats")} Stats</button>
           <button class="btn btn-foot btn-icon" data-act="toggle-sound" aria-label="Toggle sound" title="Sound: ${META.sound ? "On" : "Off"}">${META.sound ? icon("soundOn") : icon("soundOff")}</button>
         </div>
-        <span class="foot-stats">${META.wins} ${META.wins === 1 ? "championship" : "championships"} · ${META.runs} runs · best ${META.bestScore || 0}</span>
         <span class="foot-version">v1.0</span>
       </div>
     </div>`;

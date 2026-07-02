@@ -617,8 +617,11 @@
     // pennant ribbon
     s += `<path d="M 188 58 H 452 L 466 74 L 452 90 H 188 L 174 74 Z" fill="url(#ddlg-red)" stroke="#5e1d2c" stroke-width="2.5"/>`;
     s += `<text x="320" y="86" text-anchor="middle" ${F} font-size="36" font-weight="900" letter-spacing="6" fill="#ffe9c8" stroke="#3a0d12" stroke-width="1.2" paint-order="stroke">DIAMOND</text>`;
-    // big DUEL in animated gold
-    s += `<text x="320" y="152" text-anchor="middle" ${F} font-size="62" font-weight="900" letter-spacing="14" fill="url(#ddlg-gold)" stroke="#3a2408" stroke-width="3" paint-order="stroke">DUEL</text>`;
+    // big DUEL in gold: a solid base that ALWAYS paints, with the animated-gradient
+    // sheen layered on top (SMIL-animated gradient paints can fail under throttling;
+    // if the sheen drops out, the solid gold still shows)
+    s += `<text x="320" y="152" text-anchor="middle" ${F} font-size="62" font-weight="900" letter-spacing="14" fill="#f2b83c" stroke="#3a2408" stroke-width="3" paint-order="stroke">DUEL</text>`;
+    s += `<text x="320" y="152" text-anchor="middle" ${F} font-size="62" font-weight="900" letter-spacing="14" fill="url(#ddlg-gold)">DUEL</text>`;
     // flanking stars with alternating glow pulses
     s += `<g opacity=".95">${mStar(196, 119, 9, "#ffd24a")}${mStar(444, 119, 9, "#ffd24a")}</g>`;
     s += `<circle cx="196" cy="119" r="12" fill="#ffd24a" opacity="0"><animate attributeName="opacity" values="0;.4;0" dur="2.4s" repeatCount="indefinite"/></circle>`;

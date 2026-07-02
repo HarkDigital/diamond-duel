@@ -702,10 +702,15 @@ body{ position:fixed; inset:0; margin:0; }
 #menu-btn{ z-index:45; top:calc(8px + var(--sa-t)); right:calc(8px + var(--sa-r)); bottom:auto; left:auto; }
 
 /* ---------------- TITLE ---------------- */
-.title-screen{ padding:30px 48px 56px; justify-content:center; gap:4px; }
+/* two columns, both vertically centered: brand on the left, lineup picker on the right */
+.title-screen{ padding:30px 48px 56px; justify-content:center; gap:4px; max-width:1460px; }
+.title-cols{ display:flex; align-items:center; justify-content:center; gap:90px; }
+.title-left{ display:flex; flex-direction:column; align-items:center; gap:12px; flex:0 0 auto; }
+.title-right{ display:flex; flex-direction:column; align-items:center; flex:0 0 auto; min-width:0; }
 .title-hero{ margin-bottom:4px; }
+.title-career{ color:var(--ink-dim); font-size:.92rem; font-weight:600; letter-spacing:.3px; }
 .tagline{ margin-top:8px; }
-.pick-h{ margin:18px 0 12px; }
+.pick-h{ margin:0 0 12px; }
 .seed-row{ margin:0 auto 14px; }
 .fr-sub{ min-height:26px; }
 .title-foot{ position:absolute; left:0; right:0; bottom:16px; padding:0 40px; margin:0; }
