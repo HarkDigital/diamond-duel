@@ -176,6 +176,18 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
 - **Skip Tags** (`TAGS`, 24): skipping a non-Boss frame grants a tag, **weighted by
   rarity** (`tagFor`). `when`: instant / shop (resolved by `consumeTagsIntoShop` +
   re-applied by `applyTagFxToShop` each roll) / boss (pays out in `onWin`).
+- **Drag-only acquisition:** the dugout and the Salami pouch NEVER accept a tap. Pack
+  coach/charm options and shop coaches are claimed by dragging onto `#dugout` /
+  `#powerups` (opt drag + `onShopCoachPointerDown/Move/Up`); a tap calls `dragNudge`
+  (row flash + `.opt-nudge` hop + toast). Shop coaches show a `.price-tag` (no buy
+  button); `buy("coach", i)` still runs cost checks + make-room on drop. Players,
+  vouchers, scouting, analytics, and actions stay tappable (no destination row).
+- **Boss intro:** `bossIntro(pitcher)` slams a red BOSS banner (`.boss-intro`, name +
+  `pitcher.boss.text` rule, `SFX.boss` sting, tap to skip) over the field when a boss
+  frame starts (end of `startGame`).
+- **Achievement banners:** unlocks queue through `pumpAchBanners` - ONE compact banner
+  at a time (name only), deferred while `STATE.busy`/`CASCADE`, a burst shows a "+N"
+  chip, coin SFX at most once per 4s.
 - **Shop & packs:** `rollShop` offers direct-buy coaches + voucher(s) +
   `CONFIG.shop.packSlots` (2) sealed packs, each a weighted pick from
   `CONFIG.shop.packWeights`. Packs are foil bags with `packArtSVG` scenes; drag onto

@@ -333,6 +333,27 @@
     // little intro flash
     pushLog(`${icon("chevronR")} ${gameLabel(gi)} - facing ${pitcher.name}. Target ${target}.`, "neutral");
     saveGame();
+    if (pitcher.isBoss) bossIntro(pitcher);   // Balatro-style boss splash
+  }
+
+  // a red BOSS banner slams over the field when a boss frame begins; tap to skip
+  function bossIntro(pitcher) {
+    const host = $("#stage") || document.body;
+    const rule = pitcher.boss && pitcher.boss.text ? pitcher.boss.text : "";
+    const d = document.createElement("div");
+    d.className = "boss-intro";
+    d.innerHTML = `
+      <div class="bi-inner">
+        <div class="bi-eyebrow">BOSS</div>
+        <div class="bi-name">${pitcher.name}</div>
+        ${rule ? `<div class="bi-rule">${rule}</div>` : ""}
+      </div>`;
+    host.appendChild(d);
+    if (SFX && SFX.boss) SFX.boss();
+    screenShake("big");
+    const kill = () => { if (!d.parentNode) return; d.classList.add("bi-out"); setTimeout(() => { if (d.parentNode) d.remove(); }, 420); };
+    d.addEventListener("pointerdown", kill);
+    setTimeout(kill, pace(2200));
   }
 
   function drawCard() {
@@ -1636,16 +1657,29 @@
     if (run.deck.length <= 12) unlockAchievement("thin_deck");
     if (run.payroll >= 40) unlockAchievement("deep_pockets");
   }
-  // a little Balatro-style banner that slides in when something is unlocked
-  function achievementBanner(ach) {
+  // a little Balatro-style banner that slides in when something is unlocked.
+  // Unlocks QUEUE: one compact banner at a time (name only), never during a play
+  // or a scoring cascade, and a burst shows a "+N" chip instead of a wall of popups.
+  let ACH_Q = [], ACH_ACTIVE = false, ACH_LAST_SFX = 0;
+  function achievementBanner(ach) { ACH_Q.push(ach); pumpAchBanners(); }
+  function pumpAchBanners() {
+    if (ACH_ACTIVE || !ACH_Q.length) return;
+    if (STATE.busy || CASCADE) { setTimeout(pumpAchBanners, 500); return; }   // wait for the play to finish
+    const ach = ACH_Q.shift();
+    ACH_ACTIVE = true;
     let host = document.getElementById("ach-banner");
     if (!host) { host = document.createElement("div"); host.id = "ach-banner"; document.body.appendChild(host); }
     const el = document.createElement("div");
     el.className = "ach-pop";
-    el.innerHTML = `<div class="ach-pop-ic">${icon("trophy")}</div><div class="ach-pop-txt"><div class="ach-pop-eyebrow">Achievement unlocked</div><div class="ach-pop-name">${ach.name}</div><div class="ach-pop-desc">${ach.text}</div></div>`;
+    el.innerHTML = `<div class="ach-pop-ic">${icon("trophy")}</div><div class="ach-pop-txt"><div class="ach-pop-eyebrow">Achievement</div><div class="ach-pop-name">${ach.name}</div></div>${ACH_Q.length ? `<div class="ach-pop-more">+${ACH_Q.length}</div>` : ""}`;
     host.appendChild(el);
-    if (SFX && SFX.coin) SFX.coin();
-    setTimeout(() => { el.classList.add("leaving"); setTimeout(() => { if (el.parentNode) el.remove(); }, 400); }, 3600);
+    const now = performance.now();
+    if (now - ACH_LAST_SFX > 4000) { if (SFX && SFX.coin) SFX.coin(); ACH_LAST_SFX = now; }
+    const hold = ACH_Q.length ? 1900 : 2600;   // move through a burst briskly
+    setTimeout(() => {
+      el.classList.add("leaving");
+      setTimeout(() => { if (el.parentNode) el.remove(); ACH_ACTIVE = false; pumpAchBanners(); }, 380);
+    }, hold);
   }
 
   /* ---------- readout + animations ---------- */
@@ -2207,7 +2241,7 @@
     `<section><h3>Innings, frames &amp; bosses</h3><p>Each of the 9 innings has three frames: <b>Top</b>, <b>Middle</b>, and <b>Boss</b>, with the target climbing each step. The <b>Boss</b> frame is a special pitcher with a nasty rule, telegraphed on the linescore so you can prepare. You shop between every frame, or <b>skip</b> a Top/Middle frame to pocket a Tag instead. Win inning 9's Boss for the title, then <b>Extra Innings</b> scale up forever.</p></section>`,
     `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (on the bar at the top of the screen). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
     `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>57 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, <b>Front Office</b> voucher, and <b>Skip Tag</b>: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
-    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Coaches</b> and <b>Front Office</b> vouchers are bought directly. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then <b>choose</b> what you want inside, or <b>skip</b> it. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, a <b>Coaching Pack</b> offers coaches, and a <b>Spring Training</b> pack levels up your at-bat actions. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
+    `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Front Office</b> vouchers are bought directly; sign a shop <b>coach</b> by <b>dragging its card up to your dugout</b>. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then claim what you want inside, or <b>skip</b> it. Players tap straight into your deck, but <b>coaches and Salami cards must be dragged up into their row</b>, like pulling the card you wanted out of the wrapper. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, a <b>Coaching Pack</b> offers coaches, and a <b>Spring Training</b> pack levels up your at-bat actions. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
     `<section><h3>Editions &amp; Spring Training</h3><p>Cards and coaches in packs can roll a shiny <b>edition</b>: <b>All-Star</b> (+2 Bag), <b>Silver Slugger</b> (+1.0 Rally), <b>Gold Glove</b> (that play scores at x1.5 Rally), <b>Hall of Fame</b> (+2 Bag and +0.5 Rally), and the rare <b>Legendary</b> (the biggest boost, and on a coach it takes no dugout slot). An edition fires whenever that card scores. Separately, <b>Spring Training</b> packs <b>level up an action</b> (Contact Swing, Power Swing, Work the Count, Bunt, Steal), so every safe play with that action builds your Rally faster. Levels show right on the swing buttons.</p></section>`,
     `<section class="howto-tips"><h3>${icon("sparkle")} Quick tips</h3><ul><li>Don't waste your slugger leading off - hold it until runners are on and the rally is built.</li><li>Thin your deck: fewer, better cards means you draw your bombs more often.</li><li>Two or three coaches pointing the same way beat a pile of random ones.</li></ul></section>`,
   ];
@@ -2464,7 +2498,9 @@
         <div class="shop-item ${owned ? "sold" : ""} ${aff ? "" : "cant"} ${free ? "free" : ""}" data-group="${group}" data-i="${i}">
           ${free ? `<span class="free-tag" data-tip="<b>Free</b><br>Granted by a skip tag.">${icon("sparkle")} Free</span>` : (undisc ? `<span class="undisc-tag" data-tip="<b>Undiscovered</b><br>New to your Collection. Buy it to add it.">${icon("book")} Undiscovered</span>` : "")}
           <div class="shop-item-body">${body}</div>
-          <button class="btn buy-btn ${aff ? "" : "disabled"}" data-buy="${group}:${i}" ${owned ? "disabled" : ""}>${owned ? "Sold" : (slot.cost === 0 ? "Free" : "$" + slot.cost)}</button>
+          ${group === "coach"
+            ? `<div class="btn buy-btn price-tag ${aff ? "" : "disabled"}">${owned ? "Sold" : (slot.cost === 0 ? "Free" : "$" + slot.cost)}</div>`
+            : `<button class="btn buy-btn ${aff ? "" : "disabled"}" data-buy="${group}:${i}" ${owned ? "disabled" : ""}>${owned ? "Sold" : (slot.cost === 0 ? "Free" : "$" + slot.cost)}</button>`}
         </div>`;
     };
 
@@ -3036,11 +3072,25 @@
 
       if (packpickEl) {
         if (_suppressOptClick) { _suppressOptClick = false; return; }   // a drag already claimed it
-        packPick(parseInt(packpickEl.getAttribute("data-packpick"), 10)); return;
+        const oi = parseInt(packpickEl.getAttribute("data-packpick"), 10);
+        const opt = STATE._pack && STATE._pack.options[oi];
+        // the dugout and the Salami pouch are DRAG-ONLY: a tap just points at the row
+        if (opt && (opt.kind === "coach" || opt.kind === "charm") && STATE._pack.picked.indexOf(oi) < 0) {
+          dragNudge(opt.kind, packpickEl);
+          return;
+        }
+        packPick(oi); return;
       }
       if (dotEl) { STATE._pickIndex = parseInt(dotEl.getAttribute("data-lineup-dot"), 10); if (SFX.click) SFX.click(); render(); return; }
       if (stakeEl) { const s = parseInt(stakeEl.getAttribute("data-stake"), 10); if (s <= (META.maxStake || 1)) { STATE._pickStake = s; if (SFX.click) SFX.click(); render(); } else if (SFX.error) SFX.error(); return; }
       if (buyEl) { const [g, i] = buyEl.getAttribute("data-buy").split(":"); buy(g, parseInt(i, 10)); return; }
+      // shop coaches have no buy button: tapping the card points at the dugout instead
+      const shopCoachEl = e.target.closest('.shop-item[data-group="coach"]');
+      if (shopCoachEl && STATE.screen === "shop" && !STATE._pack && !shopCoachEl.classList.contains("sold")) {
+        if (_suppressShopClick) { _suppressShopClick = false; return; }   // a drag already signed them
+        dragNudge("coach", shopCoachEl);
+        return;
+      }
       if (packTapEl && STATE.screen === "shop") {
         if (_suppressPackClick) { _suppressPackClick = false; return; }   // a drag already opened it
         buy("pack", parseInt(packTapEl.getAttribute("data-packslot"), 10)); return;
@@ -3469,6 +3519,14 @@
      Player cards stay tap-to-take (they join the deck, which has no slot row). */
   let _odrag = null, _suppressOptClick = false;
   function optRowSel(kind) { return kind === "coach" ? "#dugout" : "#powerups"; }
+  // the dugout / Salami pouch are drag-only: a tap flashes the destination row instead
+  function dragNudge(kind, el) {
+    const row = $(optRowSel(kind));
+    if (row) { row.classList.remove("row-nudge"); void row.offsetWidth; row.classList.add("row-nudge"); setTimeout(() => row.classList.remove("row-nudge"), pace(950)); }
+    if (el) { el.classList.remove("opt-nudge"); void el.offsetWidth; el.classList.add("opt-nudge"); }
+    if (SFX && SFX.click) SFX.click();
+    toast(kind === "coach" ? "Drag the coach up to your DUGOUT to sign them." : "Drag the card up to your SALAMI pouch to pocket it.");
+  }
   function onOptPointerDown(e) {
     _suppressOptClick = false;
     if (!STATE._pack || STATE.screen !== "shop") return;
@@ -3523,6 +3581,57 @@
       else if (SFX && SFX.click) SFX.click();    // released in open space: snaps back
     }
     // a plain tap (no movement) falls through to the click handler -> packPick()
+  }
+
+  /* ---------- shop: drag a coach card onto the DUGOUT row to sign them ---------- */
+  let _sdrag = null, _suppressShopClick = false;
+  function onShopCoachPointerDown(e) {
+    _suppressShopClick = false;
+    if (STATE.screen !== "shop" || STATE._pack) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const el = e.target.closest('.shop-item[data-group="coach"]');
+    if (!el || el.classList.contains("sold")) return;
+    _sdrag = { i: parseInt(el.getAttribute("data-i"), 10), el, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, over: false };
+  }
+  function onShopCoachPointerMove(e) {
+    if (!_sdrag) return;
+    const dx = e.clientX - _sdrag.x0, dy = e.clientY - _sdrag.y0;
+    if (!_sdrag.moved && Math.hypot(dx, dy) > 7) {
+      _sdrag.moved = true;
+      const g = _sdrag.el.cloneNode(true);
+      g.classList.add("opt-ghost");
+      g.style.width = _sdrag.el.getBoundingClientRect().width + "px";
+      document.body.appendChild(g);
+      _sdrag.ghost = g;
+      _sdrag.el.classList.add("opt-dragging");
+      const row = $("#dugout");
+      if (row) row.classList.add("row-armed");
+    }
+    if (_sdrag.moved) {
+      _sdrag.ghost.style.left = e.clientX + "px";
+      _sdrag.ghost.style.top = e.clientY + "px";
+      const row = $("#dugout");
+      let over = false;
+      if (row) {
+        const r = row.getBoundingClientRect();
+        over = e.clientX >= r.left - 24 && e.clientX <= r.right + 24 && e.clientY >= r.top - 28 && e.clientY <= r.bottom + 28;
+        row.classList.toggle("row-hover", over);
+      }
+      _sdrag.over = over;
+    }
+  }
+  function onShopCoachPointerUp() {
+    if (!_sdrag) return;
+    const d = _sdrag; _sdrag = null;
+    if (d.ghost) d.ghost.remove();
+    d.el.classList.remove("opt-dragging");
+    const row = $("#dugout");
+    if (row) row.classList.remove("row-armed", "row-hover");
+    if (d.moved) {
+      _suppressShopClick = true;                 // a drag must not also fire the tap nudge
+      if (d.over) buy("coach", d.i);             // buy() covers cost checks + make-room
+      else if (SFX && SFX.click) SFX.click();    // released in open space: snaps back
+    }
   }
 
   /* ---------- shop: drag a sealed pack onto the open slot to open it ---------- */
@@ -3597,6 +3706,10 @@
     document.addEventListener("pointermove", onOptPointerMove);
     document.addEventListener("pointerup", onOptPointerUp);
     document.addEventListener("pointercancel", onOptPointerUp);
+    document.addEventListener("pointerdown", onShopCoachPointerDown);
+    document.addEventListener("pointermove", onShopCoachPointerMove);
+    document.addEventListener("pointerup", onShopCoachPointerUp);
+    document.addEventListener("pointercancel", onShopCoachPointerUp);
   }
 
   function boot() {

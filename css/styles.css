@@ -1408,15 +1408,17 @@ body.portrait #toast{ display:none !important; }
 
 /* ---- achievement unlock banner (slides in top-right) ---- */
 #ach-banner{ position:fixed; top:calc(14px + var(--sa-t)); right:calc(14px + var(--sa-r)); z-index:200; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
-.ach-pop{ display:flex; align-items:center; gap:12px; min-width:240px; max-width:330px;
-  background:linear-gradient(180deg,#1a2c46,#11203a); border:1px solid var(--gold-2); border-radius:13px; padding:11px 15px;
-  box-shadow:0 14px 36px rgba(0,0,0,.6); animation:achIn .4s cubic-bezier(.2,1.4,.3,1); }
-.ach-pop.leaving{ animation:achOut .4s ease forwards; }
+.ach-pop{ display:flex; align-items:center; gap:10px; min-width:0; max-width:280px;
+  background:linear-gradient(180deg,#1a2c46,#11203a); border:1px solid var(--gold-2); border-radius:11px; padding:8px 12px;
+  box-shadow:0 10px 28px rgba(0,0,0,.5); animation:achIn .35s cubic-bezier(.2,1.4,.3,1); }
+.ach-pop.leaving{ animation:achOut .38s ease forwards; }
 @keyframes achIn{ from{ transform:translateX(120%); opacity:0 } to{ transform:translateX(0); opacity:1 } }
 @keyframes achOut{ to{ transform:translateX(120%); opacity:0 } }
-.ach-pop-ic{ flex:none; color:var(--gold); } .ach-pop-ic .ico{ width:28px; height:28px; }
-.ach-pop-eyebrow{ font-size:.62rem; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:800; }
-.ach-pop-name{ font-size:1.02rem; font-weight:800; } .ach-pop-desc{ font-size:.78rem; color:var(--ink-dim); margin-top:1px; }
+.ach-pop-ic{ flex:none; color:var(--gold); } .ach-pop-ic .ico{ width:20px; height:20px; }
+.ach-pop-eyebrow{ font-size:.56rem; letter-spacing:2px; text-transform:uppercase; color:var(--gold); font-weight:800; }
+.ach-pop-name{ font-size:.88rem; font-weight:800; line-height:1.15; } .ach-pop-desc{ font-size:.78rem; color:var(--ink-dim); margin-top:1px; }
+.ach-pop-more{ flex:none; margin-left:4px; background:rgba(255,203,71,.16); border:1px solid var(--gold-deep); color:var(--gold);
+  font-size:.68rem; font-weight:800; padding:2px 7px; border-radius:999px; font-variant-numeric:tabular-nums; }
 
 /* ---- deck pager ---- */
 .deck-nav{ display:flex; align-items:center; justify-content:center; gap:18px; margin:10px 0 2px; }
@@ -2132,4 +2134,33 @@ body.portrait #toast{ display:none !important; }
   .col-tab{ font-size:.68rem; padding:5px 10px; }
   .col-cell{ min-height:0; padding:7px 6px; gap:4px; }
   .col-nm{ font-size:.62rem; }
+}
+
+/* ============================================================
+   Drag-only dugout/consumables + boss intro splash
+   ============================================================ */
+/* tapping a coach/Salami card flashes its destination row and hops the card */
+.row-nudge{ animation:rowNudge calc(.95s * var(--gs,1)) ease; border-radius:12px; }
+@keyframes rowNudge{ 0%,100%{ box-shadow:none } 25%,65%{ box-shadow:0 0 0 3px var(--gold), 0 0 26px rgba(255,203,71,.5) } }
+.opt-nudge{ animation:optNudge calc(.5s * var(--gs,1)) cubic-bezier(.2,1.4,.3,1); }
+@keyframes optNudge{ 0%{ transform:translateY(0) } 40%{ transform:translateY(-14px) } 100%{ transform:translateY(0) } }
+/* shop coach cost is a tag, not a button: the card is signed by dragging it to the dugout */
+.price-tag{ pointer-events:none; cursor:default; }
+.shop-item[data-group="coach"]:not(.sold){ cursor:grab; touch-action:none; }
+/* boss intro: a red banner slams over the field when a Boss frame begins */
+.boss-intro{ position:absolute; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(90% 70% at 50% 45%, rgba(120,10,18,.78), rgba(8,4,10,.9) 78%);
+  animation:biBgIn calc(.3s * var(--gs,1)) ease; cursor:pointer; }
+.boss-intro.bi-out{ opacity:0; transition:opacity calc(.4s * var(--gs,1)) ease; pointer-events:none; }
+.bi-inner{ text-align:center; transform:rotate(-2deg); animation:biSlam calc(.55s * var(--gs,1)) cubic-bezier(.2,1.4,.3,1); padding:0 40px; }
+.bi-eyebrow{ display:inline-block; background:var(--bad); color:#2a0000; font-weight:900; letter-spacing:7px; text-indent:7px;
+  padding:5px 20px 4px; border-radius:7px; font-size:1.05rem; box-shadow:0 8px 30px rgba(255,60,60,.4); }
+.bi-name{ font-size:3.4rem; font-weight:900; color:#ffe9e9; margin-top:12px; line-height:1.05;
+  text-shadow:0 4px 0 rgba(0,0,0,.45), 0 0 44px rgba(255,80,80,.35); }
+.bi-rule{ margin-top:12px; color:#ffb9b9; font-weight:700; font-size:1.08rem; max-width:600px; margin-left:auto; margin-right:auto; }
+@keyframes biSlam{ 0%{ transform:rotate(-2deg) scale(2.1); opacity:0 } 60%{ transform:rotate(-2deg) scale(.96); opacity:1 } 100%{ transform:rotate(-2deg) scale(1) } }
+@keyframes biBgIn{ from{ opacity:0 } }
+@media (max-height:470px){
+  .bi-name{ font-size:2.1rem; }
+  .bi-rule{ font-size:.9rem; }
 }

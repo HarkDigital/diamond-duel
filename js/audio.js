@@ -119,6 +119,11 @@
     },
     coach() { tone({ type: "sine", freq: 740, freqTo: 1100, dur: 0.12, gain: 0.12 }); tone({ type: "sine", freq: 988, dur: 0.1, gain: 0.08, delay: 0.05 }); },
     steal() { noise({ freq: 3000, q: 1.5, dur: 0.12, gain: 0.18, filter: "highpass" }); },
+    boss() { // menacing sting for the boss intro
+      tone({ type: "sawtooth", freq: 220, freqTo: 55, dur: 0.6, gain: 0.2 });
+      tone({ type: "square", freq: 110, freqTo: 82, dur: 0.5, gain: 0.12, delay: 0.05 });
+      noise({ freq: 300, q: 0.5, dur: 0.7, gain: 0.14, filter: "lowpass" });
+    },
     coin(step) { // optional step raises the pitch (sequential cash-out)
       const m = Math.pow(1.06, step || 0);
       tone({ type: "square", freq: 880 * m, dur: 0.06, gain: 0.1 });
