@@ -1484,7 +1484,7 @@
       const c = getCharm(id);
       if (!c) return "";
       const how = c.target === "immediate" ? "Tap it in the SALAMI panel during play to use it."
-        : c.target === "coach" ? "Drag it onto a dugout coach during play."
+        : c.target === "coach" ? "Drag it onto a dugout coach, on any screen."
         : "Drag it onto a player in your hand during play.";
       return `<div class="mr-item rar-${c.rarity}">
           <span class="mr-ico mr-art">${itemArt("charm", c)}</span>
@@ -2245,7 +2245,7 @@
     `<section><h3>Traits &amp; streaks</h3><p>Star players carry a <b>trait</b> - the icon on their card. Burners steal at will, sluggers launch homers risk-free, eagle-eyes draw walks, and more. Players also run <b>hot</b> (boosted after back-to-back hits) or <b>cold</b> (slumping after outs). Tap a trait icon to read it.</p></section>`,
     `<section><h3>Coaches &amp; the dugout</h3><p>Coaches are your <b>build</b> (think Balatro's Jokers). They fill your <b>dugout</b> (5 slots; Front Office vouchers can add more) and trigger passively or in the right spot - bag boosts, rally bonuses, payoffs for sluggers or speedsters, and scaling coaches that grow all run. <b>Tap a coach icon</b> to see what it does; sell any for half its cost.</p></section>`,
     `<section><h3>Innings, frames &amp; bosses</h3><p>Each of the 9 innings has three frames: <b>Top</b>, <b>Middle</b>, and <b>Boss</b>, with the target climbing each step. The <b>Boss</b> frame is a special pitcher with a nasty rule, telegraphed on the linescore so you can prepare. You shop between every frame, or <b>skip</b> a Top/Middle frame to pocket a Tag instead. Win inning 9's Boss for the title, then <b>Extra Innings</b> scale up forever.</p></section>`,
-    `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (on the bar at the top of the screen). <b>Drag a Salami card onto one of your players</b> to boost a stat or grant a trait, or <b>drag it onto a coach</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
+    `<section><h3>Salami Cards</h3><p>Salami cards are one-shot <b>powerups</b> in your pouch (on the bar at the top of the screen). <b>Drag a Salami card onto one of your players</b> during play to boost a stat or grant a trait, or <b>drag it onto a dugout coach from any screen</b> to duplicate that coach or mentor it for a permanent Rally aura. A few fire instantly instead, so you just tap them: an <b>Intentional Walk</b> (free runner), a <b>Momentum Shift</b> (+Rally), or a <b>Second Wind</b> (an extra out). Get them from a <b>Salami Pack</b> in the shop, or earn them by pulling off <b>feats</b> like a grand slam, a perfect inning, or back-to-back homers.</p></section>`,
     `<section><h3>Profile &amp; Collection</h3><p>Your <b>Profile</b> (home screen) tracks <b>57 achievements</b> across a dozen categories alongside your career stats. Open its <b>Collection</b> for a compendium of every <b>coach</b>, <b>Salami Card</b>, <b>Front Office</b> voucher, and <b>Skip Tag</b>: each stays locked until you acquire it in a run, and anything you have not found yet wears an <b>Undiscovered</b> tag when it shows up in the shop.</p></section>`,
     `<section><h3>The shop</h3><p>Between innings, spend <b>Payroll ($)</b> to build your club. <b>Front Office</b> vouchers are bought directly; sign a shop <b>coach</b> by <b>dragging its card up to your dugout</b>. Everything else comes in <b>packs</b>: <b>drag a sealed pack into the open slot</b> (or just tap it) to open it, then claim what you want inside, or <b>skip</b> it. Players tap straight into your deck, but <b>coaches and Salami cards must be dragged up into their row</b>, like pulling the card you wanted out of the wrapper. A <b>Prospect Pack</b> offers players, a <b>Scouting Pack</b> offers analytics and scouting cards, a <b>Salami Pack</b> offers Salami cards, a <b>Coaching Pack</b> offers coaches, and a <b>Spring Training</b> pack levels up your at-bat actions. Packs come in three sizes: <b>Normal</b> (pick 1 of 3), <b>Jumbo</b> (pick 1 of 5), and <b>Mega</b> (pick 2 of 5). Reroll for fresh stock. <em>You can't clear the late innings with your starting deck, so building is the point.</em></p></section>`,
     `<section><h3>Editions &amp; Spring Training</h3><p>Cards and coaches in packs can roll a shiny <b>edition</b>: <b>All-Star</b> (+2 Bag), <b>Silver Slugger</b> (+1.0 Rally), <b>Gold Glove</b> (that play scores at x1.5 Rally), <b>Hall of Fame</b> (+2 Bag and +0.5 Rally), and the rare <b>Legendary</b> (the biggest boost, and on a coach it takes no dugout slot). An edition fires whenever that card scores. Separately, <b>Spring Training</b> packs <b>level up an action</b> (Contact Swing, Power Swing, Work the Count, Bunt, Steal), so every safe play with that action builds your Rally faster. Levels show right on the swing buttons.</p></section>`,
@@ -3063,7 +3063,22 @@
       if (charmEl && !charmEl.classList.contains("empty")) {
         if (_suppressCharmClick) { _suppressCharmClick = false; return; }   // a drag already handled it
         if (STATE.screen === "game") useCharm(parseInt(charmEl.getAttribute("data-charm"), 10));
-        else openSalamiView();   // outside play, a pouch chip opens the pouch view
+        else {
+          // outside play a tap explains the card; coach-target cards drag right here
+          const mci = parseInt(charmEl.getAttribute("data-charm"), 10);
+          const mcc = getCharm(STATE.run.charms[mci]);
+          charmEl.classList.remove("opt-nudge"); void charmEl.offsetWidth; charmEl.classList.add("opt-nudge");
+          if (SFX && SFX.click) SFX.click();
+          if (mcc && mcc.target === "coach") {
+            const row = $("#dugout");
+            if (row) { row.classList.remove("row-nudge"); void row.offsetWidth; row.classList.add("row-nudge"); setTimeout(() => row.classList.remove("row-nudge"), pace(950)); }
+            toast("Drag it onto one of your dugout coaches.");
+          } else if (mcc && mcc.target === "player") {
+            toast("Drag it onto a player in your hand during play.");
+          } else {
+            toast("Tap it during play to use it.");
+          }
+        }
         return;
       }
       const act = e.target.closest("[data-act]");
@@ -3433,7 +3448,10 @@
   }
   function onCharmPointerDown(e) {
     _suppressCharmClick = false;
-    if (STATE.screen !== "game" || STATE.busy) return;
+    if (STATE.busy) return;
+    // the salami row is on EVERY in-run screen; coach-target cards can drag onto the
+    // dugout row anywhere, player-target cards need a hand (game only)
+    if (STATE.screen !== "game" && STATE.screen !== "map" && STATE.screen !== "shop") return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (e.target.closest(".cb-sell")) return;   // the sell button is a tap, not a drag
     const badge = e.target.closest(".charm-badge[data-charm]");
@@ -3441,6 +3459,7 @@
     const idx = parseInt(badge.getAttribute("data-charm"), 10);
     const c = getCharm(STATE.run.charms[idx]);
     if (!c || c.target === "immediate") return;     // immediate Salami cards: a tap uses them (click handler)
+    if (c.target === "player" && STATE.screen !== "game") return;   // no hand to drop on; the tap explains
     _cdrag = { idx, charm: c, badge, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, target: null };
     try { badge.setPointerCapture(e.pointerId); } catch (err) {}
   }
@@ -3516,6 +3535,7 @@
       toast(`${c.name} applied to ${who}.`);
       consumeCharm(idx);
       if (STATE.screen === "game") renderGame();
+      else render();   // refresh the run-frame rows on map/shop
     } else if (SFX && SFX.error) { SFX.error(); }
   }
 

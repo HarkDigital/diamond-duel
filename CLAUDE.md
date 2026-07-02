@@ -143,7 +143,10 @@ tokens (`.rtok`) share the same coordinate space in `#runner-layer`.
   Legendary coaches take no slot).
 - **Salami Cards** (`CHARMS`, 12 one-shots): `target` player/coach cards are **drag-only**
   (`onCharmPointerDown/Move/Up` -> `applyCharmToTarget`); `immediate` ones are tapped
-  (confirm -> `applyImmediateCharm`). Sell anytime (`.cb-sell` -> `sellCharm`).
+  (confirm -> `applyImmediateCharm`). Coach-target cards drag onto the dugout row from
+  ANY in-run screen (game/map/shop); player-target cards need the hand (game only).
+  Tapping a badge outside the game gives a guidance toast + row nudge (never the pouch).
+  Sell anytime (`.cb-sell` -> `sellCharm`).
 - **Always-on access:** `openDugoutView()` + `openSalamiView()` (both with Sell buttons)
   are reachable from EVERY screen: tappable in-game panel headers (`.panel-btn` on the
   DUGOUT/SALAMI titles, with live `x/y` counts), Deck/Dugout/Salami buttons on the map
